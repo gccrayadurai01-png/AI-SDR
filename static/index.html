@@ -1,0 +1,3049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CloudFuze AI SDR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+:root {
+  --primary: #0129AC;
+  --primary-light: #0238d4;
+  --accent: #14CFC3;
+  --accent-glow: rgba(20,207,195,0.25);
+  --bg-body: #0a0e1a;
+  --bg-sidebar: #060a14;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2236;
+  --bg-input: #0f1729;
+  --border: #1e2a42;
+  --border-light: #2a3a58;
+  --text: #e2e8f0;
+  --text-dim: #8896b0;
+  --text-muted: #586882;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --radius: 10px;
+  --sidebar-w: 240px;
+  --sidebar-collapsed: 64px;
+  --topbar-h: 56px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Poppins',sans-serif;background:var(--bg-body);color:var(--text);overflow-x:hidden;min-height:100vh;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;}
+input,textarea,select{font-family:inherit;background:var(--bg-input);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px 14px;font-size:13px;transition:border-color .2s;width:100%;}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-glow);}
+textarea{resize:vertical;min-height:80px;}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238896b0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+label{display:block;font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:5px;letter-spacing:.3px;}
+::placeholder{color:var(--text-muted);}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* Layout */
+#app{display:flex;min-height:100vh;}
+
+/* Sidebar */
+.sidebar{width:var(--sidebar-w);background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:width .25s ease;}
+.sidebar.collapsed{width:var(--sidebar-collapsed);}
+.sidebar-logo{height:var(--topbar-h);display:flex;align-items:center;padding:0 16px;gap:10px;border-bottom:1px solid var(--border);}
+.sidebar-logo svg{flex-shrink:0;}
+.sidebar-logo span{font-weight:700;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;transition:opacity .2s;}
+.sidebar.collapsed .sidebar-logo span{opacity:0;width:0;}
+.sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:var(--text-dim);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;overflow:hidden;position:relative;}
+.nav-item:hover{background:rgba(20,207,195,0.06);color:var(--text);}
+.nav-item.active{background:rgba(1,41,172,0.25);color:var(--accent);border-left:3px solid var(--accent);}
+.nav-item svg{flex-shrink:0;width:18px;height:18px;}
+.nav-item .nav-label{transition:opacity .2s;}
+.sidebar.collapsed .nav-label{opacity:0;width:0;}
+.sidebar-toggle{padding:12px;border-top:1px solid var(--border);display:flex;justify-content:center;}
+.sidebar-toggle button{background:none;color:var(--text-dim);padding:6px;border-radius:6px;transition:background .15s;}
+.sidebar-toggle button:hover{background:rgba(255,255,255,0.05);}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);flex:1;transition:margin-left .25s ease;display:flex;flex-direction:column;min-height:100vh;}
+.sidebar.collapsed~.main{margin-left:var(--sidebar-collapsed);}
+
+/* Topbar */
+.topbar{height:var(--topbar-h);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(6,10,20,0.8);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.topbar-left h2{font-size:16px;font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.status-dots{display:flex;align-items:center;gap:8px;}
+.status-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+.status-dot .dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);}
+.status-dot .dot.on{background:var(--success);box-shadow:0 0 6px rgba(34,197,94,0.5);}
+.status-dot .dot.off{background:var(--danger);}
+
+/* Content */
+.content{flex:1;padding:24px;overflow-y:auto;}
+
+/* Pages */
+.page{display:none;animation:fadeUp .25s ease;}
+.page.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Cards */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:border-color .2s;}
+.card:hover{border-color:var(--border-light);}
+.card-title{font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--accent));}
+.stat-value{font-size:28px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.stat-label{font-size:12px;color:var(--text-dim);font-weight:500;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-light);box-shadow:0 4px 12px rgba(1,41,172,0.3);}
+.btn-accent{background:var(--accent);color:#0a0e1a;font-weight:600;}
+.btn-accent:hover{filter:brightness(1.1);box-shadow:0 4px 12px var(--accent-glow);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{filter:brightness(1.1);}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{filter:brightness(1.1);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-icon{padding:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--text-dim);}
+.btn-icon:hover{background:rgba(255,255,255,0.08);color:var(--text);}
+
+/* Tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:12px 16px;background:rgba(255,255,255,0.02);color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);}
+td{padding:12px 16px;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(20,207,195,0.02);}
+
+/* Badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px;}
+.badge-green{background:rgba(34,197,94,0.15);color:#4ade80;}
+.badge-blue{background:rgba(59,130,246,0.15);color:#60a5fa;}
+.badge-teal{background:rgba(20,207,195,0.15);color:#14CFC3;}
+.badge-red{background:rgba(239,68,68,0.15);color:#f87171;}
+.badge-gray{background:rgba(107,114,128,0.15);color:#9ca3af;}
+.badge-purple{background:rgba(168,85,247,0.15);color:#c084fc;}
+.badge-orange{background:rgba(245,158,11,0.15);color:#fbbf24;}
+.badge-yellow{background:rgba(234,179,8,0.15);color:#facc15;}
+
+/* Tabs */
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.tab-btn{padding:10px 20px;font-size:13px;font-weight:500;color:var(--text-dim);border-bottom:2px solid transparent;background:none;transition:all .15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:600px;max-height:85vh;overflow-y:auto;animation:fadeUp .2s ease;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-header h3{font-size:16px;font-weight:600;}
+
+/* Toast */
+.toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast{padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;animation:slideIn .3s ease;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.toast-success{background:var(--bg-card);border:1px solid var(--success);color:var(--success);}
+.toast-error{background:var(--bg-card);border:1px solid var(--danger);color:var(--danger);}
+.toast-info{background:var(--bg-card);border:1px solid var(--info);color:var(--info);}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Activity Feed */
+.feed{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;}
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);font-size:13px;}
+.feed-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.feed-time{font-size:11px;color:var(--text-muted);margin-left:auto;white-space:nowrap;}
+
+/* Form grid */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+.form-group{display:flex;flex-direction:column;}
+.form-group.full{grid-column:1/-1;}
+.form-actions{display:flex;gap:10px;margin-top:20px;}
+
+/* Call cards */
+.calls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.call-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+.call-card.connected{border-color:var(--success);}
+.call-card.connected::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--success);}
+.call-card.calling{border-color:var(--warning);}
+.call-card.calling::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--warning);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.call-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.call-card-name{font-weight:600;font-size:14px;}
+.call-card-number{font-size:12px;color:var(--text-dim);}
+.call-card-timer{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin:8px 0;}
+.call-card-transcript{font-size:12px;color:var(--text-dim);max-height:60px;overflow:hidden;margin:8px 0;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;}
+.call-card-actions{display:flex;gap:8px;margin-top:10px;}
+
+/* Search bar */
+.search-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.search-bar input{max-width:320px;}
+
+/* Script preview */
+.script-preview{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:20px;font-size:13px;line-height:1.8;max-height:500px;overflow-y:auto;white-space:pre-wrap;}
+.script-preview strong{color:var(--accent);}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{width:var(--sidebar-collapsed);}
+  .sidebar .nav-label,.sidebar-logo span{opacity:0;width:0;}
+  .main{margin-left:var(--sidebar-collapsed);}
+  .stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+  .form-grid{grid-template-columns:1fr;}
+  .topbar{padding:0 12px;}
+  .content{padding:16px;}
+}
+
+/* Expand row */
+.expand-row{display:none;}
+.expand-row.open{display:table-row;}
+.expand-content{padding:16px;background:rgba(0,0,0,0.15);border-radius:8px;}
+.expand-content h4{margin-bottom:8px;font-size:13px;color:var(--accent);}
+.expand-content p{font-size:13px;line-height:1.7;color:var(--text-dim);}
+
+/* Loading spinner */
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Section header */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.section-header h3{font-size:18px;font-weight:600;}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;color:var(--text-muted);}
+.empty svg{margin-bottom:12px;opacity:.4;}
+.empty p{font-size:14px;}
+
+/* Calendar & outreach hub */
+.cal-hero{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+.cal-hero h3{font-size:22px;font-weight:700;letter-spacing:-0.02em;}
+.cal-sub{font-size:13px;color:var(--text-dim);margin-top:4px;max-width:520px;line-height:1.5;}
+.cal-legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
+.cal-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);}
+.cal-dot{width:8px;height:8px;border-radius:50%;}
+.cal-dot.meet{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.4);}
+.cal-dot.call{background:#eab308;box-shadow:0 0 8px rgba(234,179,8,0.35);}
+.cal-dot.follow{background:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,0.35);}
+.cal-dot.email{background:#a855f7;box-shadow:0 0 8px rgba(168,85,247,0.35);}
+.cal-strip{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.cal-strip button.cal-nav{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.04);color:var(--text-dim);display:flex;align-items:center;justify-content:center;}
+.cal-strip button.cal-nav:hover{color:var(--accent);background:rgba(20,207,195,0.1);}
+.cal-days{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
+.cal-day-chip{padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg-input);color:var(--text-dim);transition:all .15s;}
+.cal-day-chip:hover{border-color:var(--border-light);color:var(--text);}
+.cal-day-chip.selected{background:var(--primary);color:#fff;border-color:var(--primary);}
+.cal-day-chip.today:not(.selected){background:rgba(20,207,195,0.12);color:var(--accent);border-color:rgba(20,207,195,0.35);}
+.cal-agenda-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.cal-agenda-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cal-agenda-table th{text-align:left;padding:12px 16px;background:rgba(255,255,255,0.03);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+.cal-agenda-table td{padding:14px 16px;border-top:1px solid var(--border);vertical-align:middle;}
+.cal-agenda-table tr:hover td{background:rgba(20,207,195,0.03);}
+.cal-time{width:100px;color:var(--text-muted);font-variant-numeric:tabular-nums;font-size:12px;}
+.cal-event-cell{position:relative;padding-left:14px;}
+.cal-event-bar{position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:2px;}
+.cal-event-title{font-weight:600;color:var(--text);margin-bottom:2px;}
+.cal-event-sub{font-size:12px;color:var(--text-dim);}
+.outreach-seq-row{display:grid;grid-template-columns:100px 120px 1fr 1fr 80px;gap:10px;align-items:end;margin-bottom:10px;}
+@media(max-width:900px){.outreach-seq-row{grid-template-columns:1fr 1fr;}}
+.seq-type-email{border-left:3px solid #a855f7;}
+.seq-type-call{border-left:3px solid #eab308;}
+.seq-type-li{border-left:3px solid #0ea5e9;}
+.hub-panel{display:none;}
+.hub-panel.active{display:block;}
+.linkedin-card{border:1px dashed var(--border);border-radius:var(--radius);padding:20px;background:rgba(14,165,233,0.04);}
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="14" fill="#0129AC"/><path d="M8 14c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6" stroke="#14CFC3" stroke-width="2.5" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#14CFC3"/></svg>
+      <span>CloudFuze</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="campaigns" onclick="navigate('campaigns')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span class="nav-label">Campaigns</span>
+      </div>
+      <div class="nav-item" data-page="agent-builder" onclick="navigate('agent-builder')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 1.95-1.4 3.58-3.25 3.93"/><path d="M8.56 9.93A4.001 4.001 0 0112 2"/><circle cx="12" cy="14" r="3"/><path d="M19 22c0-3.87-3.13-7-7-7s-7 3.13-7 7"/></svg>
+        <span class="nav-label">AI Agent Builder</span>
+      </div>
+      <div class="nav-item" data-page="live-calls" onclick="navigate('live-calls')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        <span class="nav-label">Live Calls</span>
+      </div>
+      <div class="nav-item" data-page="call-logs" onclick="navigate('call-logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span class="nav-label">Call Logs</span>
+      </div>
+      <div class="nav-item" data-page="followups" onclick="navigate('followups')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="nav-label">Calendar &amp; Outreach</span>
+      </div>
+      <div class="nav-item" data-page="contacts" onclick="navigate('contacts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span class="nav-label">Contacts</span>
+      </div>
+      <div class="nav-item" data-page="settings" onclick="navigate('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </div>
+    </nav>
+    <div class="sidebar-toggle">
+      <button onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h2 id="pageTitle">Dashboard</h2>
+      </div>
+      <div class="topbar-right">
+        <div class="status-dots" id="statusDots">
+          <div class="status-dot"><span class="dot" id="dot-telnyx"></span>Telnyx</div>
+          <div class="status-dot"><span class="dot" id="dot-anthropic"></span>Anthropic</div>
+          <div class="status-dot"><span class="dot" id="dot-apollo"></span>Apollo</div>
+        </div>
+        <button class="btn btn-accent btn-sm" onclick="navigate('live-calls');openQuickDial();">Quick Dial</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- ===================== DASHBOARD ===================== -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="dashStats">
+          <div class="stat-card"><div class="stat-value" id="stat-campaigns">-</div><div class="stat-label">Active Campaigns</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-live">-</div><div class="stat-label">Calls Running Now</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-completed">-</div><div class="stat-label">Completed Today</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-answer">-</div><div class="stat-label">Answer Rate</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-meetings">-</div><div class="stat-label">Meetings Booked</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card" style="grid-column:1/-1;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div class="card-title" style="margin-bottom:0;">Live Activity Feed</div>
+              <span class="badge badge-teal" style="font-size:10px;">AUTO-REFRESH</span>
+            </div>
+            <div class="feed" id="activityFeed">
+              <div class="empty"><p>No recent activity</p></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-primary" onclick="navigate('campaigns')">New Campaign</button>
+          <button class="btn btn-accent" onclick="navigate('live-calls');openQuickDial();">Quick Dial</button>
+          <button class="btn btn-outline" onclick="navigate('call-logs')">View Logs</button>
+        </div>
+      </div>
+
+      <!-- ===================== CAMPAIGNS ===================== -->
+      <div class="page" id="page-campaigns">
+        <div class="section-header">
+          <h3>Campaign Manager</h3>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span class="badge badge-teal" id="campaignStatusBadge">Idle</span>
+          </div>
+        </div>
+
+        <div class="tab-bar campaign-canvas-tabs" style="margin-bottom:8px;">
+          <button type="button" class="tab-btn active" id="campTabCall" onclick="switchCampaignCanvas('call')">Call campaign</button>
+          <button type="button" class="tab-btn" id="campTabEmail" onclick="switchCampaignCanvas('email')">Email campaign</button>
+          <button type="button" class="tab-btn" id="campTabCombo" onclick="switchCampaignCanvas('combo')">Email + calls</button>
+        </div>
+        <p class="cal-sub" id="campaignCanvasHint" style="margin-bottom:20px;">Dial prospects in order from the queue — phone only.</p>
+
+        <!-- —— Call only: prospect list + Telnyx dial queue —— -->
+        <div id="campaign-panel-call" class="campaign-canvas-panel">
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Add Prospects</div>
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchCampaignTab(this,'camp-upload')">CSV Upload</button>
+            <button class="tab-btn" onclick="switchCampaignTab(this,'camp-apollo')">Apollo Search</button>
+            <button class="tab-btn" onclick="switchCampaignTab(this,'camp-manual')">Manual Add</button>
+          </div>
+          <div id="camp-upload">
+            <div style="display:flex;gap:10px;align-items:flex-end;">
+              <div class="form-group" style="flex:1;">
+                <label>Upload CSV / Excel</label>
+                <input type="file" id="csvFile" accept=".csv,.xlsx" style="padding:8px;"/>
+              </div>
+              <button class="btn btn-primary" onclick="uploadCSV()">Import</button>
+            </div>
+          </div>
+          <div id="camp-apollo" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group"><label>Job Title</label><input id="apollo-title" placeholder="e.g. VP of Sales"/></div>
+              <div class="form-group"><label>Company</label><input id="apollo-company" placeholder="e.g. Acme Corp"/></div>
+              <div class="form-group"><label>Location</label><input id="apollo-location" placeholder="e.g. San Francisco"/></div>
+              <div class="form-group"><label>Industry</label><input id="apollo-industry" placeholder="e.g. SaaS"/></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="searchApollo()">Search Apollo</button>
+            </div>
+          </div>
+          <div id="camp-manual" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group"><label>Name</label><input id="manual-name" placeholder="John Doe"/></div>
+              <div class="form-group"><label>Phone</label><input id="manual-phone" placeholder="+1234567890"/></div>
+              <div class="form-group"><label>Email</label><input id="manual-email" type="email" placeholder="john@acme.com"/></div>
+              <div class="form-group"><label>Company</label><input id="manual-company" placeholder="Acme Corp"/></div>
+              <div class="form-group"><label>Title</label><input id="manual-title" placeholder="VP Sales"/></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="addManualProspect()">Add to Queue</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div class="card-title" style="margin-bottom:0;">Campaign Queue (<span id="queueCount">0</span>)</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-success btn-sm" onclick="startCampaign()">Start</button>
+              <button class="btn btn-outline btn-sm" onclick="pauseCampaign()">Pause</button>
+              <button class="btn btn-outline btn-sm" onclick="resumeCampaign()">Resume</button>
+              <button class="btn btn-danger btn-sm" onclick="stopCampaign()">Stop</button>
+              <button class="btn btn-outline btn-sm" onclick="clearQueue()">Clear</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Company</th><th>Title</th><th>Actions</th></tr></thead>
+              <tbody id="queueTable"><tr><td colspan="6" class="empty"><p>No prospects in queue</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Campaign Stats</div>
+          <div id="campaignStatsContent" style="font-size:13px;color:var(--text-dim);">Loading...</div>
+        </div>
+
+        </div><!-- /campaign-panel-call -->
+
+        <!-- —— Email only: drip templates + enroll (no call tasks) —— -->
+        <div id="campaign-panel-email" class="campaign-canvas-panel" style="display:none;">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">Email-only sequence</div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.6;">Each row is an email touch on a <strong>day</strong> (day 1, day 3, …). Delays between sends are computed from day gaps. No calls or LinkedIn — SMTP + <code style="font-size:11px;">EMAIL_AUTOMATION_ENABLED</code> control sending.</p>
+            <div id="emailOnlyStepsContainer"></div>
+            <div class="form-actions" style="margin-top:12px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="addEmailOnlyStep()">+ Add email touch</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="publishEmailOnlyTemplate()">Save email template to server</button>
+            </div>
+            <div class="form-grid" style="margin-top:16px;">
+              <div class="form-group"><label>Template name</label><input id="emailOnlyTplName" placeholder="e.g. 4-touch nurture"/></div>
+              <div class="form-group"><label>Server template ID (optional)</label><input id="emailOnlyTplId" placeholder="Leave blank to auto-generate"/></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- —— Email + calls: multi-touch blueprint + LinkedIn notes —— -->
+        <div id="campaign-panel-combo" class="campaign-canvas-panel" style="display:none;">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">Multi-touch: email + call + LinkedIn</div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.6;"><strong>Email</strong> rows become the server template. <strong>Call</strong> / <strong>LinkedIn</strong> rows create <strong>tasks</strong> on your calendar when you enroll a CSV.</p>
+            <div id="outreachStepsContainer"></div>
+            <div class="form-actions" style="margin-top:12px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="addOutreachStep()">+ Add touch</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="publishOutreachTemplate()">Save email template to server</button>
+            </div>
+            <div class="form-grid" style="margin-top:16px;">
+              <div class="form-group"><label>Template name</label><input id="outreachTplName" placeholder="e.g. 5-day CloudFuze outbound"/></div>
+              <div class="form-group"><label>Server template ID (optional)</label><input id="outreachTplId" placeholder="Leave blank to auto-generate"/></div>
+            </div>
+          </div>
+          <div class="linkedin-card" style="margin-bottom:20px;">
+            <div style="font-weight:600;margin-bottom:6px;color:var(--text);">LinkedIn (preview)</div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">LinkedIn steps become tasks. Native API not wired in this build.</p>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group"><label>Your LinkedIn profile URL (optional)</label><input id="liProfileUrl" placeholder="https://linkedin.com/in/..."/></div>
+              <div class="form-group"><label>Default note for LI tasks</label><input id="liDefaultNote" placeholder="Connection request — mention CloudFuze"/></div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="saveLinkedInPrefs()">Save preferences (browser only)</button>
+          </div>
+        </div>
+
+        <!-- Shared: automation status + enroll (email & combo modes) -->
+        <div id="campaign-email-shared" style="display:none;">
+          <div class="card" style="margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+              <div class="card-title" style="margin-bottom:0;">Automation status</div>
+              <span class="badge badge-gray" id="emailSeqStatusBadge">Loading…</span>
+            </div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">Email sends use SMTP in <code style="font-size:11px;">.env</code>. Call/LinkedIn touches only apply when you use <strong>Email + calls</strong> and enroll below.</p>
+            <div id="emailSeqStatusDetail" style="font-size:12px;color:var(--text-muted);"></div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">Enroll prospects</div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">CSV with <code style="font-size:11px;">email</code> (required), <code style="font-size:11px;">name</code>, <code style="font-size:11px;">phone</code>, <code style="font-size:11px;">company</code>. <strong>Email campaign:</strong> enrolls emails only. <strong>Email + calls:</strong> also creates call/LinkedIn tasks from your blueprint.</p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Email template</label>
+                <select id="enrollTemplateSelect"></select>
+              </div>
+              <div class="form-group full">
+                <label>CSV file</label>
+                <input type="file" id="enrollCsvFile" accept=".csv" style="padding:8px;"/>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-accent" onclick="enrollFromCsv()">Enroll from CSV</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="loadEmailSequences()">Refresh lists</button>
+            </div>
+            <div class="table-wrap" style="margin-top:16px;">
+              <table>
+                <thead><tr><th>Prospect</th><th>Email</th><th>Template</th><th>Next send</th><th>Status</th><th></th></tr></thead>
+                <tbody id="enrollmentsTable"><tr><td colspan="6" class="empty"><p>No enrollments loaded</p></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================== AI AGENT BUILDER ===================== -->
+      <div class="page" id="page-agent-builder">
+        <div class="section-header">
+          <h3>AI Agent Builder</h3>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="loadScript()">Load Saved</button>
+            <button class="btn btn-primary" onclick="saveScript()">Save Config</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-title">Agent Configuration <span class="badge badge-teal" style="margin-left:8px;font-size:9px;">SANDLER SELLING SYSTEM</span></div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">The AI runs the entire call autonomously using Sandler methodology. It decides the opening, questions, objection handling, pacing, and close. Just set the essentials below.</p>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+              <div class="form-group"><label>SDR Name</label><input id="script-sdr_name" placeholder="Alex"/></div>
+              <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="CloudFuze"/></div>
+              <div class="form-group full"><label>Call Objective (the ONE goal)</label><input id="script-objective" placeholder="Book a 15-minute discovery call to demo CloudFuze Manage"/></div>
+              <div class="form-group full"><label>Target Persona</label><input id="script-target_persona" placeholder="VP/Director of IT, SaaS Ops, Security at mid-market and enterprise companies"/></div>
+              <div class="form-group full"><label>Value Proposition</label><textarea id="script-value_prop" rows="3" placeholder="CloudFuze Manage gives teams full visibility into their SaaS and AI app stack — saving ~30% on licenses, catching shadow IT, and closing security gaps."></textarea></div>
+            </div>
+
+            <div class="card-title" style="margin-top:24px;">Voicemail Script</div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Auto-delivered when voicemail is detected. Supports {name}, {sdr_name}, {company} placeholders.</p>
+            <div class="form-grid" style="grid-template-columns:1fr;">
+              <div class="form-group full"><label>Voicemail Message</label><textarea id="script-voicemail" rows="5" placeholder="Hey {name}, this is {sdr_name} from {company}. I was reaching out because we work with companies like yours to help get full visibility into their SaaS and AI app stack..."></textarea></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Sandler Methodology Overview</div>
+            <div class="script-preview" id="scriptPreview">
+              <em style="color:var(--text-muted);">Fill in the agent configuration to see a preview...</em>
+            </div>
+
+            <div style="margin-top:20px;padding:16px;background:rgba(20,207,195,0.04);border:1px solid rgba(20,207,195,0.2);border-radius:8px;">
+              <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px;">HOW THE AI RUNS THE CALL</div>
+              <div style="font-size:12px;color:var(--text-dim);line-height:1.8;">
+                <strong style="color:var(--text);">1. Bonding & Rapport</strong> — Pattern interrupt opener, matches their energy<br/>
+                <strong style="color:var(--text);">2. Up-Front Contract</strong> — Sets expectations, gives prospect control<br/>
+                <strong style="color:var(--text);">3. Pain Funnel</strong> — Layered questions: surface &rarr; impact &rarr; personal &rarr; quantify<br/>
+                <strong style="color:var(--text);">4. Budget & Decision</strong> — Only after pain is established<br/>
+                <strong style="color:var(--text);">5. Fulfillment</strong> — Proposes specific meeting time<br/>
+                <strong style="color:var(--text);">6. Post-Sell</strong> — Reinforces decision, locks details<br/>
+                <br/>
+                <strong style="color:var(--accent);">Techniques:</strong> Reversing, Negative Reverse Selling, Monkey's Paw, Third-Party Stories<br/>
+                <strong style="color:var(--accent);">Product:</strong> Sells CloudFuze Manage — SaaS/AI visibility, license savings, shadow IT, compliance<br/>
+                <strong style="color:var(--accent);">Objections:</strong> AI handles all objections autonomously using Sandler techniques<br/>
+                <strong style="color:var(--accent);">Voicemail:</strong> Auto-detected &rarr; delivers script &rarr; hangs up automatically
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== LIVE CALLS ===================== -->
+      <div class="page" id="page-live-calls">
+        <div class="section-header">
+          <div>
+            <h3>Live Calls</h3>
+            <p style="font-size:12px;color:var(--text-dim);margin-top:2px;">Monitor AI calls in real-time</p>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span id="liveCallStats" style="font-size:12px;color:var(--text-dim);"></span>
+            <button class="btn btn-accent" onclick="openQuickDial()">Quick Dial</button>
+            <button class="btn btn-outline btn-sm" onclick="refreshActiveCalls()">Refresh</button>
+          </div>
+        </div>
+
+        <!-- Quick Dial Form -->
+        <div class="card" id="quickDialCard" style="margin-bottom:20px;display:none;">
+          <div class="card-title">Quick Dial</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Phone Number *</label><input id="qd-number" placeholder="+1234567890"/></div>
+            <div class="form-group"><label>Prospect Name</label><input id="qd-name" placeholder="John Doe"/></div>
+            <div class="form-group"><label>Company</label><input id="qd-company" placeholder="Acme Corp"/></div>
+            <div class="form-group"><label>Email (post-call recap)</label><input id="qd-email" type="email" placeholder="prospect@company.com — Sandler recap ~5 min after hangup"/></div>
+            <div class="form-group"><label>Notes</label><input id="qd-notes" placeholder="Follow-up on email"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-success" onclick="makeCall()">Dial Now</button>
+            <button class="btn btn-outline" onclick="researchProspect()">Research First</button>
+            <button class="btn btn-outline" onclick="document.getElementById('quickDialCard').style.display='none'">Cancel</button>
+          </div>
+          <div id="researchResult" style="display:none;margin-top:16px;padding:12px;background:rgba(20,207,195,0.05);border:1px solid var(--accent);border-radius:8px;font-size:13px;"></div>
+        </div>
+
+        <!-- Active Calls: Table + Transcript Panel -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" id="liveCallsContainer">
+          <div class="card">
+            <div class="table-wrap" style="border:none;">
+              <table>
+                <thead><tr><th>Contact</th><th>Status</th><th>Time</th><th>Actions</th></tr></thead>
+                <tbody id="activeCallsTable"><tr><td colspan="4" class="empty"><p>No active calls</p></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" id="liveTranscriptPanel">
+            <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:8px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              <p>Select a call to view live transcript</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Calls -->
+        <div class="card" id="recentCallsCard">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div class="card-title" style="margin-bottom:0;">Recent Calls</div>
+            <button class="btn btn-outline btn-sm" onclick="loadRecentCalls()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Contact</th><th>Outcome</th><th>Duration</th><th>Time</th><th>Actions</th></tr></thead>
+              <tbody id="recentCallsTable"><tr><td colspan="5" class="empty"><p>Loading...</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== CALL LOGS ===================== -->
+      <div class="page" id="page-call-logs">
+        <div class="section-header">
+          <div>
+            <h3>Call History</h3>
+            <p style="font-size:12px;color:var(--text-dim);margin-top:2px;" id="callLogStats"></p>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline btn-sm" onclick="cleanupStaleCalls()">Cleanup Stale</button>
+            <button class="btn btn-outline btn-sm" onclick="loadCallHistory()">Refresh</button>
+          </div>
+        </div>
+        <div class="search-bar" style="align-items:center;">
+          <input id="logSearch" placeholder="Search by name, number, or company..." oninput="filterCallLogs()" style="max-width:400px;"/>
+          <select id="outcomeFilter" onchange="filterCallLogs()" style="max-width:200px;">
+            <option value="">All Outcomes</option>
+            <option value="meeting_booked">Meeting Booked</option>
+            <option value="callback_scheduled">Callback Scheduled</option>
+            <option value="interested">Interested</option>
+            <option value="not_interested">Not Interested</option>
+            <option value="voicemail">Voicemail</option>
+            <option value="no_answer">No Answer</option>
+            <option value="hung_up">Hung Up</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contact</th><th>Outcome</th><th>Duration</th><th>Date</th><th></th></tr></thead>
+            <tbody id="callLogsTable"><tr><td colspan="5" class="empty"><p>Loading...</p></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== CALENDAR & OUTREACH ===================== -->
+      <div class="page" id="page-followups">
+        <div class="cal-hero">
+          <div>
+            <h3>Calendar</h3>
+            <p class="cal-sub">AI-scheduled meetings, callbacks, follow-ups, and automated email sequence sends — one place to run the week.</p>
+          </div>
+          <div class="cal-legend" id="calLegend">
+            <span class="cal-legend-item"><span class="cal-dot meet"></span><span id="legMeet">0 meetings</span></span>
+            <span class="cal-legend-item"><span class="cal-dot call"></span><span id="legCall">0 callbacks</span></span>
+            <span class="cal-legend-item"><span class="cal-dot follow"></span><span id="legFollow">0 follow-ups</span></span>
+            <span class="cal-legend-item"><span class="cal-dot email"></span><span id="legEmail">0 email touches</span></span>
+          </div>
+        </div>
+
+        <div class="tab-bar" style="margin-bottom:16px;">
+          <button class="tab-btn active" type="button" id="hubTabCalendar" onclick="switchOutreachTab('calendar')">Calendar</button>
+          <button class="tab-btn" type="button" id="hubTabTasks" onclick="switchOutreachTab('tasks')">Task list</button>
+          <button class="tab-btn" type="button" id="hubTabSeq" onclick="switchOutreachTab('sequences')">Sequences</button>
+          <button class="tab-btn" type="button" id="hubTabInsights" onclick="switchOutreachTab('insights')">Call insights → Email</button>
+        </div>
+
+        <div id="hub-panel-calendar" class="hub-panel active">
+          <div class="cal-strip">
+            <button type="button" class="cal-nav" onclick="shiftCalendarWeek(-7)" aria-label="Previous week">&#8592;</button>
+            <div class="cal-days" id="calDayChips"></div>
+            <button type="button" class="cal-nav" onclick="shiftCalendarWeek(7)" aria-label="Next week">&#8594;</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="calendarGoToday()">Today</button>
+          </div>
+          <div class="cal-agenda-card">
+            <table class="cal-agenda-table">
+              <thead><tr><th>Time</th><th>Event</th><th>Type</th><th style="text-align:right;">Agent / channel</th></tr></thead>
+              <tbody id="calAgendaBody"><tr><td colspan="4" class="empty" style="padding:40px;"><p>Loading agenda…</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="hub-panel-tasks" class="hub-panel">
+          <div class="section-header" style="margin-bottom:16px;">
+            <h3 style="font-size:16px;">Tasks</h3>
+            <button class="btn btn-primary" onclick="openTaskModal()">Add Task</button>
+          </div>
+          <div class="search-bar">
+            <select id="taskFilter" style="max-width:180px;" onchange="loadTasks()">
+              <option value="all">All Tasks</option>
+              <option value="pending">Pending</option>
+              <option value="done">Completed</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th style="width:40px;"></th><th>Task</th><th>Due Date</th><th>Prospect</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="tasksTable"><tr><td colspan="6" class="empty"><p>Loading...</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="hub-panel-sequences" class="hub-panel">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-title">Campaign sequences</div>
+            <p style="font-size:13px;color:var(--text-dim);line-height:1.65;margin-bottom:16px;">Call-only, email-only, and combined <strong>email + call</strong> programs now live under <strong>Campaign Manager</strong>. Use the buttons below to jump straight in.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+              <button type="button" class="btn btn-primary" onclick="goCampaigns('call')">Call campaign</button>
+              <button type="button" class="btn btn-accent" onclick="goCampaigns('email')">Email campaign</button>
+              <button type="button" class="btn btn-outline" onclick="goCampaigns('combo')">Email + calls</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="hub-panel-insights" class="hub-panel">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-title">Turn call outcomes into follow-up email</div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6;">Review recent AI call insights. Draft a contextual email using your saved script + <strong>Claude</strong> (via Script Suggest API) for subject/body ideas, then paste into your mail client or sequence.</p>
+            <button type="button" class="btn btn-outline btn-sm" onclick="loadInsightsEmailPanel()">Refresh calls</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Contact</th><th>Outcome</th><th>Summary</th><th></th></tr></thead>
+              <tbody id="insightsEmailTable"><tr><td colspan="4" class="empty"><p>Loading…</p></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== CONTACTS ===================== -->
+      <div class="page" id="page-contacts">
+        <div class="section-header">
+          <h3>Contacts</h3>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="openContactModal()">Add Contact</button>
+            <label class="btn btn-outline" style="cursor:pointer;"><input type="file" id="contactImportFile" accept=".json" style="display:none;" onchange="importContacts()"/>Import JSON</label>
+            <button class="btn btn-outline" onclick="exportContacts()">Export</button>
+          </div>
+        </div>
+        <div class="search-bar">
+          <input id="contactSearch" placeholder="Search contacts..." oninput="filterContacts()"/>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Company</th><th>Title</th><th>Actions</th></tr></thead>
+            <tbody id="contactsTable"><tr><td colspan="6" class="empty"><p>Loading...</p></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===================== SETTINGS ===================== -->
+      <div class="page" id="page-settings">
+        <div class="section-header">
+          <h3>Settings</h3>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Connection Status</div>
+          <div id="settingsStatus" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">API Keys</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Telnyx API Key</label><input type="password" id="set-telnyx_api_key" placeholder="Enter Telnyx API key"/></div>
+            <div class="form-group"><label>Anthropic API Key</label><input type="password" id="set-anthropic_api_key" placeholder="Enter Anthropic API key"/></div>
+            <div class="form-group"><label>Apollo API Key</label><input type="password" id="set-apollo_api_key" placeholder="Enter Apollo API key"/></div>
+            <div class="form-group"><label>ElevenLabs API Key</label><input type="password" id="set-elevenlabs_api_key" placeholder="Enter ElevenLabs API key"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveSettings()">Save All Keys</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Phone Configuration</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Phone Number</label><input id="set-phone_number" placeholder="+1234567890"/></div>
+            <div class="form-group"><label>Telnyx Connection ID</label><input id="set-connection_id" placeholder="Connection ID"/></div>
+            <div class="form-group"><label>Base URL</label><input id="set-base_url" placeholder="https://yourdomain.com"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-title">Email delivery</div>
+          <p style="font-size:13px;color:var(--text-dim);margin:0 0 14px 0;line-height:1.45;">
+            <strong>Gmail / Outlook</strong>: use <em>Sign in with Google</em> or <em>Microsoft</em> (OAuth) — same idea as Apple Mail or Outlook app: you authorize once, we store a secure token (no SMTP passwords).
+            Or use <strong>SMTP</strong> / transactional APIs below. <strong>APP_BASE_URL</strong> in <code>.env</code> must match the URL you open in the browser (needed for OAuth redirect).
+          </p>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Delivery method</label>
+              <select id="set-email_provider" onchange="updateEmailProviderPanels()">
+                <option value="smtp">SMTP (password / app password)</option>
+                <option value="gmail_oauth">Gmail — Sign in with Google (recommended)</option>
+                <option value="outlook_oauth">Outlook / Microsoft 365 — Sign in with Microsoft</option>
+                <option value="sendgrid">SendGrid — API key</option>
+                <option value="resend">Resend — API key</option>
+                <option value="mailgun">Mailgun — domain + API key</option>
+              </select>
+            </div>
+            <div class="form-group full"><label>From address</label><input id="set-email_from" type="text" placeholder="Your Name &lt;you@domain.com&gt;"/></div>
+          </div>
+
+          <div data-email-panel="smtp" class="form-grid" style="margin-top:12px;">
+            <div class="form-group"><label>SMTP host</label><input id="set-smtp_host" placeholder="smtp.gmail.com" autocomplete="off"/></div>
+            <div class="form-group"><label>Port</label><input type="number" id="set-smtp_port" placeholder="587" min="1" max="65535"/></div>
+            <div class="form-group"><label>Username</label><input id="set-smtp_user" placeholder="you@gmail.com" autocomplete="username"/></div>
+            <div class="form-group"><label>Password</label><input type="password" id="set-smtp_password" placeholder="App password or SMTP secret" autocomplete="current-password"/></div>
+            <p style="font-size:11px;color:var(--text-dim);grid-column:1/-1;margin:0;">Gmail: <a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noopener">App Password</a>. Typical: <strong>587</strong> + STARTTLS, or <strong>465</strong> SSL.</p>
+            <div class="form-group full" style="padding-top:4px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="set-smtp_use_tls"/> Use STARTTLS (port 587)
+              </label>
+            </div>
+          </div>
+
+          <div data-email-panel="sendgrid" class="form-grid" style="margin-top:12px;display:none;">
+            <div class="form-group full">
+              <label>SendGrid API key</label>
+              <input type="password" id="set-sendgrid_api_key" placeholder="SG.xxx" autocomplete="off"/>
+              <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;"><a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener">SendGrid → API Keys</a></p>
+            </div>
+          </div>
+
+          <div data-email-panel="resend" class="form-grid" style="margin-top:12px;display:none;">
+            <div class="form-group full">
+              <label>Resend API key</label>
+              <input type="password" id="set-resend_api_key" placeholder="re_xxx" autocomplete="off"/>
+              <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;"><a href="https://resend.com/api-keys" target="_blank" rel="noopener">Resend → API Keys</a></p>
+            </div>
+          </div>
+
+          <div data-email-panel="mailgun" class="form-grid" style="margin-top:12px;display:none;">
+            <div class="form-group"><label>Sending domain</label><input id="set-mailgun_domain" placeholder="mg.yourdomain.com" autocomplete="off"/></div>
+            <div class="form-group"><label>API base</label><input id="set-mailgun_api_base" placeholder="https://api.mailgun.net" autocomplete="off"/></div>
+            <div class="form-group full">
+              <label>Private API key</label>
+              <input type="password" id="set-mailgun_api_key" placeholder="key-xxx…" autocomplete="off"/>
+            </div>
+            <p style="font-size:11px;color:var(--text-dim);grid-column:1/-1;margin:0;">EU: set API base to <code>https://api.eu.mailgun.net</code></p>
+          </div>
+
+          <div data-email-panel="gmail_oauth" class="form-grid" style="margin-top:12px;display:none;">
+            <p style="font-size:12px;color:var(--text-dim);grid-column:1/-1;margin:0;line-height:1.5;">
+              1) In <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a>, create an OAuth 2.0 Client ID (Web application).
+              2) Add authorized redirect URI: <code id="gmailRedirectUriHint">…/api/email-oauth/google/callback</code><br/>
+              3) Paste Client ID and Secret below, Save, then <strong>Connect Gmail</strong>.
+            </p>
+            <div class="form-group full"><label>Google OAuth Client ID</label><input id="set-google_oauth_client_id" placeholder="xxx.apps.googleusercontent.com" autocomplete="off"/></div>
+            <div class="form-group full"><label>Google OAuth Client Secret</label><input type="password" id="set-google_oauth_client_secret" placeholder="GOCSPX-…" autocomplete="off"/></div>
+            <div class="form-group full" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+              <a class="btn btn-accent" id="btnConnectGmail" href="/api/email-oauth/google/start">Connect Gmail</a>
+              <button type="button" class="btn btn-outline" onclick="disconnectOAuth('google')">Disconnect Gmail</button>
+              <span id="gmailOAuthStatus" style="font-size:12px;color:var(--text-dim);"></span>
+            </div>
+          </div>
+
+          <div data-email-panel="outlook_oauth" class="form-grid" style="margin-top:12px;display:none;">
+            <p style="font-size:12px;color:var(--text-dim);grid-column:1/-1;margin:0;line-height:1.5;">
+              1) In <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener">Azure → App registrations</a>, register an app; add redirect URI (Web): <code id="msRedirectUriHint">…/api/email-oauth/microsoft/callback</code><br/>
+              2) Create a client secret; API permissions: <code>Mail.Send</code>, <code>User.Read</code> (Microsoft Graph), delegated. Use tenant <code>common</code> for personal + work, or your tenant ID.<br/>
+              3) Paste credentials below, Save, then <strong>Connect Outlook</strong>.
+            </p>
+            <div class="form-group full"><label>Application (client) ID</label><input id="set-microsoft_oauth_client_id" placeholder="UUID" autocomplete="off"/></div>
+            <div class="form-group full"><label>Client secret</label><input type="password" id="set-microsoft_oauth_client_secret" placeholder="secret" autocomplete="off"/></div>
+            <div class="form-group full"><label>Directory (tenant) ID</label><input id="set-microsoft_oauth_tenant" placeholder="common" autocomplete="off"/></div>
+            <div class="form-group full" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+              <a class="btn btn-accent" id="btnConnectOutlook" href="/api/email-oauth/microsoft/start">Connect Outlook</a>
+              <button type="button" class="btn btn-outline" onclick="disconnectOAuth('microsoft')">Disconnect Outlook</button>
+              <span id="outlookOAuthStatus" style="font-size:12px;color:var(--text-dim);"></span>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-top:12px;">
+            <div class="form-group full">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="set-email_automation_enabled"/> Enable scheduled email sequences
+              </label>
+            </div>
+            <div class="form-group full">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="set-post_call_followup_email_enabled"/> Send AI follow-up email after calls
+              </label>
+            </div>
+            <div class="form-group"><label>Post-call delay (seconds)</label><input type="number" id="set-post_call_followup_delay_sec" min="60" step="30" placeholder="300" title="Minimum 60 seconds"/></div>
+          </div>
+          <div class="form-actions" style="flex-wrap:wrap;gap:10px;">
+            <button type="button" class="btn btn-primary" onclick="saveSettings()">Save email settings</button>
+            <button type="button" class="btn btn-outline" onclick="testConnection('email')">Test active provider</button>
+            <button type="button" class="btn btn-outline" onclick="testConnection('smtp')" title="Ignores SendGrid/Resend/Mailgun">Test SMTP only</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Test Connections</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="testConnection('apollo')">Test Apollo</button>
+            <button class="btn btn-outline" onclick="testConnection('anthropic')">Test Anthropic</button>
+            <button class="btn btn-outline" onclick="testConnection('assistant')">Test Assistant</button>
+          </div>
+          <div id="testResult" style="margin-top:12px;font-size:13px;color:var(--text-dim);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="taskModalTitle">Add Task</h3><button class="btn-icon" onclick="closeModal('taskModal')">&times;</button></div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group full"><label>Task Description *</label><input id="task-description" placeholder="Follow up with prospect"/></div>
+      <div class="form-group"><label>Due Date</label><input type="date" id="task-due_date"/></div>
+      <div class="form-group"><label>Prospect Name</label><input id="task-prospect" placeholder="John Doe"/></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="taskSaveBtn" onclick="saveTask()">Create Task</button>
+      <button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contact Modal -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="contactModalTitle">Add Contact</h3><button class="btn-icon" onclick="closeModal('contactModal')">&times;</button></div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="form-group"><label>First Name *</label><input id="contact-first_name" placeholder="John"/></div>
+      <div class="form-group"><label>Last Name</label><input id="contact-last_name" placeholder="Doe"/></div>
+      <div class="form-group"><label>Phone *</label><input id="contact-phone" placeholder="+1234567890"/></div>
+      <div class="form-group"><label>Email</label><input id="contact-email" placeholder="john@acme.com"/></div>
+      <div class="form-group"><label>Company</label><input id="contact-company" placeholder="Acme Corp"/></div>
+      <div class="form-group"><label>Title</label><input id="contact-title" placeholder="VP Sales"/></div>
+      <div class="form-group full"><label>Notes</label><textarea id="contact-notes" placeholder="Any additional notes..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="contactSaveBtn" onclick="saveContact()">Create Contact</button>
+      <button class="btn btn-outline" onclick="closeModal('contactModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Call Detail Modal -->
+<div class="modal-overlay" id="callDetailModal">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header"><h3>Call Details</h3><button class="btn-icon" onclick="closeModal('callDetailModal')">&times;</button></div>
+    <div id="callDetailContent"></div>
+  </div>
+</div>
+
+<!-- Email draft from insights (Claude via script/suggest + script merge) -->
+<div class="modal-overlay" id="emailDraftModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><h3>Follow-up email draft</h3><button class="btn-icon" onclick="closeModal('emailDraftModal')">&times;</button></div>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Uses call insight context + saved script. <strong>Claude ideas</strong> come from <code style="font-size:11px;">/api/script/suggest</code> (subject line / angles). Edit before sending.</p>
+    <div class="form-grid">
+      <div class="form-group full"><label>To (email)</label><input id="emailDraftTo" type="email" placeholder="prospect@company.com"/></div>
+      <div class="form-group full"><label>Subject</label><input id="emailDraftSubject" placeholder="Subject line"/></div>
+      <div class="form-group full"><label>Body</label><textarea id="emailDraftBody" rows="10" placeholder="Email body"></textarea></div>
+    </div>
+    <div class="form-actions flex-wrap">
+      <button type="button" class="btn btn-accent btn-sm" onclick="fillEmailFromScript()">Fill from script</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="claudeEmailIdeas()">Claude: suggest angles</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('emailDraftModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ===================== API HELPERS ===================== */
+async function api(method, path, body) {
+  try {
+    const opts = { method, headers: {'Content-Type': 'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      return { _error: true, detail: err.detail || r.statusText };
+    }
+    return await r.json();
+  } catch(e) { return { _error: true, detail: e.message }; }
+}
+const GET = (p) => api('GET', p);
+const POST = (p, b) => api('POST', p, b);
+const PATCH = (p, b) => api('PATCH', p, b);
+const DELETE = (p) => api('DELETE', p);
+
+async function apiUpload(path, formData) {
+  try {
+    const r = await fetch(path, { method: 'POST', body: formData });
+    return await r.json();
+  } catch(e) { return { _error: true, detail: e.message }; }
+}
+
+/* ===================== TOAST ===================== */
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.innerHTML = (type === 'success' ? '&#10003; ' : type === 'error' ? '&#10007; ' : '&#8505; ') + escHtml(msg);
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+function escHtml(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ===================== NAVIGATION ===================== */
+const pageTitles = {
+  dashboard: 'Dashboard',
+  campaigns: 'Campaigns',
+  'agent-builder': 'AI Agent Builder',
+  'live-calls': 'Live Calls',
+  'call-logs': 'Call History',
+  followups: 'Calendar & Outreach',
+  contacts: 'Contacts',
+  settings: 'Settings'
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+
+  // Load page data
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'campaigns') {
+    loadCampaignStatus();
+    renderQueue();
+    const m = pendingCampaignCanvas || (typeof localStorage !== 'undefined' && localStorage.getItem('lastCampaignCanvas')) || 'call';
+    pendingCampaignCanvas = null;
+    switchCampaignCanvas(m);
+  }
+  else if (page === 'agent-builder') loadScript();
+  else if (page === 'live-calls') { refreshActiveCalls(); loadRecentCalls(); }
+  else if (page === 'call-logs') loadCallHistory();
+  else if (page === 'followups') loadOutreachHub();
+  else if (page === 'contacts') loadContacts();
+  else if (page === 'settings') loadSettings();
+}
+
+let pendingCampaignCanvas = null;
+let currentCampaignCanvas = 'call';
+
+function goCampaigns(mode) {
+  pendingCampaignCanvas = mode || 'call';
+  navigate('campaigns');
+}
+
+function switchCampaignCanvas(mode) {
+  currentCampaignCanvas = mode === 'email' || mode === 'combo' ? mode : 'call';
+  try { localStorage.setItem('lastCampaignCanvas', currentCampaignCanvas); } catch (e) {}
+
+  const callP = document.getElementById('campaign-panel-call');
+  const emailP = document.getElementById('campaign-panel-email');
+  const comboP = document.getElementById('campaign-panel-combo');
+  const shared = document.getElementById('campaign-email-shared');
+  if (callP) callP.style.display = currentCampaignCanvas === 'call' ? 'block' : 'none';
+  if (emailP) emailP.style.display = currentCampaignCanvas === 'email' ? 'block' : 'none';
+  if (comboP) comboP.style.display = currentCampaignCanvas === 'combo' ? 'block' : 'none';
+  if (shared) shared.style.display = (currentCampaignCanvas === 'email' || currentCampaignCanvas === 'combo') ? 'block' : 'none';
+
+  document.querySelectorAll('.campaign-canvas-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  const tabMap = { call: 'campTabCall', email: 'campTabEmail', combo: 'campTabCombo' };
+  const tEl = document.getElementById(tabMap[currentCampaignCanvas]);
+  if (tEl) tEl.classList.add('active');
+
+  const hint = document.getElementById('campaignCanvasHint');
+  if (hint) {
+    hint.textContent = currentCampaignCanvas === 'call'
+      ? 'Dial prospects in order from the queue — phone only. Import CSV/Excel, Apollo, or manual add, then Start.'
+      : currentCampaignCanvas === 'email'
+        ? 'Email-only drip: build touches by day, save a template, enroll contacts. No call tasks are created.'
+        : 'Mixed sequence: server sends emails; call and LinkedIn rows become calendar tasks when you enroll.';
+  }
+
+  if (currentCampaignCanvas === 'email') {
+    initEmailOnlyStepsIfEmpty();
+    renderEmailOnlySteps();
+    loadEmailSequences();
+  } else if (currentCampaignCanvas === 'combo') {
+    initOutreachStepsIfEmpty();
+    renderOutreachSteps();
+    loadLinkedInPrefs();
+    loadEmailSequences();
+  }
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  document.querySelector('.main').style.marginLeft = sb.classList.contains('collapsed') ? 'var(--sidebar-collapsed)' : 'var(--sidebar-w)';
+}
+
+/* ===================== MODALS ===================== */
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+
+/* ===================== STATUS ===================== */
+async function loadStatus() {
+  const d = await GET('/api/status');
+  if (d._error) return;
+  ['telnyx','anthropic','apollo'].forEach(k => {
+    const dot = document.getElementById('dot-' + k);
+    if (dot) { dot.className = 'dot ' + (d[k] ? 'on' : 'off'); }
+  });
+}
+
+/* ===================== DASHBOARD ===================== */
+let liveCalls = [];
+let allCallHistory = [];
+
+async function loadDashboard() {
+  const [active, history, campaign] = await Promise.all([
+    GET('/calls'),
+    GET('/api/calls/history'),
+    GET('/api/campaign/status')
+  ]);
+
+  // Active calls is a dict {cc_id: {...}} - convert to array
+  let liveList = [];
+  if (active && active.calls) {
+    if (Array.isArray(active.calls)) liveList = active.calls;
+    else liveList = Object.values(active.calls);
+  }
+  liveCalls = liveList;
+  const calls = history.calls || [];
+  allCallHistory = calls;
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayCalls = calls.filter(c => (c.started_at || '').startsWith(today));
+  const getOutcome = c => c.outcome || (c.insights && c.insights.outcome) || '';
+  const answered = todayCalls.filter(c => { const o = getOutcome(c); return o && !['no_answer','voicemail'].includes(o); });
+  const meetings = todayCalls.filter(c => getOutcome(c) === 'meeting_booked');
+
+  document.getElementById('stat-campaigns').textContent = campaign && campaign.status && campaign.status !== 'idle' ? '1' : '0';
+  document.getElementById('stat-live').textContent = liveList.length;
+  document.getElementById('stat-completed').textContent = todayCalls.length;
+  document.getElementById('stat-answer').textContent = todayCalls.length > 0 ? Math.round((answered.length / todayCalls.length) * 100) + '%' : '0%';
+  document.getElementById('stat-meetings').textContent = meetings.length;
+
+  // Activity feed
+  const feed = document.getElementById('activityFeed');
+  if (calls.length === 0 && liveList.length === 0) {
+    feed.innerHTML = '<div class="empty"><p>No recent activity</p></div>';
+  } else {
+    const items = [];
+    liveList.forEach(c => {
+      items.push({ time: new Date(), text: `Active call with ${c.prospect_name || c.to || 'Unknown'}`, color: 'var(--warning)' });
+    });
+    calls.slice(0, 20).forEach(c => {
+      const o = getOutcome(c);
+      const color = o === 'meeting_booked' ? 'var(--success)' : o === 'no_answer' ? 'var(--text-muted)' : o === 'voicemail' ? '#a78bfa' : 'var(--info)';
+      items.push({ time: new Date(c.started_at || Date.now()), text: `${c.prospect_name || c.to || 'Unknown'} - ${formatOutcome(o)}`, color });
+    });
+    feed.innerHTML = items.slice(0, 25).map(i => `
+      <div class="feed-item">
+        <div class="feed-dot" style="background:${i.color}"></div>
+        <div>${escHtml(i.text)}</div>
+        <div class="feed-time">${formatTime(i.time)}</div>
+      </div>`).join('');
+  }
+}
+
+/* ===================== CAMPAIGNS ===================== */
+let campaignQueue = [];
+
+function switchCampaignTab(btn, id) {
+  btn.closest('.card').querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['camp-upload','camp-apollo','camp-manual'].forEach(t => {
+    const el = document.getElementById(t);
+    if (el) el.style.display = t === id ? 'block' : 'none';
+  });
+}
+
+async function uploadCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if (!file) return toast('Please select a file', 'error');
+  const fd = new FormData();
+  fd.append('file', file);
+  const d = await apiUpload('/api/prospects/import-file', fd);
+  if (d._error) return toast('Import failed: ' + d.detail, 'error');
+  const imported = d.rows || d.prospects || d.data || [];
+  if (Array.isArray(imported)) {
+    imported.forEach(r => {
+      const name = [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.name || '';
+      campaignQueue.push({
+        name,
+        phone: r.phone || r.phone_number || '',
+        email: r.email || '',
+        company: r.company || r.organization_name || '',
+        title: r.title || '',
+        notes: r.notes || '',
+      });
+    });
+  }
+  renderQueue();
+  toast('Imported ' + (imported.length || 0) + ' prospects', 'success');
+  document.getElementById('csvFile').value = '';
+}
+
+async function searchApollo() {
+  const params = {
+    title: document.getElementById('apollo-title').value,
+    company: document.getElementById('apollo-company').value,
+    location: document.getElementById('apollo-location').value,
+    industry: document.getElementById('apollo-industry').value
+  };
+  toast('Searching Apollo...', 'info');
+  const d = await POST('/api/apollo/search', params);
+  if (d._error) return toast('Apollo search failed: ' + d.detail, 'error');
+  const people = d.people || d.prospects || d.results || [];
+  people.forEach(p => campaignQueue.push({
+    name: p.name || (p.first_name + ' ' + (p.last_name || '')).trim(),
+    phone: p.phone || p.phone_number || '',
+    email: p.email || '',
+    company: p.organization_name || p.company || '',
+    title: p.title || ''
+  }));
+  renderQueue();
+  toast('Found ' + people.length + ' prospects', 'success');
+}
+
+function addManualProspect() {
+  const name = document.getElementById('manual-name').value;
+  const phone = document.getElementById('manual-phone').value;
+  if (!name || !phone) return toast('Name and phone are required', 'error');
+  campaignQueue.push({
+    name, phone,
+    email: (document.getElementById('manual-email') && document.getElementById('manual-email').value) || '',
+    company: document.getElementById('manual-company').value,
+    title: document.getElementById('manual-title').value
+  });
+  renderQueue();
+  toast('Added to queue', 'success');
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-phone').value = '';
+  const me = document.getElementById('manual-email');
+  if (me) me.value = '';
+  document.getElementById('manual-company').value = '';
+  document.getElementById('manual-title').value = '';
+}
+
+function renderQueue() {
+  document.getElementById('queueCount').textContent = campaignQueue.length;
+  const tb = document.getElementById('queueTable');
+  if (campaignQueue.length === 0) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty"><p>No prospects in queue</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = campaignQueue.map((p, i) => `
+    <tr>
+      <td>${escHtml(p.name || '-')}</td>
+      <td>${escHtml(p.phone || p.phone_number || '-')}</td>
+      <td>${escHtml(p.email || '-')}</td>
+      <td>${escHtml(p.company || p.organization_name || '-')}</td>
+      <td>${escHtml(p.title || '-')}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="removeFromQueue(${i})">Remove</button></td>
+    </tr>`).join('');
+}
+
+function removeFromQueue(i) { campaignQueue.splice(i, 1); renderQueue(); }
+function clearQueue() { campaignQueue = []; renderQueue(); toast('Queue cleared', 'info'); }
+
+async function startCampaign() {
+  if (campaignQueue.length === 0) return toast('Add prospects to the queue first', 'error');
+  const d = await POST('/api/campaign/start', { prospects: campaignQueue });
+  if (d._error) return toast('Failed to start: ' + d.detail, 'error');
+  toast('Campaign started!', 'success');
+  loadCampaignStatus();
+}
+async function pauseCampaign() {
+  const d = await POST('/api/campaign/pause');
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Campaign paused', 'info');
+  loadCampaignStatus();
+}
+async function resumeCampaign() {
+  const d = await POST('/api/campaign/resume');
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Campaign resumed', 'success');
+  loadCampaignStatus();
+}
+async function stopCampaign() {
+  const d = await POST('/api/campaign/stop');
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Campaign stopped', 'info');
+  loadCampaignStatus();
+}
+
+async function loadCampaignStatus() {
+  const d = await GET('/api/campaign/status');
+  if (d._error) return;
+  const badge = document.getElementById('campaignStatusBadge');
+  const st = d.status || 'idle';
+  badge.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+  badge.className = 'badge ' + (st === 'running' ? 'badge-green' : st === 'paused' ? 'badge-yellow' : 'badge-gray');
+
+  const stats = document.getElementById('campaignStatsContent');
+  stats.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+      <div><strong style="color:var(--text);">${d.total_prospects || 0}</strong><br/>Total Prospects</div>
+      <div><strong style="color:var(--text);">${d.completed || d.calls_made || 0}</strong><br/>Calls Made</div>
+      <div><strong style="color:var(--text);">${d.remaining || 0}</strong><br/>Remaining</div>
+      <div><strong style="color:var(--text);">${d.meetings_booked || 0}</strong><br/>Meetings Booked</div>
+    </div>`;
+}
+
+/* ===================== AI AGENT BUILDER ===================== */
+// Map UI field IDs to backend JSON keys
+const scriptFieldMap = {
+  'sdr_name': 'sdr_name',
+  'company': 'company_name',
+  'objective': 'call_objective',
+  'target_persona': 'target_persona',
+  'value_prop': 'value_proposition',
+  'voicemail': 'voicemail_message'
+};
+const scriptFields = Object.keys(scriptFieldMap);
+
+async function loadScript() {
+  const d = await GET('/api/script');
+  if (d._error) return;
+  scriptFields.forEach(f => {
+    const el = document.getElementById('script-' + f);
+    const backendKey = scriptFieldMap[f];
+    if (el) {
+      const val = d[backendKey];
+      el.value = Array.isArray(val) ? val.join('\n') : (val || '');
+    }
+  });
+  updateScriptPreview();
+  toast('Script loaded', 'success');
+}
+
+async function saveScript() {
+  const data = {};
+  scriptFields.forEach(f => {
+    const el = document.getElementById('script-' + f);
+    if (!el) return;
+    const backendKey = scriptFieldMap[f];
+    data[backendKey] = el.value;
+  });
+  const d = await POST('/api/script', data);
+  if (d._error) return toast('Save failed: ' + d.detail, 'error');
+  toast('Config saved!', 'success');
+}
+
+function updateScriptPreview() {
+  const name = document.getElementById('script-sdr_name').value || '[SDR Name]';
+  const company = document.getElementById('script-company').value || '[Company]';
+  const obj = document.getElementById('script-objective').value || '[Objective]';
+  const persona = document.getElementById('script-target_persona').value || '[Target Persona]';
+  const value = document.getElementById('script-value_prop').value || '[Value Proposition]';
+  const vm = document.getElementById('script-voicemail').value || '[Voicemail Message]';
+
+  document.getElementById('scriptPreview').innerHTML = `
+<strong>Agent:</strong> ${escHtml(name)} from <strong>${escHtml(company)}</strong>
+<strong>Goal:</strong> ${escHtml(obj)}
+<strong>Target:</strong> ${escHtml(persona)}
+
+<strong>Value Proposition:</strong>
+${escHtml(value)}
+
+<strong>Methodology:</strong> Sandler Selling System (fully autonomous)
+  - AI decides opening, questions, pacing, pivots, and close
+  - Pain Funnel: surface &rarr; impact &rarr; personal &rarr; quantify
+  - Handles all objections with reversing & negative reverse selling
+  - Sells CloudFuze Manage with full product knowledge built-in
+
+<strong>Voicemail Script:</strong>
+"${escHtml(vm)}"`;
+}
+
+// Update preview on input
+document.addEventListener('input', (e) => {
+  if (e.target.id && (e.target.id.startsWith('script-') || e.target.id.startsWith('obj-'))) {
+    updateScriptPreview();
+  }
+});
+
+/* ===================== LIVE CALLS ===================== */
+let callTimers = {};
+
+function openQuickDial() {
+  document.getElementById('quickDialCard').style.display = 'block';
+  document.getElementById('researchResult').style.display = 'none';
+}
+
+async function makeCall() {
+  const num = document.getElementById('qd-number').value;
+  if (!num) return toast('Phone number is required', 'error');
+  const d = await POST('/call/outbound', {
+    to_number: num,
+    prospect_name: document.getElementById('qd-name').value,
+    company: document.getElementById('qd-company').value,
+    notes: document.getElementById('qd-notes').value,
+    prospect_email: (document.getElementById('qd-email') && document.getElementById('qd-email').value) || ''
+  });
+  if (d._error) return toast('Call failed: ' + d.detail, 'error');
+  toast('Call initiated!', 'success');
+  document.getElementById('quickDialCard').style.display = 'none';
+  ['qd-number','qd-name','qd-company','qd-email','qd-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  setTimeout(refreshActiveCalls, 1500);
+}
+
+async function researchProspect() {
+  const name = document.getElementById('qd-name').value;
+  const company = document.getElementById('qd-company').value;
+  if (!name) return toast('Enter a prospect name first', 'error');
+  toast('Researching prospect...', 'info');
+  const d = await POST('/api/prospect/research', { name, company, title: '' });
+  if (d._error) return toast('Research failed: ' + d.detail, 'error');
+  const res = document.getElementById('researchResult');
+  res.style.display = 'block';
+  res.innerHTML = '<strong style="color:var(--accent);">Research Results:</strong><br/>' +
+    (typeof d === 'object' ? '<pre style="white-space:pre-wrap;margin-top:8px;font-size:12px;color:var(--text-dim);">' + escHtml(JSON.stringify(d, null, 2)) + '</pre>' : escHtml(String(d)));
+}
+
+let selectedLiveCallId = null;
+
+async function refreshActiveCalls() {
+  const d = await GET('/calls');
+  let calls = [];
+  if (d && d.calls) {
+    if (Array.isArray(d.calls)) { calls = d.calls; }
+    else { calls = Object.entries(d.calls).map(([k,v]) => ({...v, call_control_id: v.call_control_id || k})); }
+  }
+  liveCalls = calls;
+
+  // Stats bar
+  const connected = calls.filter(c => ['answered','connected'].includes((c.state||'').toLowerCase())).length;
+  const ringing = calls.filter(c => ['initiated','ringing'].includes((c.state||'').toLowerCase())).length;
+  const statsEl = document.getElementById('liveCallStats');
+  if (statsEl) {
+    let parts = [];
+    if (connected) parts.push(`<span style="color:var(--success);">&#9679;</span> ${connected} connected`);
+    if (ringing) parts.push(`<span style="color:var(--warning);">&#9679;</span> ${ringing} ringing`);
+    statsEl.innerHTML = parts.join(' &nbsp; ');
+  }
+
+  // Active calls table
+  const tb = document.getElementById('activeCallsTable');
+  if (calls.length === 0) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty"><p>No active calls</p></td></tr>';
+    // Clear transcript panel
+    document.getElementById('liveTranscriptPanel').innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><p>No active calls</p></div>';
+    return;
+  }
+
+  tb.innerHTML = calls.map(c => {
+    const status = (c.state || 'initiated').toLowerCase();
+    const isLive = status === 'answered' || status === 'connected';
+    const isRinging = status === 'initiated' || status === 'ringing';
+    const statusBadge = isLive ? 'badge-green' : isRinging ? 'badge-orange' : 'badge-blue';
+    const statusLabel = isLive ? 'Connected' : isRinging ? 'Ringing' : status.charAt(0).toUpperCase() + status.slice(1);
+    const initials = getInitials(c.prospect_name || 'U');
+    const ccid = c.call_control_id || '';
+    const isSelected = ccid === selectedLiveCallId;
+    return `
+    <tr style="cursor:pointer;${isSelected ? 'background:rgba(20,207,195,0.08);' : ''}" onclick="selectLiveCall('${ccid}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;">${escHtml(c.prospect_name || 'Unknown')}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${escHtml(c.company || c.to || '')}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${statusBadge}">${statusLabel}</span></td>
+      <td><span class="call-card-timer" data-call-id="${ccid}" data-start="${c.started_at || ''}" style="font-weight:600;font-variant-numeric:tabular-nums;">${formatDuration(c.started_at)}</span></td>
+      <td style="white-space:nowrap;">
+        ${isLive ? '<span title="Audio active" style="color:var(--accent);cursor:default;">&#128266;</span> &nbsp;' : ''}
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();hangupCall('${ccid}')" title="Hang up" style="padding:4px 8px;">&#10006;</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Auto-select first call if none selected
+  if (!selectedLiveCallId && calls.length > 0) {
+    selectLiveCall(calls[0].call_control_id);
+  } else if (selectedLiveCallId) {
+    renderLiveTranscript(selectedLiveCallId);
+  }
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
+function selectLiveCall(ccid) {
+  selectedLiveCallId = ccid;
+  // Highlight selected row
+  document.querySelectorAll('#activeCallsTable tr').forEach(tr => {
+    tr.style.background = tr.getAttribute('onclick')?.includes(ccid) ? 'rgba(20,207,195,0.08)' : '';
+  });
+  renderLiveTranscript(ccid);
+}
+
+function renderLiveTranscript(ccid) {
+  const panel = document.getElementById('liveTranscriptPanel');
+  const call = liveCalls.find(c => c.call_control_id === ccid);
+  if (!call) {
+    panel.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><p>Select a call to view live transcript</p></div>';
+    return;
+  }
+  const transcript = Array.isArray(call.transcript) ? call.transcript : [];
+  let transcriptHtml = '';
+  if (transcript.length === 0) {
+    transcriptHtml = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-style:italic;">Waiting for conversation...</div>';
+  } else {
+    transcriptHtml = transcript.map(t => {
+      const isAgent = t.role === 'agent' || t.role === 'assistant';
+      const label = isAgent ? 'AI' : 'LEAD';
+      const color = isAgent ? 'var(--accent)' : 'var(--warning)';
+      return `<div style="margin-bottom:10px;"><span style="font-weight:700;color:${color};font-size:11px;margin-right:6px;">${label}</span><span style="font-size:13px;">${escHtml(t.text)}</span></div>`;
+    }).join('');
+  }
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3"/></svg>
+        <span style="font-weight:600;font-size:14px;color:var(--accent);">Transcript</span>
+      </div>
+      <span style="font-size:11px;color:var(--text-muted);">${escHtml(call.prospect_name || 'Unknown')} &middot; ${escHtml(call.to || '')}</span>
+    </div>
+    <div style="max-height:400px;overflow-y:auto;padding-right:8px;">
+      ${transcriptHtml}
+    </div>`;
+}
+
+async function hangupCall(id) {
+  if (!id) return;
+  const d = await DELETE('/calls/' + id);
+  if (d._error) toast('Hangup failed: ' + d.detail, 'error');
+  else toast('Call ended', 'info');
+  setTimeout(refreshActiveCalls, 1000);
+}
+
+async function dialFromContact(phone, name, company, email) {
+  navigate('live-calls');
+  openQuickDial();
+  document.getElementById('qd-number').value = phone || '';
+  document.getElementById('qd-name').value = name || '';
+  document.getElementById('qd-company').value = company || '';
+  const qe = document.getElementById('qd-email');
+  if (qe) qe.value = email || '';
+}
+
+/* ===================== RECENT CALLS ===================== */
+let recentCallsData = [];
+
+async function loadRecentCalls() {
+  const d = await GET('/api/calls/history');
+  if (d._error) return;
+  recentCallsData = (d.calls || []).slice(0, 10);
+  renderRecentCalls();
+}
+
+function renderRecentCalls() {
+  const tb = document.getElementById('recentCallsTable');
+  if (!recentCallsData || recentCallsData.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty"><p>No recent calls yet</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = recentCallsData.map(c => {
+    const outcome = c.outcome || (c.insights && c.insights.outcome) || '';
+    const badge = outcomeBadgeMap[outcome] || 'badge-gray';
+    const dur = c.duration_seconds ? formatSeconds(c.duration_seconds) : '-';
+    const phone = c.to || '';
+    const name = c.prospect_name || '-';
+    const company = c.company || '';
+    const initials = getInitials(name);
+    return `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;">${escHtml(name)}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${escHtml(company)}${company && phone ? ' &middot; ' : ''}${escHtml(phone)}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${badge}">${formatOutcome(outcome)}</span></td>
+      <td>${dur}</td>
+      <td style="font-size:12px;color:var(--text-dim);">${formatTime(new Date(c.started_at))}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-accent btn-sm" onclick="redial('${escHtml(phone)}','${escHtml(name)}','${escHtml(company)}')" title="Redial">Redial</button>
+        <button class="btn btn-outline btn-sm" onclick="redialWithEdit('${escHtml(phone)}','${escHtml(name)}','${escHtml(company)}')" title="Edit & Dial">Edit</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function redial(phone, name, company) {
+  if (!phone) return toast('No phone number', 'error');
+  toast('Redialing ' + (name || phone) + '...', 'info');
+  const d = await POST('/call/outbound', {
+    to_number: phone,
+    prospect_name: name || '',
+    company: company || ''
+  });
+  if (d._error) return toast('Call failed: ' + d.detail, 'error');
+  toast('Call initiated!', 'success');
+  setTimeout(refreshActiveCalls, 1500);
+}
+
+function redialWithEdit(phone, name, company) {
+  openQuickDial();
+  document.getElementById('qd-number').value = phone || '';
+  document.getElementById('qd-name').value = name || '';
+  document.getElementById('qd-company').value = company || '';
+}
+
+/* ===================== CALL LOGS ===================== */
+let callLogs = [];
+
+async function loadCallHistory() {
+  const d = await GET('/api/calls/history');
+  if (d._error) return toast('Failed to load history', 'error');
+  callLogs = d.calls || [];
+  // Reset filters
+  document.getElementById('outcomeFilter').value = '';
+  document.getElementById('logSearch').value = '';
+  renderCallLogs(callLogs);
+}
+
+function filterCallLogs() {
+  const q = document.getElementById('logSearch').value.toLowerCase();
+  const outcomeVal = document.getElementById('outcomeFilter').value;
+  let filtered = callLogs;
+  if (q) {
+    filtered = filtered.filter(c =>
+      (c.prospect_name || '').toLowerCase().includes(q) ||
+      (c.to || '').includes(q) ||
+      (c.company || '').toLowerCase().includes(q)
+    );
+  }
+  if (outcomeVal) {
+    filtered = filtered.filter(c => {
+      const o = c.outcome || (c.insights && c.insights.outcome) || '';
+      return o === outcomeVal;
+    });
+  }
+  renderCallLogs(filtered);
+}
+
+const outcomeBadgeMap = {
+  meeting_booked: 'badge-green',
+  callback_scheduled: 'badge-blue',
+  interested: 'badge-teal',
+  not_interested: 'badge-red',
+  no_answer: 'badge-gray',
+  voicemail: 'badge-purple',
+  gatekeeper: 'badge-orange',
+  hung_up: 'badge-red',
+  no_conversation: 'badge-gray'
+};
+
+function formatOutcome(o) {
+  if (!o) return 'N/A';
+  return o.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderCallLogs(calls) {
+  const tb = document.getElementById('callLogsTable');
+  // Stats
+  const statsEl = document.getElementById('callLogStats');
+  if (statsEl) {
+    const meetings = calls.filter(c => (c.outcome || (c.insights && c.insights.outcome)) === 'meeting_booked').length;
+    statsEl.textContent = `${calls.length} total calls` + (meetings ? ` \u00b7 ${meetings} meetings booked` : '');
+  }
+  if (!calls || calls.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty"><p>No call records found</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = calls.map((c, idx) => {
+    const outcome = c.outcome || (c.insights && c.insights.outcome) || '';
+    const badge = outcomeBadgeMap[outcome] || 'badge-gray';
+    const insights = (typeof c.insights === 'object' && c.insights) || {};
+    const summary = insights.summary || insights.short_tag || '';
+    const hasRecording = !!c.recording_url;
+    const hasTranscript = Array.isArray(c.transcript) && c.transcript.length > 0;
+    const ccid = c.call_control_id || '';
+    const dur = c.duration_seconds ? formatSeconds(c.duration_seconds) : '-';
+    const initials = getInitials(c.prospect_name || '?');
+
+    // Build expanded row content
+    let transcriptHtml = '<div style="color:var(--text-muted);font-style:italic;">No transcript available</div>';
+    if (hasTranscript) {
+      transcriptHtml = c.transcript.map(t => {
+        const isAgent = t.role === 'agent' || t.role === 'assistant';
+        const label = isAgent ? 'AI' : 'LEAD';
+        const color = isAgent ? 'var(--accent)' : 'var(--warning)';
+        return `<div style="margin-bottom:8px;"><span style="font-weight:700;color:${color};font-size:11px;margin-right:6px;">${label}</span><span style="font-size:13px;">${escHtml(t.text)}</span></div>`;
+      }).join('');
+    }
+
+    return `
+    <tr style="cursor:pointer;" onclick="toggleCallExpand(${idx})" id="call-row-${idx}">
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;">${escHtml(c.prospect_name || '-')}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${escHtml(c.company || '')}${c.company && c.to ? ' &middot; ' : ''}${escHtml(c.to || '')}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${badge}">${formatOutcome(outcome)}</span></td>
+      <td style="font-variant-numeric:tabular-nums;">${dur}</td>
+      <td style="font-size:12px;color:var(--text-dim);">${formatDate(c.started_at)}</td>
+      <td style="text-align:right;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" id="chevron-${idx}" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg>
+      </td>
+    </tr>
+    <tr class="expand-row" id="call-expand-${idx}">
+      <td colspan="5" style="padding:0;">
+        <div class="expand-content" style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+              <span style="font-weight:600;font-size:13px;color:var(--text);">AI Summary</span>
+            </div>
+            <p style="font-size:13px;line-height:1.7;color:var(--text-dim);margin-bottom:12px;">${escHtml(summary || 'No summary available')}</p>
+            ${insights.sentiment ? `<div style="margin-bottom:6px;font-size:12px;"><span style="color:var(--text-muted);">Sentiment:</span> ${escHtml(insights.sentiment)} ${insights.interest_level !== undefined ? `&middot; Interest: <strong>${insights.interest_level}%</strong>` : ''}</div>` : ''}
+            ${insights.key_points && insights.key_points.length ? `<div style="margin-bottom:6px;font-size:12px;color:var(--text-muted);">Key points:</div><ul style="margin:0 0 8px 16px;font-size:12px;color:var(--text-dim);">${insights.key_points.map(p => '<li>'+escHtml(p)+'</li>').join('')}</ul>` : ''}
+            ${insights.next_step ? `<div style="font-size:12px;"><span style="color:var(--text-muted);">Next step:</span> ${escHtml(insights.next_step)}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:16px;">
+              ${hasRecording ? `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();playRecording('${escHtml(c.recording_url)}','rec-player-${idx}')">&#9654; Play Recording</button>` : ''}
+              ${hasRecording ? `<a class="btn btn-outline btn-sm" href="${escHtml(c.recording_url)}" download style="text-decoration:none;">&#8595; Download</a>` : ''}
+              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCallDetail('${ccid}')">Full Details</button>
+            </div>
+            ${hasRecording ? `<div id="rec-player-${idx}" style="margin-top:10px;"></div>` : ''}
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6"/></svg>
+              <span style="font-weight:600;font-size:13px;color:var(--accent);">Transcript</span>
+            </div>
+            <div style="max-height:300px;overflow-y:auto;padding-right:8px;">
+              ${transcriptHtml}
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleCallExpand(idx) {
+  const row = document.getElementById('call-expand-' + idx);
+  const chevron = document.getElementById('chevron-' + idx);
+  if (row) {
+    const isOpen = row.classList.contains('open');
+    // Close all others
+    document.querySelectorAll('.expand-row.open').forEach(r => r.classList.remove('open'));
+    document.querySelectorAll('[id^="chevron-"]').forEach(c => c.style.transform = '');
+    if (!isOpen) {
+      row.classList.add('open');
+      if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+  }
+}
+
+function playRecording(url, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = `<audio controls src="${escHtml(url)}" style="width:100%;margin-top:4px;" autoplay></audio>`;
+}
+
+async function openCallDetail(callId) {
+  if (!callId) return;
+  const call = callLogs.find(c => c.call_control_id === callId);
+  if (!call) return;
+  const content = document.getElementById('callDetailContent');
+  const insights = (typeof call.insights === 'object' && call.insights) || {};
+  const outcome = call.outcome || insights.outcome || '';
+
+  // Format transcript as chat bubbles
+  let transcriptHtml = '<div style="color:var(--text-muted);font-style:italic;">No transcript available</div>';
+  if (Array.isArray(call.transcript) && call.transcript.length > 0) {
+    transcriptHtml = call.transcript.map(t => {
+      const isAgent = t.role === 'agent' || t.role === 'assistant';
+      const label = isAgent ? 'AI SDR' : 'Prospect';
+      const color = isAgent ? 'var(--accent)' : 'var(--warning)';
+      return `<div style="margin-bottom:8px;"><span style="font-weight:600;color:${color};font-size:11px;text-transform:uppercase;">${label}</span><div style="margin-top:2px;">${escHtml(t.text)}</div></div>`;
+    }).join('');
+  }
+
+  // Format key points, objections, action items
+  const listSection = (label, items) => {
+    if (!items || (Array.isArray(items) && items.length === 0)) return '';
+    const arr = Array.isArray(items) ? items : [items];
+    return `<div style="margin-bottom:12px;"><label>${label}</label><ul style="margin:4px 0 0 16px;font-size:13px;color:var(--text-dim);">${arr.map(p => '<li>' + escHtml(p) + '</li>').join('')}</ul></div>`;
+  };
+
+  content.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div><label>Prospect</label><div style="font-size:14px;font-weight:600;">${escHtml(call.prospect_name || '-')}</div></div>
+      <div><label>Phone</label><div style="font-family:monospace;">${escHtml(call.to || '-')}</div></div>
+      <div><label>Duration</label><div>${call.duration_seconds ? formatSeconds(call.duration_seconds) : '-'}</div></div>
+      <div><label>Outcome</label><div><span class="badge ${outcomeBadgeMap[outcome] || 'badge-gray'}">${formatOutcome(outcome)}</span></div></div>
+      <div><label>Date</label><div>${formatDate(call.started_at)}</div></div>
+      <div><label>Company</label><div>${escHtml(call.company || '-')}</div></div>
+    </div>
+
+    ${call.recording_url ? `
+    <div style="margin-bottom:16px;padding:12px;background:var(--bg-input);border-radius:8px;">
+      <label style="margin-bottom:8px;">Recording</label>
+      <audio controls src="${escHtml(call.recording_url)}" style="width:100%;"></audio>
+    </div>` : ''}
+
+    <div style="margin-bottom:16px;">
+      <label>AI Summary</label>
+      <div style="padding:12px;background:var(--bg-input);border-radius:8px;font-size:13px;line-height:1.7;color:var(--text-dim);">
+        ${escHtml(insights.summary || insights.short_tag || 'No summary available')}
+      </div>
+    </div>
+
+    ${insights.sentiment ? `<div style="margin-bottom:12px;"><label>Sentiment</label><span style="margin-left:8px;">${escHtml(insights.sentiment)}</span> ${insights.interest_level !== undefined ? `&nbsp;&middot;&nbsp; Interest: <strong>${insights.interest_level}%</strong>` : ''}</div>` : ''}
+
+    ${listSection('Key Points', insights.key_points)}
+    ${listSection('Objections', insights.objections)}
+    ${listSection('Action Items', insights.action_items)}
+    ${insights.next_step ? `<div style="margin-bottom:12px;"><label>Next Step</label><div style="font-size:13px;color:var(--text-dim);">${escHtml(insights.next_step)}</div></div>` : ''}
+
+    <div style="margin-bottom:16px;">
+      <label>Transcript</label>
+      <div style="padding:12px;background:var(--bg-input);border-radius:8px;font-size:12px;line-height:1.8;color:var(--text-dim);max-height:400px;overflow-y:auto;">
+        ${transcriptHtml}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="recomputeInsights('${callId}')">Recompute Insights</button>
+      <button class="btn btn-outline btn-sm" onclick="editInsights('${callId}')">Edit Insights</button>
+    </div>
+  `;
+  openModal('callDetailModal');
+}
+
+async function recomputeInsights(id) {
+  toast('Recomputing insights...', 'info');
+  const d = await POST('/api/calls/' + id + '/recompute-insights');
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Insights recomputed!', 'success');
+  loadCallHistory();
+  closeModal('callDetailModal');
+}
+
+async function editInsights(id) {
+  const summary = prompt('Enter new summary:');
+  if (summary === null) return;
+  const d = await POST('/api/calls/' + id + '/insights', { summary });
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Insights updated!', 'success');
+  loadCallHistory();
+  closeModal('callDetailModal');
+}
+
+async function cleanupStaleCalls() {
+  const d = await POST('/api/calls/cleanup-stale');
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Stale calls cleaned up', 'success');
+  loadCallHistory();
+}
+
+/* ===================== CALENDAR & OUTREACH HUB ===================== */
+let calendarWeekStart = startOfWeekMonday(new Date());
+let calendarSelectedYmd = ymd(new Date());
+let outreachStepCounter = 0;
+let outreachSteps = [];
+let emailOnlyStepCounter = 0;
+let emailOnlySteps = [];
+const EMAIL_ONLY_LS_KEY = 'ai_sdr_email_only_blueprint_v1';
+let emailDraftCallContext = null;
+
+function startOfWeekMonday(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const wd = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - wd);
+  return x;
+}
+function ymd(d) {
+  const x = d instanceof Date ? d : new Date(d);
+  if (isNaN(x)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
+}
+function parseYmd(s) {
+  if (!s) return null;
+  const [a, b, c] = s.split('-').map(Number);
+  if (!a || !b || !c) return null;
+  return new Date(a, b - 1, c);
+}
+
+function switchOutreachTab(which) {
+  document.querySelectorAll('#page-followups .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#page-followups .hub-panel').forEach(p => p.classList.remove('active'));
+  const map = { calendar: 'hubTabCalendar', tasks: 'hubTabTasks', sequences: 'hubTabSeq', insights: 'hubTabInsights' };
+  const btn = document.getElementById(map[which]);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('hub-panel-' + which);
+  if (panel) panel.classList.add('active');
+  if (which === 'tasks') loadTasks();
+  if (which === 'sequences') { /* shortcuts only — sequences live under Campaigns */ }
+  if (which === 'insights') loadInsightsEmailPanel();
+  if (which === 'calendar') renderCalendarStrip();
+}
+
+function loadOutreachHub() {
+  loadTasks();
+  loadInsightsEmailPanel();
+  renderCalendarStrip();
+}
+
+function shiftCalendarWeek(deltaDays) {
+  calendarWeekStart.setDate(calendarWeekStart.getDate() + deltaDays);
+  renderCalendarStrip();
+}
+
+function calendarGoToday() {
+  const t = new Date();
+  calendarWeekStart = startOfWeekMonday(t);
+  calendarSelectedYmd = ymd(t);
+  renderCalendarStrip();
+}
+
+function renderCalendarStrip() {
+  const box = document.getElementById('calDayChips');
+  if (!box) return;
+  const chips = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(calendarWeekStart);
+    d.setDate(d.getDate() + i);
+    const label = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const y = ymd(d);
+    const today = ymd(new Date()) === y;
+    let cls = 'cal-day-chip';
+    if (y === calendarSelectedYmd) cls += ' selected';
+    else if (today) cls += ' today';
+    chips.push(`<button type="button" class="${cls}" onclick="selectCalDay('${y}')">${escHtml(label)}</button>`);
+  }
+  box.innerHTML = chips.join('');
+  renderCalendarAgenda();
+}
+
+function selectCalDay(y) {
+  calendarSelectedYmd = y;
+  renderCalendarStrip();
+}
+
+async function renderCalendarAgenda() {
+  const tb = document.getElementById('calAgendaBody');
+  if (!tb) return;
+  const [tasksRes, enrollRes, historyRes] = await Promise.all([
+    GET('/api/tasks'),
+    GET('/api/email-sequences/enrollments'),
+    GET('/api/calls/history'),
+  ]);
+  const tasks = (tasksRes && tasksRes.tasks) || [];
+  const enrollments = (enrollRes && enrollRes.enrollments) || [];
+  const calls = (historyRes && historyRes.calls) || [];
+
+  const day = calendarSelectedYmd;
+  const events = [];
+
+  tasks.forEach(t => {
+    const raw = (t.due_date || '').trim();
+    if (!raw) return;
+    const tday = raw.length >= 10 ? raw.slice(0, 10) : '';
+    if (tday !== day) return;
+    const typ = (t.type || 'callback').toLowerCase();
+    let cat = 'follow';
+    let bar = 'var(--info)';
+    let typeLabel = 'Follow-up';
+    if (typ === 'meeting') { cat = 'meet'; bar = '#22c55e'; typeLabel = 'Meeting'; }
+    else if (typ === 'callback') { cat = 'call'; bar = '#eab308'; typeLabel = 'Callback'; }
+    const time = extractTimeFromDue(raw) || '09:00';
+    const sub = t.company ? escHtml(t.company) : '';
+    const title = (t.notes || t.description || t.title || typ || 'Task').slice(0, 120);
+    events.push({
+      sort: timeToSort(time),
+      time,
+      title: escHtml(title),
+      sub,
+      typeLabel,
+      badgeClass: cat === 'meet' ? 'badge-green' : cat === 'call' ? 'badge-yellow' : 'badge-blue',
+      agent: typ === 'meeting' ? 'Enterprise closer' : 'SMB qualifier',
+      bar,
+      cat,
+    });
+  });
+
+  enrollments.forEach(e => {
+    if ((e.status || '') !== 'active') return;
+    const nxt = e.next_send_at || '';
+    if (!nxt) return;
+    const d = new Date(nxt);
+    if (isNaN(d.getTime())) return;
+    if (ymd(d) !== day) return;
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    events.push({
+      sort: timeToSort(time),
+      time,
+      title: 'Sequence email — ' + escHtml((e.last_sent_subject || 'scheduled send').slice(0, 80)),
+      sub: escHtml(e.company || e.email || ''),
+      typeLabel: 'Email',
+      badgeClass: 'badge-purple',
+      agent: 'Email automation',
+      bar: '#a855f7',
+      cat: 'email',
+    });
+  });
+
+  calls.forEach(c => {
+    const ins = c.insights || {};
+    const out = ins.outcome || c.outcome || '';
+    if (out !== 'meeting_booked') return;
+    const mt = ins.meeting_time_utc || ins.meeting_time || c.started_at || '';
+    if (!mt) return;
+    const d = new Date(mt);
+    if (isNaN(d.getTime())) return;
+    if (ymd(d) !== day) return;
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    events.push({
+      sort: timeToSort(time),
+      time,
+      title: 'Meeting — ' + escHtml(c.prospect_name || c.to || 'Prospect'),
+      sub: escHtml(c.company || ''),
+      typeLabel: 'Meeting',
+      badgeClass: 'badge-green',
+      agent: 'AI SDR',
+      bar: '#22c55e',
+      cat: 'meet',
+    });
+  });
+
+  events.sort((a, b) => a.sort - b.sort);
+
+  const counts = { meet: 0, call: 0, follow: 0, email: 0 };
+  events.forEach(e => { if (counts[e.cat] !== undefined) counts[e.cat]++; });
+
+  const legMeet = document.getElementById('legMeet');
+  const legCall = document.getElementById('legCall');
+  const legFollow = document.getElementById('legFollow');
+  const legEmail = document.getElementById('legEmail');
+  if (legMeet) legMeet.textContent = counts.meet + ' meeting' + (counts.meet === 1 ? '' : 's');
+  if (legCall) legCall.textContent = counts.call + ' callback' + (counts.call === 1 ? '' : 's');
+  if (legFollow) legFollow.textContent = counts.follow + ' follow-up' + (counts.follow === 1 ? '' : 's');
+  if (legEmail) legEmail.textContent = counts.email + ' email touch' + (counts.email === 1 ? '' : 'es');
+
+  if (events.length === 0) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty" style="padding:40px;"><p>No events this day — add tasks, enroll a sequence, or pick another date.</p></td></tr>';
+    return;
+  }
+
+  tb.innerHTML = events.map(e => `
+    <tr>
+      <td class="cal-time">${escHtml(e.time)}</td>
+      <td class="cal-event-cell">
+        <span class="cal-event-bar" style="background:${e.bar};"></span>
+        <div class="cal-event-title">${e.title}</div>
+        ${e.sub ? `<div class="cal-event-sub">${e.sub}</div>` : ''}
+      </td>
+      <td><span class="badge ${e.badgeClass}">${escHtml(e.typeLabel)}</span></td>
+      <td style="text-align:right;color:var(--text-muted);font-size:12px;">${escHtml(e.agent)}</td>
+    </tr>`).join('');
+}
+
+function extractTimeFromDue(raw) {
+  const t = raw.match(/T(\d{2}:\d{2})/);
+  if (t) return t[1];
+  return '';
+}
+function timeToSort(t) {
+  const m = (t || '99:99').match(/(\d+):(\d+)/);
+  if (!m) return 9999;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+const OUTREACH_LS_KEY = 'ai_sdr_outreach_blueprint_v1';
+const LI_PREFS_KEY = 'ai_sdr_linkedin_prefs_v1';
+
+function initEmailOnlyStepsIfEmpty() {
+  if (emailOnlySteps.length) return;
+  try {
+    const raw = localStorage.getItem(EMAIL_ONLY_LS_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j) && j.length) {
+        emailOnlySteps = j;
+        renderEmailOnlySteps();
+        return;
+      }
+    }
+  } catch (e) {}
+  emailOnlySteps = [
+    { id: 'eo1', day: 1, subject: 'Hi {{name}} — quick question', body: 'Hi {{name}},\n\nQuick note about how teams like {{company}} handle SaaS visibility.\n\n— {{sdr_name}}' },
+    { id: 'eo2', day: 4, subject: 'Following up', body: 'Hi {{name}},\n\nWorth a short reply when you have a moment.\n\n— {{sdr_name}}' },
+  ];
+  renderEmailOnlySteps();
+}
+
+function saveEmailOnlyBlueprint() {
+  try { localStorage.setItem(EMAIL_ONLY_LS_KEY, JSON.stringify(emailOnlySteps)); } catch (e) {}
+}
+
+function addEmailOnlyStep() {
+  emailOnlyStepCounter++;
+  emailOnlySteps.push({
+    id: 'eox' + Date.now() + '_' + emailOnlyStepCounter,
+    day: emailOnlySteps.length + 1,
+    subject: '',
+    body: '',
+  });
+  renderEmailOnlySteps();
+  saveEmailOnlyBlueprint();
+}
+
+function removeEmailOnlyStep(id) {
+  emailOnlySteps = emailOnlySteps.filter(s => s.id !== id);
+  renderEmailOnlySteps();
+  saveEmailOnlyBlueprint();
+}
+
+function renderEmailOnlySteps() {
+  const c = document.getElementById('emailOnlyStepsContainer');
+  if (!c) return;
+  c.innerHTML = emailOnlySteps.map(s => `
+    <div class="seq-type-email" style="padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:10px;">
+      <div class="outreach-seq-row" style="grid-template-columns:100px 1fr 80px;">
+        <div class="form-group"><label>Day</label><input type="number" min="1" data-email-only="1" data-k="day" data-id="${s.id}" value="${s.day}" oninput="patchEmailOnlyStep(this)"/></div>
+        <div></div>
+        <div><label>&nbsp;</label><button type="button" class="btn btn-danger btn-sm" onclick="removeEmailOnlyStep('${s.id}')">Remove</button></div>
+      </div>
+      <div class="form-group full"><label>Subject</label><input data-email-only="1" data-k="subject" data-id="${s.id}" value="${escHtml(s.subject)}" oninput="patchEmailOnlyStep(this)"/></div>
+      <div class="form-group full"><label>Body</label><textarea data-email-only="1" data-k="body" data-id="${s.id}" rows="3" oninput="patchEmailOnlyStep(this)">${escHtml(s.body)}</textarea></div>
+    </div>`).join('');
+}
+
+function patchEmailOnlyStep(el) {
+  const id = el.getAttribute('data-id');
+  const k = el.getAttribute('data-k');
+  const row = emailOnlySteps.find(x => x.id === id);
+  if (!row) return;
+  if (k === 'day') row.day = Math.max(1, parseInt(el.value, 10) || 1);
+  else row[k] = el.value;
+  saveEmailOnlyBlueprint();
+}
+
+async function publishEmailOnlyTemplate() {
+  const nameEl = document.getElementById('emailOnlyTplName');
+  const tidEl = document.getElementById('emailOnlyTplId');
+  const name = (nameEl && nameEl.value) || 'Email nurture';
+  const tid = (tidEl && tidEl.value) || '';
+  const sorted = [...emailOnlySteps].sort((a, b) => a.day - b.day);
+  if (!sorted.length) return toast('Add at least one email touch', 'error');
+  const steps = [];
+  sorted.forEach((s, i) => {
+    let delayH = 0;
+    if (i === 0) delayH = Math.max(0, (s.day - 1) * 24);
+    else delayH = Math.max(0, s.day - sorted[i - 1].day) * 24;
+    steps.push({
+      subject: s.subject || 'Hello',
+      body_text: s.body || '',
+      delay_hours_after_previous: delayH,
+    });
+  });
+  const body = { name, steps };
+  if (tid.trim()) body.id = tid.trim();
+  const d = await POST('/api/email-sequences/templates', body);
+  if (d._error) return toast('Save failed: ' + (d.detail || 'error'), 'error');
+  toast('Email-only template saved — ID: ' + (d.id || tid), 'success');
+  loadEmailSequences();
+}
+
+function initOutreachStepsIfEmpty() {
+  if (outreachSteps.length) return;
+  try {
+    const raw = localStorage.getItem(OUTREACH_LS_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j) && j.length) { outreachSteps = j; renderOutreachSteps(); return; }
+    }
+  } catch (e) {}
+  outreachSteps = [
+    { id: 's1', day: 1, type: 'email', subject: 'Hi {{name}} — quick question', body: 'Hi {{name}},\n\nWanted to reach out about how {{company}} handles SaaS visibility. Open to a brief reply?\n\n— {{sdr_name}}' },
+    { id: 's2', day: 2, type: 'call', subject: '', body: '' },
+    { id: 's3', day: 3, type: 'email', subject: 'Following up', body: 'Hi {{name}},\n\nCircling back — still worth a 10-minute chat this week?\n\n— {{sdr_name}}' },
+  ];
+  renderOutreachSteps();
+}
+
+function saveOutreachBlueprint() {
+  try { localStorage.setItem(OUTREACH_LS_KEY, JSON.stringify(outreachSteps)); } catch (e) {}
+}
+
+function addOutreachStep() {
+  outreachSteps.push({ id: 'n' + (++outreachStepCounter), day: outreachSteps.length + 1, type: 'email', subject: '', body: '' });
+  renderOutreachSteps();
+}
+
+function removeOutreachStep(id) {
+  outreachSteps = outreachSteps.filter(s => s.id !== id);
+  renderOutreachSteps();
+  saveOutreachBlueprint();
+}
+
+function renderOutreachSteps() {
+  const c = document.getElementById('outreachStepsContainer');
+  if (!c) return;
+  c.innerHTML = outreachSteps.map(s => {
+    const cls = s.type === 'email' ? 'seq-type-email' : s.type === 'call' ? 'seq-type-call' : 'seq-type-li';
+    const emailFields = s.type === 'email' ? `
+      <div class="form-group full"><label>Subject</label><input data-k="subject" data-id="${s.id}" value="${escHtml(s.subject)}" oninput="patchOutreachStep(this)"/></div>
+      <div class="form-group full"><label>Body (use {{name}} {{company}} {{sdr_name}})</label><textarea data-k="body" data-id="${s.id}" rows="3" oninput="patchOutreachStep(this)">${escHtml(s.body)}</textarea></div>` : `
+      <div class="form-group full"><label>Note for task</label><input data-k="body" data-id="${s.id}" value="${escHtml(s.body)}" placeholder="e.g. AI dial — reference last email" oninput="patchOutreachStep(this)"/></div>`;
+    return `<div class="${cls}" style="padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:10px;">
+      <div class="outreach-seq-row">
+        <div class="form-group"><label>Day</label><input type="number" min="1" data-k="day" data-id="${s.id}" value="${s.day}" oninput="patchOutreachStep(this)"/></div>
+        <div class="form-group"><label>Type</label>
+          <select data-k="type" data-id="${s.id}" onchange="patchOutreachStep(this)">
+            <option value="email" ${s.type === 'email' ? 'selected' : ''}>Email</option>
+            <option value="call" ${s.type === 'call' ? 'selected' : ''}>Call</option>
+            <option value="linkedin" ${s.type === 'linkedin' ? 'selected' : ''}>LinkedIn</option>
+          </select>
+        </div>
+        <div></div><div></div>
+        <div><label>&nbsp;</label><button type="button" class="btn btn-danger btn-sm" onclick="removeOutreachStep('${s.id}')">Remove</button></div>
+      </div>${emailFields}</div>`;
+  }).join('');
+}
+
+function patchOutreachStep(el) {
+  const id = el.getAttribute('data-id');
+  const k = el.getAttribute('data-k');
+  const row = outreachSteps.find(x => x.id === id);
+  if (!row) return;
+  if (k === 'day') row.day = Math.max(1, parseInt(el.value, 10) || 1);
+  else if (k === 'type') row.type = el.value;
+  else row[k] = el.value;
+  saveOutreachBlueprint();
+  if (k === 'type') renderOutreachSteps();
+}
+
+async function publishOutreachTemplate() {
+  const nameEl = document.getElementById('outreachTplName');
+  const tidEl = document.getElementById('outreachTplId');
+  const name = (nameEl && nameEl.value) || 'Outbound sequence';
+  const tid = (tidEl && tidEl.value) || '';
+  const sorted = [...outreachSteps].sort((a, b) => a.day - b.day);
+  const emails = sorted.filter(s => s.type === 'email');
+  if (!emails.length) return toast('Add at least one Email touch', 'error');
+  const steps = [];
+  emails.forEach((s, i) => {
+    let delayH = 0;
+    if (i === 0) delayH = Math.max(0, (s.day - 1) * 24);
+    else delayH = Math.max(0, s.day - emails[i - 1].day) * 24;
+    steps.push({
+      subject: s.subject || 'Hello',
+      body_text: s.body || '',
+      delay_hours_after_previous: delayH,
+    });
+  });
+  const body = { name, steps };
+  if (tid.trim()) body.id = tid.trim();
+  const d = await POST('/api/email-sequences/templates', body);
+  if (d._error) return toast('Save failed: ' + (d.detail || 'error'), 'error');
+  toast('Email template saved — ID: ' + (d.id || tid), 'success');
+  loadEmailSequences();
+}
+
+async function loadEmailSequences() {
+  const [st, tpl, en] = await Promise.all([
+    GET('/api/email-sequences/status'),
+    GET('/api/email-sequences/templates'),
+    GET('/api/email-sequences/enrollments'),
+  ]);
+  const badge = document.getElementById('emailSeqStatusBadge');
+  const det = document.getElementById('emailSeqStatusDetail');
+  if (badge && !st._error) {
+    const ok = st.enabled && st.smtp_configured;
+    badge.textContent = ok ? 'Ready' : (st.enabled ? 'Email delivery missing' : 'Disabled');
+    badge.className = 'badge ' + (ok ? 'badge-green' : 'badge-yellow');
+    const prov = (st.email_provider || 'smtp').toUpperCase();
+    if (det) det.textContent = `Scheduler: ${st.scheduler_running ? 'running' : 'stopped'} · tick ${st.tick_seconds || 60}s · ${prov}: ${st.smtp_configured ? 'ok' : 'not configured'}`;
+  }
+  const sel = document.getElementById('enrollTemplateSelect');
+  const templates = (tpl && tpl.templates) || [];
+  if (sel) {
+    sel.innerHTML = templates.map(t => `<option value="${escHtml(t.id)}">${escHtml(t.name || t.id)}</option>`).join('') || '<option value="">No templates — save one first</option>';
+  }
+  const tb = document.getElementById('enrollmentsTable');
+  const rows = (en && en.enrollments) || [];
+  if (tb) {
+    if (!rows.length) tb.innerHTML = '<tr><td colspan="6" class="empty"><p>No enrollments</p></td></tr>';
+    else {
+      tb.innerHTML = rows.map(e => `
+        <tr>
+          <td>${escHtml(e.prospect_name || '-')}</td>
+          <td>${escHtml(e.email || '-')}</td>
+          <td>${escHtml(e.template_id || '-')}</td>
+          <td style="font-size:12px;">${escHtml(e.next_send_at || '-')}</td>
+          <td><span class="badge ${e.status === 'active' ? 'badge-teal' : 'badge-gray'}">${escHtml(e.status || '')}</span></td>
+          <td>
+            ${e.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="pauseEnrollment('${e.id}')">Pause</button>` : ''}
+            ${e.status === 'paused' ? `<button class="btn btn-outline btn-sm" onclick="resumeEnrollment('${e.id}')">Resume</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="cancelEnrollment('${e.id}')">Cancel</button>
+          </td>
+        </tr>`).join('');
+    }
+  }
+}
+
+async function pauseEnrollment(id) {
+  const d = await POST('/api/email-sequences/enrollments/' + id + '/pause');
+  if (d._error) return toast('Failed', 'error');
+  loadEmailSequences(); renderCalendarAgenda();
+}
+async function resumeEnrollment(id) {
+  const d = await POST('/api/email-sequences/enrollments/' + id + '/resume');
+  if (d._error) return toast('Failed', 'error');
+  loadEmailSequences(); renderCalendarAgenda();
+}
+async function cancelEnrollment(id) {
+  if (!confirm('Cancel this enrollment?')) return;
+  const d = await POST('/api/email-sequences/enrollments/' + id + '/cancel');
+  if (d._error) return toast('Failed', 'error');
+  loadEmailSequences(); renderCalendarAgenda();
+}
+
+function parseCsvText(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return [];
+  const split = line => {
+    const out = []; let cur = ''; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { q = !q; continue; }
+      if (!q && c === ',') { out.push(cur.trim()); cur = ''; continue; }
+      cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+  const headers = split(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_'));
+  return lines.slice(1).map(line => {
+    const cells = split(line);
+    const o = {};
+    headers.forEach((h, i) => { o[h] = cells[i] || ''; });
+    return o;
+  });
+}
+
+function csvPick(row, keys) {
+  for (const k of keys) {
+    if (row[k] !== undefined && String(row[k]).trim()) return String(row[k]).trim();
+  }
+  return '';
+}
+
+async function enrollFromCsv() {
+  const file = document.getElementById('enrollCsvFile').files[0];
+  const templateId = document.getElementById('enrollTemplateSelect').value;
+  if (!file) return toast('Choose a CSV file', 'error');
+  if (!templateId) return toast('Select an email template', 'error');
+  const withCallTasks = currentCampaignCanvas === 'combo';
+  const text = await file.text();
+  const rows = parseCsvText(text);
+  if (!rows.length) return toast('No rows in CSV', 'error');
+  let ok = 0;
+  for (const row of rows) {
+    const email = csvPick(row, ['email', 'work_email', 'e-mail']);
+    const name = csvPick(row, ['name', 'full_name', 'prospect']) || [csvPick(row, ['first_name', 'firstname']), csvPick(row, ['last_name', 'lastname'])].filter(Boolean).join(' ');
+    const phone = csvPick(row, ['phone', 'phone_number', 'mobile', 'number']);
+    const company = csvPick(row, ['company', 'organization', 'account']);
+    if (!email) continue;
+    const body = { template_id: templateId, email, prospect_name: name || 'there', company, first_name: name.split(' ')[0] || '' };
+    const d = await POST('/api/email-sequences/enroll', body);
+    if (d._error) { toast('Enroll failed: ' + name, 'error'); continue; }
+    ok++;
+    if (withCallTasks) await scheduleOutreachTasksFromBlueprint(name, phone, company);
+  }
+  toast('Enrolled ' + ok + ' prospect(s)' + (withCallTasks ? ' — call/LI tasks added from blueprint' : ' — emails only'), 'success');
+  loadEmailSequences();
+  renderCalendarAgenda();
+  document.getElementById('enrollCsvFile').value = '';
+}
+
+async function scheduleOutreachTasksFromBlueprint(prospectName, phone, company) {
+  const sorted = [...outreachSteps].sort((a, b) => a.day - b.day);
+  const start = new Date();
+  const liNote = (document.getElementById('liDefaultNote') && document.getElementById('liDefaultNote').value) || 'LinkedIn touch — see outreach sequence';
+
+  for (const s of sorted) {
+    if (s.type === 'email') continue;
+    const due = new Date(start);
+    due.setDate(due.getDate() + (s.day - 1));
+    const y = due.getFullYear();
+    const m = String(due.getMonth() + 1).padStart(2, '0');
+    const dd = String(due.getDate()).padStart(2, '0');
+    const dueStr = `${y}-${m}-${dd}`;
+    const typ = s.type === 'linkedin' ? 'callback' : 'callback';
+    let notes = s.body || (s.type === 'call' ? 'Outbound call — sequence day ' + s.day : liNote);
+    if (s.type === 'linkedin') notes = 'LinkedIn: ' + notes;
+    const taskBody = {
+      prospect_name: prospectName,
+      phone: phone || '',
+      company: company || '',
+      type: typ,
+      due_date: dueStr,
+      notes,
+      status: 'pending',
+    };
+    await POST('/api/tasks', taskBody);
+  }
+}
+
+function saveLinkedInPrefs() {
+  const profile = document.getElementById('liProfileUrl') && document.getElementById('liProfileUrl').value;
+  const note = document.getElementById('liDefaultNote') && document.getElementById('liDefaultNote').value;
+  try { localStorage.setItem(LI_PREFS_KEY, JSON.stringify({ profile, note })); } catch (e) {}
+  toast('LinkedIn preferences saved in this browser', 'success');
+}
+
+function loadLinkedInPrefs() {
+  try {
+    const j = JSON.parse(localStorage.getItem(LI_PREFS_KEY) || '{}');
+    const p = document.getElementById('liProfileUrl');
+    const n = document.getElementById('liDefaultNote');
+    if (p && j.profile) p.value = j.profile;
+    if (n && j.note) n.value = j.note;
+  } catch (e) {}
+}
+
+let insightsEmailRows = [];
+
+async function loadInsightsEmailPanel() {
+  const tb = document.getElementById('insightsEmailTable');
+  if (!tb) return;
+  const d = await GET('/api/calls/history');
+  if (d._error) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty"><p>Could not load calls</p></td></tr>';
+    return;
+  }
+  const calls = (d.calls || []).filter(c => c.insights && (c.insights.summary || c.insights.outcome));
+  insightsEmailRows = calls.slice(0, 80);
+  if (!insightsEmailRows.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty"><p>No calls with insights yet — complete a few dials first.</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = insightsEmailRows.map((c, idx) => {
+    const ins = c.insights || {};
+    const oc = ins.outcome || c.outcome || '';
+    return `<tr>
+      <td><strong>${escHtml(c.prospect_name || c.to || '-')}</strong><br/><span style="font-size:11px;color:var(--text-muted);">${escHtml(c.company || '')}</span></td>
+      <td><span class="badge badge-teal">${escHtml(oc || '-')}</span></td>
+      <td style="font-size:12px;color:var(--text-dim);max-width:280px;">${escHtml((ins.short_tag || ins.summary || '').slice(0, 160))}${(ins.summary || '').length > 160 ? '…' : ''}</td>
+      <td><button type="button" class="btn btn-primary btn-sm" onclick="openEmailDraftFromInsight(${idx})">Draft email</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openEmailDraftFromInsight(idx) {
+  const c = insightsEmailRows[idx];
+  if (!c) return;
+  const ins = c.insights || {};
+  emailDraftCallContext = { call: c, insights: ins };
+  document.getElementById('emailDraftTo').value = '';
+  document.getElementById('emailDraftSubject').value = '';
+  document.getElementById('emailDraftBody').value = '';
+  openModal('emailDraftModal');
+  fillEmailFromScript();
+}
+
+async function fillEmailFromScript() {
+  const scr = await GET('/api/script');
+  if (scr._error) return toast('Could not load script', 'error');
+  const ctx = emailDraftCallContext;
+  const name = ctx && (ctx.call.prospect_name || 'there') || 'there';
+  const company = ctx && (ctx.call.company || '') || '';
+  const sdr = scr.sdr_name || 'Alex';
+  const co = scr.company_name || 'our team';
+  const vp = (scr.value_proposition || '').slice(0, 280);
+  const out = ctx && ctx.insights.outcome || '';
+  const sum = ctx && (ctx.insights.summary || '') || '';
+  const subj = out === 'meeting_booked' ? `Great speaking today — ${company || 'next steps'}` : `Following up — ${company || name}`;
+  let body = `Hi ${name},\n\n`;
+  if (sum) body += `Thanks for the conversation. Quick recap: ${sum.slice(0, 400)}\n\n`;
+  body += `${vp ? 'Relevant context: ' + vp + '\n\n' : ''}`;
+  if (out === 'meeting_booked') body += `Looking forward to our time together. If anything changes, just reply to this note.\n\n`;
+  else if (out === 'callback_scheduled') body += `As discussed, I'll follow up as planned. If you need anything sooner, reply here.\n\n`;
+  else body += `Wanted to send a concise follow-up aligned with what we discussed.\n\n`;
+  body += `Best,\n${sdr}\n${co}`;
+  document.getElementById('emailDraftSubject').value = subj;
+  document.getElementById('emailDraftBody').value = body;
+  toast('Draft filled from script + insight', 'success');
+}
+
+async function claudeEmailIdeas() {
+  const scr = await GET('/api/script');
+  if (scr._error) return toast('Load script failed', 'error');
+  const ctx = emailDraftCallContext;
+  const body = {
+    company_name: scr.company_name || '',
+    target_persona: scr.target_persona || '',
+    value_proposition: scr.value_proposition || '',
+    call_objective: scr.call_objective || '',
+    sdr_name: scr.sdr_name || 'Alex',
+  };
+  if (ctx && ctx.insights) {
+    body.value_proposition = (body.value_proposition + '\n\nLast call outcome: ' + (ctx.insights.outcome || '') + '\nSummary: ' + (ctx.insights.summary || '')).slice(0, 2000);
+  }
+  toast('Claude is thinking…', 'info');
+  const d = await POST('/api/script/suggest', body);
+  if (d._error) return toast('Claude suggest failed: ' + (d.detail || ''), 'error');
+  const s = d.suggestion || {};
+  if (s.opening_line) {
+    const ob = document.getElementById('emailDraftBody');
+    ob.value = (ob.value ? ob.value + '\n\n--- Ideas from Claude ---\n' : '') +
+      'Opening angle: ' + s.opening_line + '\n' +
+      (s.booking_phrase ? 'Meeting ask: ' + s.booking_phrase + '\n' : '');
+  }
+  toast('Claude angles appended — edit freely', 'success');
+}
+
+setInterval(() => {
+  const activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id === 'page-followups') {
+    const cal = document.getElementById('hub-panel-calendar');
+    if (cal && cal.classList.contains('active')) renderCalendarAgenda();
+  }
+}, 60000);
+
+/* ===================== FOLLOW-UPS / TASKS ===================== */
+let allTasks = [];
+let editingTaskId = null;
+
+function openTaskModal(task) {
+  editingTaskId = task ? (task.id || null) : null;
+  document.getElementById('taskModalTitle').textContent = editingTaskId ? 'Edit Task' : 'Add Task';
+  document.getElementById('taskSaveBtn').textContent = editingTaskId ? 'Update Task' : 'Create Task';
+  document.getElementById('task-description').value = task ? (task.notes || task.description || task.title || '') : '';
+  document.getElementById('task-due_date').value = task ? (task.due_date || '') : '';
+  document.getElementById('task-prospect').value = task ? (task.prospect_name || task.prospect || '') : '';
+  openModal('taskModal');
+}
+
+async function loadTasks() {
+  const d = await GET('/api/tasks');
+  if (d._error) return toast('Failed to load tasks', 'error');
+  allTasks = Array.isArray(d) ? d : (d.tasks || []);
+  const filter = document.getElementById('taskFilter').value;
+  let filtered = allTasks;
+  if (filter === 'pending') filtered = allTasks.filter(t => !t.completed && t.status !== 'done');
+  else if (filter === 'done') filtered = allTasks.filter(t => t.completed || t.status === 'done');
+  renderTasks(filtered);
+}
+
+function renderTasks(tasks) {
+  const tb = document.getElementById('tasksTable');
+  if (!tasks || tasks.length === 0) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty"><p>No tasks found</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = tasks.map(t => {
+    const done = t.completed || t.status === 'done';
+    return `
+    <tr style="${done ? 'opacity:0.5;' : ''}">
+      <td><input type="checkbox" ${done ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)"/></td>
+      <td style="${done ? 'text-decoration:line-through;' : ''}">${escHtml(t.notes || t.description || t.title || '-')}</td>
+      <td>${escHtml(t.due_date || '-')}</td>
+      <td>${escHtml(t.prospect_name || t.prospect || '-')}</td>
+      <td><span class="badge ${done ? 'badge-green' : 'badge-yellow'}">${done ? 'Done' : 'Pending'}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick='openTaskModal(${JSON.stringify(t)})'>Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveTask() {
+  const notes = document.getElementById('task-description').value;
+  const data = {
+    notes,
+    due_date: document.getElementById('task-due_date').value,
+    prospect_name: document.getElementById('task-prospect').value,
+    type: 'callback',
+  };
+  if (!notes.trim()) return toast('Description is required', 'error');
+  let d;
+  if (editingTaskId) {
+    d = await POST('/api/tasks/' + editingTaskId, data);
+  } else {
+    d = await POST('/api/tasks', data);
+  }
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast(editingTaskId ? 'Task updated!' : 'Task created!', 'success');
+  closeModal('taskModal');
+  loadTasks();
+}
+
+async function toggleTask(id, completed) {
+  const d = await POST('/api/tasks/' + id, { completed });
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  loadTasks();
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  const d = await DELETE('/api/tasks/' + id);
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Task deleted', 'info');
+  loadTasks();
+}
+
+/* ===================== CONTACTS ===================== */
+let allContacts = [];
+let editingContactId = null;
+
+function openContactModal(contact) {
+  editingContactId = contact ? (contact.id || null) : null;
+  document.getElementById('contactModalTitle').textContent = editingContactId ? 'Edit Contact' : 'Add Contact';
+  document.getElementById('contactSaveBtn').textContent = editingContactId ? 'Update Contact' : 'Create Contact';
+  document.getElementById('contact-first_name').value = contact ? (contact.first_name || '') : '';
+  document.getElementById('contact-last_name').value = contact ? (contact.last_name || '') : '';
+  document.getElementById('contact-phone').value = contact ? (contact.phone || '') : '';
+  document.getElementById('contact-email').value = contact ? (contact.email || '') : '';
+  document.getElementById('contact-company').value = contact ? (contact.company || '') : '';
+  document.getElementById('contact-title').value = contact ? (contact.title || '') : '';
+  document.getElementById('contact-notes').value = contact ? (contact.notes || '') : '';
+  openModal('contactModal');
+}
+
+async function loadContacts() {
+  const d = await GET('/api/contacts');
+  if (d._error) return toast('Failed to load contacts', 'error');
+  allContacts = Array.isArray(d) ? d : (d.contacts || []);
+  renderContacts(allContacts);
+}
+
+function filterContacts() {
+  const q = document.getElementById('contactSearch').value.toLowerCase();
+  if (!q) return renderContacts(allContacts);
+  renderContacts(allContacts.filter(c =>
+    (c.first_name || '').toLowerCase().includes(q) ||
+    (c.last_name || '').toLowerCase().includes(q) ||
+    (c.phone || '').includes(q) ||
+    (c.email || '').toLowerCase().includes(q) ||
+    (c.company || '').toLowerCase().includes(q)
+  ));
+}
+
+function renderContacts(contacts) {
+  const tb = document.getElementById('contactsTable');
+  if (!contacts || contacts.length === 0) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty"><p>No contacts found</p></td></tr>';
+    return;
+  }
+  tb.innerHTML = contacts.map(c => `
+    <tr>
+      <td><strong>${escHtml((c.first_name || '') + ' ' + (c.last_name || ''))}</strong></td>
+      <td>${escHtml(c.phone || '-')}</td>
+      <td>${escHtml(c.email || '-')}</td>
+      <td>${escHtml(c.company || '-')}</td>
+      <td>${escHtml(c.title || '-')}</td>
+      <td style="white-space:nowrap;">
+        ${c.phone ? `<button class="btn btn-accent btn-sm" onclick="dialFromContact('${escHtml(c.phone)}','${escHtml((c.first_name||'') + ' ' + (c.last_name||''))}','${escHtml(c.company||'')}','${escHtml(c.email||'')}')">Dial</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick='openContactModal(${JSON.stringify(c)})'>Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteContact('${c.id}')">Del</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function saveContact() {
+  const data = {
+    first_name: document.getElementById('contact-first_name').value,
+    last_name: document.getElementById('contact-last_name').value,
+    phone: document.getElementById('contact-phone').value,
+    email: document.getElementById('contact-email').value,
+    company: document.getElementById('contact-company').value,
+    title: document.getElementById('contact-title').value,
+    notes: document.getElementById('contact-notes').value
+  };
+  if (!data.first_name || !data.phone) return toast('First name and phone are required', 'error');
+  let d;
+  if (editingContactId) {
+    d = await PATCH('/api/contacts/' + editingContactId, data);
+  } else {
+    d = await POST('/api/contacts', data);
+  }
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast(editingContactId ? 'Contact updated!' : 'Contact created!', 'success');
+  closeModal('contactModal');
+  loadContacts();
+}
+
+async function deleteContact(id) {
+  if (!confirm('Delete this contact?')) return;
+  const d = await DELETE('/api/contacts/' + id);
+  if (d._error) return toast('Failed: ' + d.detail, 'error');
+  toast('Contact deleted', 'info');
+  loadContacts();
+}
+
+async function importContacts() {
+  const file = document.getElementById('contactImportFile').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const d = await apiUpload('/api/contacts/import', fd);
+  if (d._error) return toast('Import failed: ' + d.detail, 'error');
+  toast('Contacts imported!', 'success');
+  loadContacts();
+  document.getElementById('contactImportFile').value = '';
+}
+
+async function exportContacts() {
+  const d = await GET('/api/contacts');
+  const contacts = Array.isArray(d) ? d : (d.contacts || []);
+  const blob = new Blob([JSON.stringify(contacts, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'contacts_export.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Contacts exported', 'success');
+}
+
+/* ===================== SETTINGS ===================== */
+function updateEmailProviderPanels() {
+  const sel = document.getElementById('set-email_provider');
+  if (!sel) return;
+  const p = sel.value || 'smtp';
+  document.querySelectorAll('[data-email-panel]').forEach((el) => {
+    const on = el.getAttribute('data-email-panel') === p;
+    el.style.display = on ? 'grid' : 'none';
+  });
+}
+
+async function loadSettings() {
+  const [status, settings] = await Promise.all([GET('/api/status'), GET('/api/settings')]);
+
+  // Status dots (only boolean connection flags — /api/status also returns strings)
+  const container = document.getElementById('settingsStatus');
+  const statusFlagKeys = new Set(['telnyx', 'deepgram', 'anthropic', 'apollo', 'email']);
+  if (!status._error) {
+    container.innerHTML = Object.entries(status).filter(([k, v]) => statusFlagKeys.has(k) && typeof v === 'boolean').map(([k, v]) => `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="dot ${v ? 'on' : 'off'}" style="width:10px;height:10px;border-radius:50%;display:inline-block;background:${v ? 'var(--success)' : 'var(--danger)'};"></span>
+        <span style="font-size:13px;text-transform:capitalize;">${k}</span>
+      </div>`).join('');
+  }
+
+  // Indicate which keys are set (but don't reveal them)
+  if (!settings._error) {
+    ['telnyx_api_key','anthropic_api_key','apollo_api_key','elevenlabs_api_key'].forEach(k => {
+      const el = document.getElementById('set-' + k);
+      const isSet = settings[k.replace('_api_key','') + '_key_set'] || settings[k + '_set'];
+      if (el && isSet) el.placeholder = '******** (key is set)';
+    });
+    if (settings.phone_number) document.getElementById('set-phone_number').value = settings.phone_number;
+    if (settings.connection_id) document.getElementById('set-connection_id').value = settings.connection_id;
+    if (settings.base_url) document.getElementById('set-base_url').value = settings.base_url;
+    const provEl = document.getElementById('set-email_provider');
+    if (provEl && !settings._error) {
+      const ep = (settings.email_provider || 'smtp').toLowerCase();
+      provEl.value = ['smtp', 'sendgrid', 'resend', 'mailgun', 'gmail_oauth', 'outlook_oauth'].includes(ep) ? ep : 'smtp';
+      document.getElementById('set-email_from').value = settings.email_from || '';
+      document.getElementById('set-smtp_host').value = settings.smtp_host || '';
+      document.getElementById('set-smtp_port').value = settings.smtp_port != null ? String(settings.smtp_port) : '';
+      document.getElementById('set-smtp_user').value = settings.smtp_user || '';
+      const spw = document.getElementById('set-smtp_password');
+      spw.value = '';
+      spw.placeholder = settings.smtp_password_set ? '******** (password is set)' : 'App password or SMTP secret';
+      document.getElementById('set-smtp_use_tls').checked = !!settings.smtp_use_tls;
+      const sg = document.getElementById('set-sendgrid_api_key');
+      if (sg) {
+        sg.value = '';
+        sg.placeholder = settings.sendgrid_api_key_set ? '******** (key is set)' : 'SG.xxx';
+      }
+      const rs = document.getElementById('set-resend_api_key');
+      if (rs) {
+        rs.value = '';
+        rs.placeholder = settings.resend_api_key_set ? '******** (key is set)' : 're_xxx';
+      }
+      const mgk = document.getElementById('set-mailgun_api_key');
+      if (mgk) {
+        mgk.value = '';
+        mgk.placeholder = settings.mailgun_api_key_set ? '******** (key is set)' : 'Private API key';
+      }
+      const mgd = document.getElementById('set-mailgun_domain');
+      if (mgd) mgd.value = settings.mailgun_domain || '';
+      const mgb = document.getElementById('set-mailgun_api_base');
+      if (mgb) mgb.value = settings.mailgun_api_base || '';
+      document.getElementById('set-email_automation_enabled').checked = !!settings.email_automation_enabled;
+      document.getElementById('set-post_call_followup_email_enabled').checked = !!settings.post_call_followup_email_enabled;
+      document.getElementById('set-post_call_followup_delay_sec').value =
+        settings.post_call_followup_delay_sec != null ? String(settings.post_call_followup_delay_sec) : '300';
+      const base = ((settings.base_url || '').trim() || window.location.origin).replace(/\/$/, '');
+      const gh = document.getElementById('gmailRedirectUriHint');
+      if (gh) gh.textContent = base + '/api/email-oauth/google/callback';
+      const mh = document.getElementById('msRedirectUriHint');
+      if (mh) mh.textContent = base + '/api/email-oauth/microsoft/callback';
+      const goid = document.getElementById('set-google_oauth_client_id');
+      if (goid) goid.value = settings.google_oauth_client_id || '';
+      const gsec = document.getElementById('set-google_oauth_client_secret');
+      if (gsec) {
+        gsec.value = '';
+        gsec.placeholder = settings.google_oauth_client_secret_set ? '******** (secret is set)' : 'GOCSPX-…';
+      }
+      const moid = document.getElementById('set-microsoft_oauth_client_id');
+      if (moid) moid.value = settings.microsoft_oauth_client_id || '';
+      const msec = document.getElementById('set-microsoft_oauth_client_secret');
+      if (msec) {
+        msec.value = '';
+        msec.placeholder = settings.microsoft_oauth_client_secret_set ? '******** (secret is set)' : 'Client secret';
+      }
+      const mten = document.getElementById('set-microsoft_oauth_tenant');
+      if (mten) mten.value = settings.microsoft_oauth_tenant || 'common';
+      const gs = document.getElementById('gmailOAuthStatus');
+      if (gs) gs.textContent = settings.google_connected ? ('Connected: ' + (settings.google_email || '')) : 'Not connected';
+      const os = document.getElementById('outlookOAuthStatus');
+      if (os) os.textContent = settings.microsoft_connected ? ('Connected: ' + (settings.microsoft_email || '')) : 'Not connected';
+      updateEmailProviderPanels();
+    }
+  }
+}
+
+async function disconnectOAuth(which) {
+  const d = await POST('/api/email-oauth/disconnect', { provider: which });
+  if (d._error) return toast('Disconnect failed: ' + (d.detail || 'error'), 'error');
+  toast('Disconnected', 'success');
+  loadSettings();
+}
+
+async function saveSettings() {
+  const data = {};
+  ['telnyx_api_key','anthropic_api_key','apollo_api_key','elevenlabs_api_key','phone_number','connection_id','base_url'].forEach(k => {
+    const el = document.getElementById('set-' + k);
+    if (el && el.value && !el.value.startsWith('*')) data[k] = el.value;
+  });
+  const provEl = document.getElementById('set-email_provider');
+  if (provEl) {
+    data.email_provider = provEl.value || 'smtp';
+    data.email_from = (document.getElementById('set-email_from').value || '').trim();
+    data.smtp_host = (document.getElementById('set-smtp_host').value || '').trim();
+    const p = parseInt(document.getElementById('set-smtp_port').value, 10);
+    data.smtp_port = String(Number.isFinite(p) && p > 0 ? p : 587);
+    data.smtp_user = (document.getElementById('set-smtp_user').value || '').trim();
+    const spw = document.getElementById('set-smtp_password');
+    if (spw && spw.value && !spw.value.startsWith('*')) data.smtp_password = spw.value;
+    data.smtp_use_tls = !!document.getElementById('set-smtp_use_tls').checked;
+    const sg = document.getElementById('set-sendgrid_api_key');
+    if (sg && sg.value && !sg.value.startsWith('*')) data.sendgrid_api_key = sg.value;
+    const rs = document.getElementById('set-resend_api_key');
+    if (rs && rs.value && !rs.value.startsWith('*')) data.resend_api_key = rs.value;
+    const mgk = document.getElementById('set-mailgun_api_key');
+    if (mgk && mgk.value && !mgk.value.startsWith('*')) data.mailgun_api_key = mgk.value;
+    const mgd = document.getElementById('set-mailgun_domain');
+    if (mgd) data.mailgun_domain = (mgd.value || '').trim();
+    const mgb = document.getElementById('set-mailgun_api_base');
+    if (mgb) data.mailgun_api_base = (mgb.value || '').trim();
+    data.email_automation_enabled = !!document.getElementById('set-email_automation_enabled').checked;
+    data.post_call_followup_email_enabled = !!document.getElementById('set-post_call_followup_email_enabled').checked;
+    const delEl = document.getElementById('set-post_call_followup_delay_sec');
+    const ds = parseInt(delEl && delEl.value, 10);
+    data.post_call_followup_delay_sec = Number.isFinite(ds) && ds >= 60 ? ds : 300;
+    const goid = document.getElementById('set-google_oauth_client_id');
+    if (goid) {
+      data.google_oauth_client_id = (goid.value || '').trim();
+      const gcs = document.getElementById('set-google_oauth_client_secret');
+      if (gcs && gcs.value && !gcs.value.startsWith('*')) data.google_oauth_client_secret = gcs.value;
+    }
+    const moid = document.getElementById('set-microsoft_oauth_client_id');
+    if (moid) {
+      data.microsoft_oauth_client_id = (moid.value || '').trim();
+      const msec = document.getElementById('set-microsoft_oauth_client_secret');
+      if (msec && msec.value && !msec.value.startsWith('*')) data.microsoft_oauth_client_secret = msec.value;
+      const mten = document.getElementById('set-microsoft_oauth_tenant');
+      if (mten) data.microsoft_oauth_tenant = (mten.value || 'common').trim() || 'common';
+    }
+  }
+  const d = await POST('/api/settings', data);
+  if (d._error) return toast('Save failed: ' + d.detail, 'error');
+  toast('Settings saved!', 'success');
+  loadStatus();
+  loadSettings();
+}
+
+async function testConnection(type) {
+  const res = document.getElementById('testResult');
+  res.innerHTML = '<span class="spinner"></span> Testing ' + type + '...';
+  let d;
+  if (type === 'smtp') d = await POST('/api/settings/test-smtp', {});
+  else if (type === 'email') d = await POST('/api/settings/test-email', {});
+  else d = await GET('/api/test/' + type);
+  if (d._error) {
+    res.innerHTML = '<span style="color:var(--danger);">FAIL:</span> ' + escHtml(d.detail);
+  } else if (d.ok === false) {
+    res.innerHTML = '<span style="color:var(--danger);">FAIL:</span> ' + escHtml(d.error || 'Unknown error');
+  } else {
+    res.innerHTML = '<span style="color:var(--success);">OK:</span> <pre style="display:inline;font-size:12px;">' + escHtml(JSON.stringify(d, null, 2)) + '</pre>';
+  }
+}
+
+/* ===================== HELPERS ===================== */
+function formatTime(d) {
+  if (!d) return '';
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt)) return '';
+  const now = new Date();
+  const diff = Math.floor((now - dt) / 1000);
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return dt.toLocaleDateString();
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatSeconds(s) {
+  if (!s && s !== 0) return '-';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
+function formatDuration(startTime) {
+  if (!startTime) return '0:00';
+  const start = new Date(startTime);
+  if (isNaN(start)) return '0:00';
+  const diff = Math.floor((Date.now() - start.getTime()) / 1000);
+  return formatSeconds(diff);
+}
+
+/* ===================== INIT & AUTO-REFRESH ===================== */
+function handleOAuthReturnQuery() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const e = q.get('email_oauth');
+    if (e === 'google') {
+      toast('Gmail connected. Select "Gmail — Sign in with Google" as delivery method, then Save email settings.', 'success');
+      navigate('settings');
+    } else if (e === 'outlook') {
+      toast('Outlook connected. Select "Outlook / Microsoft 365" as delivery method, then Save email settings.', 'success');
+      navigate('settings');
+    } else if (e === 'error') {
+      toast('Email connection failed: ' + (q.get('detail') || 'unknown'), 'error');
+      navigate('settings');
+    }
+    if (e) {
+      const u = new URL(window.location.href);
+      u.search = '';
+      history.replaceState({}, '', u.pathname + (u.hash || ''));
+    }
+  } catch (err) {}
+}
+
+function init() {
+  handleOAuthReturnQuery();
+  loadStatus();
+  loadDashboard();
+}
+
+// Auto-refresh
+setInterval(() => {
+  loadStatus();
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    if (activePage.id === 'page-dashboard') loadDashboard();
+  }
+}, 10000);
+
+setInterval(() => {
+  const activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id === 'page-live-calls') refreshActiveCalls();
+}, 5000);
+
+// Update call timers every second
+setInterval(() => {
+  document.querySelectorAll('.call-card-timer[data-start]').forEach(el => {
+    const start = el.getAttribute('data-start');
+    if (start) el.textContent = formatDuration(start);
+  });
+}, 1000);
+
+// Start
+init();
+</script>
+</body>
+</html>

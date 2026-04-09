@@ -1,0 +1,163 @@
+"""
+Simple JSON-based persistence for calls, script config, and settings.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+DATA_DIR   = Path(__file__).parent / "data"
+DATA_DIR.mkdir(exist_ok=True)
+
+CALLS_FILE  = DATA_DIR / "calls.json"
+SCRIPT_FILE = DATA_DIR / "script.json"
+
+DEFAULT_SCRIPT: dict[str, Any] = {
+    "sdr_name":                "Alex",
+    "company_name":            "CloudFuze",
+    "call_objective":          "Book a 15-minute discovery call to demo CloudFuze Manage",
+    "target_persona":          "VP/Director of IT, SaaS Ops, Security, or Cloud at mid-market and enterprise companies",
+    "value_proposition":       "CloudFuze Manage gives teams full visibility into their SaaS and AI app stack — saving ~30% on licenses, catching shadow IT, and closing security gaps before AI rollouts like Copilot or Gemini.",
+    "voicemail_message":       "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we work with companies like yours to help get full visibility into their SaaS and AI app stack. A lot of teams we talk to are dealing with unused licenses, shadow IT, and permission risks they don't even know about — especially before rolling out tools like Copilot or Gemini. CloudFuze Manage gives you a single dashboard to see all of that — app usage, who has access to what, and where the security gaps are. It usually saves teams around 30 percent on SaaS spend in the first few months. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
+}
+
+
+# ─── helpers ────────────────────────────────────────────────
+def _load(path: Path, default: Any) -> Any:
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return default
+
+def _save(path: Path, data: Any) -> None:
+    path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+
+
+# ─── calls ──────────────────────────────────────────────────
+def load_calls() -> list[dict]:
+    return _load(CALLS_FILE, [])
+
+def save_call(call: dict) -> None:
+    calls = load_calls()
+    for i, c in enumerate(calls):
+        if c.get("call_control_id") == call.get("call_control_id"):
+            calls[i] = call
+            _save(CALLS_FILE, calls)
+            return
+    call.setdefault("started_at", datetime.utcnow().isoformat())
+    calls.insert(0, call)
+    _save(CALLS_FILE, calls)
+
+def update_call(call_control_id: str, **kwargs: Any) -> None:
+    calls = load_calls()
+    for c in calls:
+        if c.get("call_control_id") == call_control_id:
+            c.update(kwargs)
+            _save(CALLS_FILE, calls)
+            return
+
+
+def get_call_by_control_id(call_control_id: str) -> dict[str, Any] | None:
+    """Latest row from calls.json for this id (used when active_calls was cleared)."""
+    if not call_control_id:
+        return None
+    for c in load_calls():
+        if c.get("call_control_id") == call_control_id:
+            return dict(c)
+    return None
+
+
+def finalize_call_end(call_control_id: str, **kwargs: Any) -> bool:
+    """
+    Update calls.json row by call_control_id. Returns True if a row was updated.
+    Used for call.hangup so we persist even when in-memory active_calls was cleared.
+    """
+    if not call_control_id:
+        return False
+    calls = load_calls()
+    for c in calls:
+        if c.get("call_control_id") == call_control_id:
+            c.update(kwargs)
+            _save(CALLS_FILE, calls)
+            return True
+    return False
+
+
+def mark_stale_initiated_calls(max_age_hours: float = 1.0) -> list[str]:
+    """
+    Mark old `initiated` rows as ended when Telnyx never sent answered/hangup webhooks
+    (wrong APP_BASE_URL, ngrok down, etc.). Returns call_control_ids updated.
+    """
+    calls = load_calls()
+    updated: list[str] = []
+    now = datetime.utcnow()
+    for c in calls:
+        if c.get("state") != "initiated":
+            continue
+        started = c.get("started_at")
+        if not started:
+            continue
+        try:
+            raw = str(started).replace("Z", "+00:00")
+            t = datetime.fromisoformat(raw)
+            if t.tzinfo is not None:
+                t = t.replace(tzinfo=None)
+            age_sec = (now - t).total_seconds()
+        except Exception:
+            continue
+        if age_sec <= max_age_hours * 3600:
+            continue
+        cid = c.get("call_control_id")
+        if not cid:
+            continue
+        c["state"] = "ended"
+        c["ended_at"] = now.isoformat()
+        c["duration_seconds"] = 0
+        c["ended_reason"] = "stale_no_webhook"
+        updated.append(cid)
+    if updated:
+        _save(CALLS_FILE, calls)
+    return updated
+
+
+# ─── script ─────────────────────────────────────────────────
+def load_script() -> dict[str, Any]:
+    return _load(SCRIPT_FILE, DEFAULT_SCRIPT.copy())
+
+def save_script(script: dict[str, Any]) -> None:
+    _save(SCRIPT_FILE, script)
+
+
+# ─── tasks ─────────────────────────────────────────────────
+TASKS_FILE = DATA_DIR / "tasks.json"
+
+def load_tasks() -> list[dict]:
+    return _load(TASKS_FILE, [])
+
+def save_task(task: dict) -> None:
+    tasks = load_tasks()
+    for i, t in enumerate(tasks):
+        if t.get("id") == task.get("id"):
+            tasks[i] = task
+            _save(TASKS_FILE, tasks)
+            return
+    tasks.insert(0, task)
+    _save(TASKS_FILE, tasks)
+
+def delete_task(task_id: str) -> None:
+    tasks = load_tasks()
+    tasks = [t for t in tasks if t.get("id") != task_id]
+    _save(TASKS_FILE, tasks)
+
+def update_task(task_id: str, **kwargs: Any) -> None:
+    tasks = load_tasks()
+    for t in tasks:
+        if t.get("id") == task_id:
+            t.update(kwargs)
+            _save(TASKS_FILE, tasks)
+            return

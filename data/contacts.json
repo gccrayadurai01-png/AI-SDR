@@ -1,0 +1,129 @@
+{
+  "contacts": [
+    {
+      "id": "seed-1",
+      "name": "Sarah Chen",
+      "email": "sarah@techcorp.com",
+      "phone": "+1 415-555-0101",
+      "company": "TechCorp",
+      "title": "VP Engineering",
+      "status": "qualified",
+      "score": 85,
+      "tags": [
+        "Enterprise",
+        "Tech"
+      ],
+      "call_history": [
+        {
+          "at": "2026-03-28T17:34:00+00:00",
+          "outcome": "Interested",
+          "summary": "Discussed platform capabilities. Prospect showed interest in AI calling features. Requested demo."
+        },
+        {
+          "at": "2026-03-20T14:00:00+00:00",
+          "outcome": "Follow-up",
+          "summary": "Left voicemail. Asked to reconnect this week."
+        }
+      ],
+      "emails_sent": [
+        {
+          "subject": "Follow-up: Meeting Request",
+          "sent_at": "2026-03-20T10:00:00+00:00",
+          "opened": true
+        }
+      ]
+    },
+    {
+      "id": "seed-2",
+      "name": "Marcus Webb",
+      "email": "marcus@dataflow.io",
+      "phone": "+1 415-555-0142",
+      "company": "DataFlow",
+      "title": "CTO",
+      "status": "contacted",
+      "score": 62,
+      "tags": [
+        "Mid-Market"
+      ],
+      "call_history": [
+        {
+          "at": "2026-03-25T16:10:00+00:00",
+          "outcome": "No Answer",
+          "summary": "No pickup. Scheduled retry."
+        }
+      ],
+      "emails_sent": []
+    },
+    {
+      "id": "seed-3",
+      "name": "Elena Park",
+      "email": "elena@nimbus.ai",
+      "phone": "+1 650-555-0199",
+      "company": "Nimbus AI",
+      "title": "Head of IT",
+      "status": "meeting_booked",
+      "score": 92,
+      "tags": [
+        "AI",
+        "Enterprise"
+      ],
+      "call_history": [],
+      "emails_sent": [
+        {
+          "subject": "CloudFuze — quick intro",
+          "sent_at": "2026-03-22T09:30:00+00:00",
+          "opened": true
+        }
+      ]
+    },
+    {
+      "id": "seed-4",
+      "name": "James O'Neil",
+      "email": "j.oneil@legacy.com",
+      "phone": "+1 212-555-0177",
+      "company": "Legacy Systems Inc",
+      "title": "Director Ops",
+      "status": "new",
+      "score": 34,
+      "tags": [],
+      "call_history": [],
+      "emails_sent": []
+    },
+    {
+      "id": "seed-5",
+      "name": "Priya Shah",
+      "email": "priya@bright.co",
+      "phone": "+1 408-555-0123",
+      "company": "Bright Co",
+      "title": "CISO",
+      "status": "closed",
+      "score": 78,
+      "tags": [
+        "Security"
+      ],
+      "call_history": [
+        {
+          "at": "2026-03-15T11:00:00+00:00",
+          "outcome": "Interested",
+          "summary": "Wants pricing follow-up next quarter."
+        }
+      ],
+      "emails_sent": []
+    },
+    {
+      "id": "seed-6",
+      "name": "David Kim",
+      "email": "dkim@vertex.net",
+      "phone": "+1 206-555-0165",
+      "company": "Vertex Net",
+      "title": "IT Manager",
+      "status": "qualified",
+      "score": 71,
+      "tags": [
+        "Tech"
+      ],
+      "call_history": [],
+      "emails_sent": []
+    }
+  ]
+}
