@@ -2,7 +2,48 @@
   "sdr_name": "Anthony",
   "company_name": "CloudFuze",
   "call_objective": "Book a 15-minute discovery call to demo CloudFuze Manage",
-  "target_persona": "VP/Director of IT, SaaS Ops, Security, or Cloud at mid-market and enterprise companies",
-  "value_proposition": "CloudFuze Manage gives teams full visibility into their SaaS and AI app stack \u2014 saving ~30% on licenses, catching shadow IT, and closing security gaps before AI rollouts like Copilot or Gemini.",
-  "voicemail_message": "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we work with companies like yours to help get full visibility into their SaaS and AI app stack. A lot of teams we talk to are dealing with unused licenses, shadow IT, and permission risks they don't even know about \u2014 especially before rolling out tools like Copilot or Gemini. CloudFuze Manage gives you a single dashboard to see all of that \u2014 app usage, who has access to what, and where the security gaps are. It usually saves teams around 30 percent on SaaS spend in the first few months. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!"
+  "target_persona": "VP/Director of IT, SaaS Ops, Security or Cloud at mid-market/enterprise",
+  "value_proposition": "CloudFuze Manage gives teams full visibility into their SaaS and AI app stack \u2014 saving ~30% on license spend, catching shadow IT, and closing security gaps before AI rollouts like Copilot or Gemini.",
+  "opening": "Hey {name}, Anthony here from CloudFuze \u2013 quick question, got a minute?",
+  "upfront_contract": "I'll keep it to 15 minutes. Sound okay?",
+  "discovery_questions": [
+    "Can you tell me a bit about your upcoming migration? What's the hardest part?",
+    "How are you handling permissions and shared files in that move?",
+    "What happens if a shared link accidentally goes to the new system?",
+    "If you had a magic wand, what's one thing you'd fix about cloud security?",
+    "On a scale of 1\u201310, how urgent is this for you?",
+    "What usually makes you say yes to a new solution?"
+  ],
+  "negative_reversals": [
+    "I know you're probably thinking this isn't a big deal\u2026",
+    "Maybe this isn't an issue for you right now, is it?",
+    "I'm not here to sell anything, just to explore if there's a fit."
+  ],
+  "insight_value_points": [
+    "We often see clients spend 20\u201330% less on apps after we show them the waste.",
+    "Most prospects are surprised by how many public links we find in their cloud.",
+    "Preventing a single data leak could pay for itself \u2013 is that risk on your radar?",
+    "Average CloudFuze customer cleans up ~200,000 hidden links per year.",
+    "With Copilot/Gemini on the horizon, companies MUST clean permissions first \u2014 those tools surface everything a user can access."
+  ],
+  "soft_close_cta": [
+    "Does spending 15 minutes make sense to see if CloudFuze can help?",
+    "If I could help solve that, would it be worth a quick call?"
+  ],
+  "multi_thread": [
+    "Is anyone else on your team involved in this decision? Who should join the call?",
+    "Who else should I send info to before we talk?"
+  ],
+  "objection_handling": {
+    "busy": "Totally understand, when's a better time to chat?",
+    "not_interested": "I understand. Just so I'm clear, is it the timing or the solution?",
+    "has_tool": "Oh nice, how's that working for you? What does it not do?",
+    "no_budget": "Makes sense \u2014 usually this saves money within the first few months. Might not be the right time though.",
+    "send_email": "Happy to \u2014 but a quick 15-min call is usually more helpful. Worth a shot?"
+  },
+  "voicemail_message": "Hi {name}, this is {sdr_name} from {company}. We help IT teams avoid surprises during cloud migrations and AI rollouts. I'd love to ask you one quick question \u2014 do you have a few seconds? If not, you can reach me at this number. Thank you!",
+  "knowledge_manage": "CloudFuze Manage: SaaS/AI app management platform. Full visibility and control over all cloud apps and permissions. License optimization (~30% savings), shadow IT detection, access governance, permission risk scoring, automated remediation (one-click revoke public links, reassign files), AI-readiness tools (scan for hot content before enabling AI bots).",
+  "knowledge_pain_context": "Data Sprawl & Oversharing: many orgs have rampant permission sprawl, AI exacerbates it. Migration Complexity: moving 100-300TB, downtime risk, permission creep, lost files. AI Exposure: Copilot/GPT indexes what people can see \u2014 permission hygiene is crucial.",
+  "knowledge_metrics": "Avg customer cleans ~200,000 hidden links/year. Cut 20-30% unused licenses within first 3 months. Supports 40+ cloud platforms and 100+ SaaS apps. Web3 company cut shadow IT by 40% with CloudFuze Manage.",
+  "knowledge_competitive": "CloudFuze Manage adds migration-related permission cleanup layer beyond typical license mgmt tools. If prospect has a tool, ask what it doesn't do \u2014 Sandler disqualification technique."
 }

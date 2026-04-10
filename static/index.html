@@ -534,45 +534,134 @@ tr:hover td{background:rgba(20,207,195,0.02);}
             <button class="btn btn-primary" onclick="saveScript()">Save Config</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-          <div class="card">
-            <div class="card-title">Agent Configuration <span class="badge badge-teal" style="margin-left:8px;font-size:9px;">SANDLER SELLING SYSTEM</span></div>
-            <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">The AI runs the entire call autonomously using Sandler methodology. It decides the opening, questions, objection handling, pacing, and close. Just set the essentials below.</p>
-            <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-              <div class="form-group"><label>SDR Name</label><input id="script-sdr_name" placeholder="Alex"/></div>
-              <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="CloudFuze"/></div>
-              <div class="form-group full"><label>Call Objective (the ONE goal)</label><input id="script-objective" placeholder="Book a 15-minute discovery call to demo CloudFuze Manage"/></div>
-              <div class="form-group full"><label>Target Persona</label><input id="script-target_persona" placeholder="VP/Director of IT, SaaS Ops, Security at mid-market and enterprise companies"/></div>
-              <div class="form-group full"><label>Value Proposition</label><textarea id="script-value_prop" rows="3" placeholder="CloudFuze Manage gives teams full visibility into their SaaS and AI app stack — saving ~30% on licenses, catching shadow IT, and closing security gaps."></textarea></div>
+
+        <!-- Tab Navigation -->
+        <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;">
+          <button class="btn btn-sm agent-tab active" data-tab="tab-basics" onclick="switchAgentTab(this)" style="border-radius:8px 8px 0 0;border-bottom:2px solid var(--accent);">Basics</button>
+          <button class="btn btn-sm agent-tab" data-tab="tab-sandler" onclick="switchAgentTab(this)" style="border-radius:8px 8px 0 0;">Sandler Blocks</button>
+          <button class="btn btn-sm agent-tab" data-tab="tab-knowledge" onclick="switchAgentTab(this)" style="border-radius:8px 8px 0 0;">Knowledge Base</button>
+          <button class="btn btn-sm agent-tab" data-tab="tab-objections" onclick="switchAgentTab(this)" style="border-radius:8px 8px 0 0;">Objections</button>
+          <button class="btn btn-sm agent-tab" data-tab="tab-preview" onclick="switchAgentTab(this)" style="border-radius:8px 8px 0 0;">Preview</button>
+        </div>
+
+        <!-- TAB: Basics -->
+        <div class="agent-tab-content" id="tab-basics">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="card">
+              <div class="card-title">Agent Configuration <span class="badge badge-teal" style="margin-left:8px;font-size:9px;">SANDLER SELLING SYSTEM</span></div>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+                <div class="form-group"><label>SDR Name</label><input id="script-sdr_name" placeholder="Anthony"/></div>
+                <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="CloudFuze"/></div>
+                <div class="form-group full"><label>Call Objective</label><input id="script-objective" placeholder="Book a 15-minute discovery call to demo CloudFuze Manage"/></div>
+                <div class="form-group full"><label>Target Persona</label><input id="script-target_persona" placeholder="VP/Director of IT, SaaS Ops, Security at mid-market/enterprise"/></div>
+                <div class="form-group full"><label>Value Proposition</label><textarea id="script-value_prop" rows="3" placeholder="CloudFuze Manage gives teams full visibility into their SaaS and AI app stack..."></textarea></div>
+              </div>
+
+              <div class="card-title" style="margin-top:24px;">Voicemail Script</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Auto-delivered when voicemail is detected. Supports {name}, {sdr_name}, {company} placeholders.</p>
+              <div class="form-group full"><textarea id="script-voicemail" rows="4" placeholder="Hi {name}, this is {sdr_name} from {company}..."></textarea></div>
             </div>
 
-            <div class="card-title" style="margin-top:24px;">Voicemail Script</div>
-            <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Auto-delivered when voicemail is detected. Supports {name}, {sdr_name}, {company} placeholders.</p>
-            <div class="form-grid" style="grid-template-columns:1fr;">
-              <div class="form-group full"><label>Voicemail Message</label><textarea id="script-voicemail" rows="5" placeholder="Hey {name}, this is {sdr_name} from {company}. I was reaching out because we work with companies like yours to help get full visibility into their SaaS and AI app stack..."></textarea></div>
+            <div class="card">
+              <div class="card-title">Opening & Contract</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Pattern interrupt opener and up-front contract. Supports {name}, {sdr_name}, {company}.</p>
+              <div class="form-group full"><label>Opening Line (Pattern Interrupt)</label><textarea id="script-opening" rows="2" placeholder="Hey {name}, Anthony here from CloudFuze – quick question, got a minute?"></textarea></div>
+              <div class="form-group full"><label>Up-Front Contract</label><textarea id="script-upfront_contract" rows="2" placeholder="I'll keep it to 15 minutes. Sound okay?"></textarea></div>
+
+              <div class="card-title" style="margin-top:24px;">Soft Close (CTA)</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Low-pressure meeting asks. One per line.</p>
+              <div class="form-group full"><textarea id="script-soft_close_cta" rows="3" placeholder="Does spending 15 minutes make sense to see if CloudFuze can help?&#10;If I could help solve that, would it be worth a quick call?"></textarea></div>
+
+              <div class="card-title" style="margin-top:24px;">Multi-Thread / Next Steps</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Questions to identify other stakeholders. One per line.</p>
+              <div class="form-group full"><textarea id="script-multi_thread" rows="3" placeholder="Is anyone else on your team involved in this decision?&#10;Who else should I send info to before we talk?"></textarea></div>
             </div>
           </div>
+        </div>
 
-          <div class="card">
-            <div class="card-title">Sandler Methodology Overview</div>
-            <div class="script-preview" id="scriptPreview">
-              <em style="color:var(--text-muted);">Fill in the agent configuration to see a preview...</em>
+        <!-- TAB: Sandler Blocks -->
+        <div class="agent-tab-content" id="tab-sandler" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="card">
+              <div class="card-title">Discovery / Pain Questions</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Sandler pain funnel questions. AI uses these as guidance (adapts in conversation). One per line.</p>
+              <div class="form-group full"><textarea id="script-discovery_questions" rows="10" placeholder="Can you tell me a bit about your upcoming migration? What's the hardest part?&#10;How are you handling permissions and shared files in that move?&#10;What happens if a shared link accidentally goes to the new system?"></textarea></div>
             </div>
+            <div class="card">
+              <div class="card-title">Negative Reversals</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Sandler negative reverse statements for when prospect resists. One per line.</p>
+              <div class="form-group full"><textarea id="script-negative_reversals" rows="5" placeholder="I know you're probably thinking this isn't a big deal…&#10;Maybe this isn't an issue for you right now, is it?&#10;I'm not here to sell anything, just to explore if there's a fit."></textarea></div>
 
-            <div style="margin-top:20px;padding:16px;background:rgba(20,207,195,0.04);border:1px solid rgba(20,207,195,0.2);border-radius:8px;">
-              <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px;">HOW THE AI RUNS THE CALL</div>
+              <div class="card-title" style="margin-top:24px;">Insight / Value Points</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Key insights to share naturally during pain discovery. One per line.</p>
+              <div class="form-group full"><textarea id="script-insight_value_points" rows="8" placeholder="We often see clients spend 20–30% less on apps after we show them the waste.&#10;Most prospects are surprised by how many public links we find in their cloud."></textarea></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Knowledge Base -->
+        <div class="agent-tab-content" id="tab-knowledge" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="card">
+              <div class="card-title">CloudFuze Manage Knowledge</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Product features, capabilities. AI uses this to answer questions naturally.</p>
+              <div class="form-group full"><textarea id="script-knowledge_manage" rows="8" placeholder="CloudFuze Manage: SaaS/AI app management platform..."></textarea></div>
+
+              <div class="card-title" style="margin-top:24px;">Pain Context (Sandler Focus)</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Industry pains that CloudFuze solves. Frames conversation around prospect's challenges.</p>
+              <div class="form-group full"><textarea id="script-knowledge_pain_context" rows="6" placeholder="Data Sprawl & Oversharing, Migration Complexity, AI Exposure..."></textarea></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Metrics & Proof Points</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Statistics and numbers for credibility in conversation.</p>
+              <div class="form-group full"><textarea id="script-knowledge_metrics" rows="6" placeholder="Avg customer cleans ~200,000 hidden links/year..."></textarea></div>
+
+              <div class="card-title" style="margin-top:24px;">Competitive Angle</div>
+              <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">How to handle "we already use X" objections. Sandler disqualification technique.</p>
+              <div class="form-group full"><textarea id="script-knowledge_competitive" rows="5" placeholder="CloudFuze Manage adds migration-related permission cleanup..."></textarea></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Objections -->
+        <div class="agent-tab-content" id="tab-objections" style="display:none;">
+          <div class="card" style="max-width:800px;">
+            <div class="card-title">Objection Handling (Sandler Responses)</div>
+            <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">AI uses these as guidance for handling common objections. Sandler style: acknowledge, probe, don't push.</p>
+            <div class="form-grid" style="grid-template-columns:1fr;">
+              <div class="form-group"><label>&#x1f554; "I'm busy right now"</label><input id="script-obj_busy" placeholder="Totally understand, when's a better time to chat?"/></div>
+              <div class="form-group"><label>&#x1f6ab; "Not interested"</label><input id="script-obj_not_interested" placeholder="I understand. Just so I'm clear, is it the timing or the solution?"/></div>
+              <div class="form-group"><label>&#x1f527; "We already have a tool"</label><input id="script-obj_has_tool" placeholder="Oh nice, how's that working for you? What does it not do?"/></div>
+              <div class="form-group"><label>&#x1f4b0; "No budget"</label><input id="script-obj_no_budget" placeholder="Makes sense — usually this saves money within the first few months."/></div>
+              <div class="form-group"><label>&#x1f4e7; "Just send me an email"</label><input id="script-obj_send_email" placeholder="Happy to — but a quick 15-min call is usually more helpful. Worth a shot?"/></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Preview -->
+        <div class="agent-tab-content" id="tab-preview" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="card">
+              <div class="card-title">Full Configuration Preview</div>
+              <div class="script-preview" id="scriptPreview">
+                <em style="color:var(--text-muted);">Fill in the agent configuration to see a preview...</em>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">Sandler Call Flow</div>
               <div style="font-size:12px;color:var(--text-dim);line-height:1.8;">
-                <strong style="color:var(--text);">1. Bonding & Rapport</strong> — Pattern interrupt opener, matches their energy<br/>
-                <strong style="color:var(--text);">2. Up-Front Contract</strong> — Sets expectations, gives prospect control<br/>
-                <strong style="color:var(--text);">3. Pain Funnel</strong> — Layered questions: surface &rarr; impact &rarr; personal &rarr; quantify<br/>
-                <strong style="color:var(--text);">4. Budget & Decision</strong> — Only after pain is established<br/>
-                <strong style="color:var(--text);">5. Fulfillment</strong> — Proposes specific meeting time<br/>
-                <strong style="color:var(--text);">6. Post-Sell</strong> — Reinforces decision, locks details<br/>
+                <strong style="color:var(--text);">1. Pattern Interrupt</strong> — Disarming opener, ask permission<br/>
+                <strong style="color:var(--text);">2. Up-Front Contract</strong> — Set 15-min frame, give prospect control<br/>
+                <strong style="color:var(--text);">3. Pain Discovery</strong> — Open-ended Qs, reflect back, go deeper<br/>
+                <strong style="color:var(--text);">4. Negative Reverse</strong> — Gently challenge if they downplay<br/>
+                <strong style="color:var(--text);">5. Qualify</strong> — Urgency (1-10), budget, decision makers<br/>
+                <strong style="color:var(--text);">6. Soft Close</strong> — "Would 15 min make sense?" Propose day/time<br/>
+                <strong style="color:var(--text);">7. Post-Sell</strong> — Lock meeting, ask for stakeholders, thank<br/>
                 <br/>
-                <strong style="color:var(--accent);">Techniques:</strong> Reversing, Negative Reverse Selling, Monkey's Paw, Third-Party Stories<br/>
-                <strong style="color:var(--accent);">Product:</strong> Sells CloudFuze Manage — SaaS/AI visibility, license savings, shadow IT, compliance<br/>
-                <strong style="color:var(--accent);">Objections:</strong> AI handles all objections autonomously using Sandler techniques<br/>
-                <strong style="color:var(--accent);">Voicemail:</strong> Auto-detected &rarr; delivers script &rarr; hangs up automatically
+                <strong style="color:var(--accent);">Techniques:</strong> Reversing, Negative Reverse, Third-Party Stories<br/>
+                <strong style="color:var(--accent);">Product:</strong> CloudFuze Manage — SaaS/AI visibility, license savings, shadow IT<br/>
+                <strong style="color:var(--accent);">Objections:</strong> AI handles autonomously using Sandler techniques<br/>
+                <strong style="color:var(--accent);">Voicemail:</strong> Auto-detected &rarr; delivers script &rarr; hangs up
               </div>
             </div>
           </div>
@@ -1359,20 +1448,66 @@ const scriptFieldMap = {
   'objective': 'call_objective',
   'target_persona': 'target_persona',
   'value_prop': 'value_proposition',
-  'voicemail': 'voicemail_message'
+  'voicemail': 'voicemail_message',
+  'opening': 'opening',
+  'upfront_contract': 'upfront_contract',
+  'discovery_questions': 'discovery_questions',
+  'negative_reversals': 'negative_reversals',
+  'insight_value_points': 'insight_value_points',
+  'soft_close_cta': 'soft_close_cta',
+  'multi_thread': 'multi_thread',
+  'knowledge_manage': 'knowledge_manage',
+  'knowledge_pain_context': 'knowledge_pain_context',
+  'knowledge_metrics': 'knowledge_metrics',
+  'knowledge_competitive': 'knowledge_competitive'
 };
+
+// Objection fields map separately (nested in objection_handling object)
+const objectionFieldMap = {
+  'obj_busy': 'busy',
+  'obj_not_interested': 'not_interested',
+  'obj_has_tool': 'has_tool',
+  'obj_no_budget': 'no_budget',
+  'obj_send_email': 'send_email'
+};
+
 const scriptFields = Object.keys(scriptFieldMap);
+
+// List fields that use newline-separated arrays
+const arrayFields = ['discovery_questions', 'negative_reversals', 'insight_value_points', 'soft_close_cta', 'multi_thread'];
+
+function switchAgentTab(btn) {
+  document.querySelectorAll('.agent-tab').forEach(t => {
+    t.classList.remove('active');
+    t.style.borderBottom = 'none';
+  });
+  document.querySelectorAll('.agent-tab-content').forEach(c => c.style.display = 'none');
+  btn.classList.add('active');
+  btn.style.borderBottom = '2px solid var(--accent)';
+  document.getElementById(btn.dataset.tab).style.display = 'block';
+}
 
 async function loadScript() {
   const d = await GET('/api/script');
   if (d._error) return;
+  // Load main fields
   scriptFields.forEach(f => {
     const el = document.getElementById('script-' + f);
     const backendKey = scriptFieldMap[f];
     if (el) {
       const val = d[backendKey];
-      el.value = Array.isArray(val) ? val.join('\n') : (val || '');
+      if (Array.isArray(val)) {
+        el.value = val.join('\n');
+      } else {
+        el.value = val || '';
+      }
     }
+  });
+  // Load objection fields
+  const objections = d.objection_handling || {};
+  Object.entries(objectionFieldMap).forEach(([uiId, backendKey]) => {
+    const el = document.getElementById('script-' + uiId);
+    if (el) el.value = objections[backendKey] || '';
   });
   updateScriptPreview();
   toast('Script loaded', 'success');
@@ -1384,20 +1519,38 @@ async function saveScript() {
     const el = document.getElementById('script-' + f);
     if (!el) return;
     const backendKey = scriptFieldMap[f];
-    data[backendKey] = el.value;
+    if (arrayFields.includes(backendKey)) {
+      data[backendKey] = el.value.split('\n').map(s => s.trim()).filter(Boolean);
+    } else {
+      data[backendKey] = el.value;
+    }
   });
+  // Collect objection handling
+  const objections = {};
+  Object.entries(objectionFieldMap).forEach(([uiId, backendKey]) => {
+    const el = document.getElementById('script-' + uiId);
+    if (el && el.value.trim()) objections[backendKey] = el.value.trim();
+  });
+  data.objection_handling = objections;
+
   const d = await POST('/api/script', data);
   if (d._error) return toast('Save failed: ' + d.detail, 'error');
   toast('Config saved!', 'success');
 }
 
 function updateScriptPreview() {
-  const name = document.getElementById('script-sdr_name').value || '[SDR Name]';
-  const company = document.getElementById('script-company').value || '[Company]';
-  const obj = document.getElementById('script-objective').value || '[Objective]';
-  const persona = document.getElementById('script-target_persona').value || '[Target Persona]';
-  const value = document.getElementById('script-value_prop').value || '[Value Proposition]';
-  const vm = document.getElementById('script-voicemail').value || '[Voicemail Message]';
+  const name = document.getElementById('script-sdr_name')?.value || '[SDR Name]';
+  const company = document.getElementById('script-company')?.value || '[Company]';
+  const obj = document.getElementById('script-objective')?.value || '[Objective]';
+  const persona = document.getElementById('script-target_persona')?.value || '[Target Persona]';
+  const value = document.getElementById('script-value_prop')?.value || '[Value Proposition]';
+  const opening = document.getElementById('script-opening')?.value || '[Opening]';
+  const contract = document.getElementById('script-upfront_contract')?.value || '[Up-Front Contract]';
+  const vm = document.getElementById('script-voicemail')?.value || '[Voicemail]';
+  const discovery = document.getElementById('script-discovery_questions')?.value || '';
+  const reversals = document.getElementById('script-negative_reversals')?.value || '';
+  const insights = document.getElementById('script-insight_value_points')?.value || '';
+  const closes = document.getElementById('script-soft_close_cta')?.value || '';
 
   document.getElementById('scriptPreview').innerHTML = `
 <strong>Agent:</strong> ${escHtml(name)} from <strong>${escHtml(company)}</strong>
@@ -1407,13 +1560,22 @@ function updateScriptPreview() {
 <strong>Value Proposition:</strong>
 ${escHtml(value)}
 
-<strong>Methodology:</strong> Sandler Selling System (fully autonomous)
-  - AI decides opening, questions, pacing, pivots, and close
-  - Pain Funnel: surface &rarr; impact &rarr; personal &rarr; quantify
-  - Handles all objections with reversing & negative reverse selling
-  - Sells CloudFuze Manage with full product knowledge built-in
+<strong>Opening:</strong> "${escHtml(opening)}"
+<strong>Up-Front Contract:</strong> "${escHtml(contract)}"
 
-<strong>Voicemail Script:</strong>
+<strong>Discovery Questions:</strong>
+${discovery.split('\n').filter(Boolean).map(q => '  \u2022 ' + escHtml(q)).join('\n')}
+
+<strong>Negative Reversals:</strong>
+${reversals.split('\n').filter(Boolean).map(q => '  \u2022 ' + escHtml(q)).join('\n')}
+
+<strong>Insights:</strong>
+${insights.split('\n').filter(Boolean).map(q => '  \u2022 ' + escHtml(q)).join('\n')}
+
+<strong>Soft Close:</strong>
+${closes.split('\n').filter(Boolean).map(q => '  \u2022 ' + escHtml(q)).join('\n')}
+
+<strong>Voicemail:</strong>
 "${escHtml(vm)}"`;
 }
 

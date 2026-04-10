@@ -203,20 +203,22 @@ def _client() -> telnyx.Telnyx:
 # 1. OUTBOUND CALL (no stream_url — we use transcription instead)
 # ─────────────────────────────────────────────
 async def make_outbound_call(to_number: str) -> dict:
+    import asyncio
+    loop = asyncio.get_event_loop()
     try:
-        result = _client().calls.dial(
+        # Run dial in executor to avoid blocking the event loop
+        result = await loop.run_in_executor(None, lambda: _client().calls.dial(
             connection_id=config.TELNYX_CONNECTION_ID,
             to=to_number,
             from_=config.TELNYX_PHONE_NUMBER,
             webhook_url=f"{config.APP_BASE_URL}/webhooks/telnyx",
             webhook_url_method="POST",
-            answering_machine_detection="greeting_end",
+            answering_machine_detection="detect",
             answering_machine_detection_config={
-                "after_greeting_silence_millis": 600,
-                "greeting_duration_millis": 3500,
-                "total_analysis_time_millis": 3500,
+                "after_greeting_silence_millis": 500,
+                "total_analysis_time_millis": 3000,
             },
-        )
+        ))
         data = result.data
         logger.info(f"Call initiated -> {to_number} | {data.call_control_id}")
         return {

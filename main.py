@@ -191,32 +191,32 @@ def _rebuild_hot_cache():
 
 
 def get_system_prompt() -> str:
-    """Compact Sandler prompt for Telnyx AI Assistant -- must stay SHORT for voice to work."""
+    """Sandler system prompt for Telnyx AI Assistant -- MUST stay under 1500 chars."""
     s = load_script()
-    sdr = s.get("sdr_name", "Alex")
+    sdr = s.get("sdr_name", "Anthony")
     co = s.get("company_name", "CloudFuze")
     obj = s.get("call_objective", "Book a 15-minute discovery call")
     persona = s.get("target_persona", "IT / SaaS decision makers")
-    vp = s.get("value_proposition", "")
 
     return f"""You={sdr}, SDR at {co}. LIVE cold call. Never say you're AI.
 Goal: {obj}. Target: {persona}.
 
-SANDLER:
-1. BOND: Casual opener. "Not sure if this is relevant for you -- got a sec?" Low-pressure.
-2. CONTRACT: "I'll ask a couple questions, if it doesn't fit, totally cool. Fair?"
-3. PAIN: Ask about THEIR world. What tools they use, what's broken, what costs them. ONE Q, listen, reflect, go deeper. Share a quick insight back: "Yeah teams we talk to hit that same wall." Then next Q.
-4. BUDGET+DECISION: After pain. "Is that something with budget?" "Who else weighs in?"
-5. FULFILL: Connect pain to solution briefly. "Might make sense to show you -- 15 min Thursday or Friday?"
-6. POST-SELL: Lock it, send invite, thank them.
+SANDLER SELLING SYSTEM -- run the call autonomously:
+1. PATTERN INTERRUPT: "Got a quick second?" Warm, casual, disarming.
+2. UP-FRONT CONTRACT: "I'll keep it to 15 min. If it doesn't fit, totally cool. Fair?"
+3. PAIN DISCOVERY: Ask about their world. ONE question per turn. Listen. Reflect back. Go deeper. Share a brief insight when natural, then ask the next question.
+4. NEGATIVE REVERSE: If they resist, gently challenge: "Maybe this isn't a big deal for you right now?"
+5. QUALIFY: Pain level, budget, decision makers. "Who else weighs in?"
+6. SOFT CLOSE: "Does 15 min make sense to explore this?" Propose a day/time.
+7. POST-SELL: Lock it, send invite, thank them.
 
 STYLE:
-- EXCHANGE: They share, you give a relevant insight, then next question. Don't just collect OR just pitch.
 - 1-2 sentences max per turn. ONE question at a time.
-- Curious not scripted. "yeah", "got it", "makes sense", "interesting".
-- They ask you something? Answer briefly and honestly, then steer back with a question.
-- Never list features. Never monologue.
-OBJECTIONS: Busy=when's better. Not interested=one probe then respect. Has tool="how's that working?" No budget="usually saves money."
+- EXCHANGE: they share, you give a relevant insight back, then next question.
+- Sound curious, human, conversational. "yeah", "got it", "makes sense".
+- Answer their questions honestly and briefly, then steer back.
+- Never list features. Never monologue. Never pitch-dump.
+OBJECTIONS: Busy=when's better. Not interested=ask what's behind it. Has tool=what's missing? No budget=usually saves money.
 END: Confirm, thank, bye.""".strip()
 
 
@@ -232,28 +232,44 @@ def get_opening_line(name: str = "there", title: str = "", company: str = "") ->
 
 def _get_compact_knowledge() -> str:
     """Product knowledge injected as message_history -- keeps system prompt short for Telnyx."""
-    return """CLOUDFUZE KNOWLEDGE -- weave into conversation naturally. Share as relevant insights, never dump as a list.
+    s = load_script()
+    manage = s.get("knowledge_manage", "")
+    pain = s.get("knowledge_pain_context", "")
+    metrics = s.get("knowledge_metrics", "")
+    competitive = s.get("knowledge_competitive", "")
 
-WHAT WE DO: CloudFuze helps companies see and manage all their SaaS and AI apps in one place. Think of it as a control center for every tool your team uses.
+    # Also load the Sandler talking blocks for reference
+    discovery = s.get("discovery_questions", [])
+    reversals = s.get("negative_reversals", [])
+    insights = s.get("insight_value_points", [])
+    closes = s.get("soft_close_cta", [])
+    objections = s.get("objection_handling", {})
 
-CLOUDFUZE MANAGE (lead with this):
-- Gives full visibility into SaaS stack -- most companies only know about 30-40% of the apps their teams actually use
-- Finds unused licenses (avg savings ~30% on SaaS spend)
-- Catches shadow IT and shadow AI before it becomes a security problem
-- One-click onboarding/offboarding -- what used to take IT days now takes minutes
-- Chrome extension discovers every app in real-time
+    discovery_str = " | ".join(discovery[:4]) if isinstance(discovery, list) else str(discovery)
+    reversals_str = " | ".join(reversals[:3]) if isinstance(reversals, list) else str(reversals)
+    insights_str = " | ".join(insights[:4]) if isinstance(insights, list) else str(insights)
+    closes_str = " | ".join(closes[:2]) if isinstance(closes, list) else str(closes)
+    obj_str = " | ".join(f"{k}: {v}" for k,v in objections.items()) if isinstance(objections, dict) else str(objections)
 
-INSIGHTS TO SHARE (use these conversationally when relevant):
-- "Most teams we talk to find they're paying for 30-40% more licenses than they actually need"
-- "With Copilot and Gemini rolling out, a lot of companies are realizing those tools surface everything a user can access -- so permissions cleanup is suddenly urgent"
-- "Shadow AI is the new shadow IT -- employees signing up for AI tools without IT knowing"
-- "One company found 200+ apps they didn't even know existed after running our discovery"
+    return f"""CLOUDFUZE KNOWLEDGE -- weave into conversation naturally, never dump as a list.
 
-CLOUDFUZE MIGRATE (only if they mention data moves or platform switches):
-Cloud-to-cloud migration across 40+ platforms. Files, chats, emails, permissions. Customers include NatGeo, WeWork, Intuit.
+PRODUCT: {manage}
 
-ABOUT US: CloudFuze Inc, 12+ years, Google Cloud Partner of the Year 2025. SOC2, GDPR, ISO 27001.
-PRICING: Per-user, custom quotes. Free demo available."""
+PAIN CONTEXT: {pain}
+
+METRICS (use for credibility): {metrics}
+
+COMPETITIVE: {competitive}
+
+SAMPLE DISCOVERY Qs (adapt, don't read verbatim): {discovery_str}
+
+NEGATIVE REVERSALS (use when they resist): {reversals_str}
+
+INSIGHTS TO SHARE (weave in naturally): {insights_str}
+
+SOFT CLOSE OPTIONS: {closes_str}
+
+OBJECTION RESPONSES: {obj_str}"""
 
 
 def get_knowledge_message_history() -> list[dict]:
