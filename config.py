@@ -350,9 +350,14 @@ def reload_secrets() -> None:
 
 
 def env_file_nonempty(key: str) -> bool:
-    """True if key exists in .env with a non-empty value."""
+    """True if key exists in .env OR os.environ with a non-empty value.
+    On Railway, secrets are injected as real env vars (no .env file), so we
+    must check os.environ too."""
     raw = dotenv_values(_ENV_FILE, encoding=_ENV_ENCODING) or {}
     v = raw.get(key)
+    if v is None:
+        # Fall back to real environment (Railway / Docker / shell exports)
+        v = os.environ.get(key)
     if v is None:
         return False
     s = str(v).strip()
@@ -374,9 +379,9 @@ def dashboard_connection_flags() -> dict[str, bool]:
 
 
 def _email_outbound_env_ready() -> bool:
-    """True when .env has enough for the selected EMAIL_PROVIDER to send."""
+    """True when .env (or os.environ) has enough for the selected EMAIL_PROVIDER to send."""
     raw = dotenv_values(_ENV_FILE, encoding=_ENV_ENCODING) or {}
-    p = (str(raw.get("EMAIL_PROVIDER") or "smtp").strip().lower() or "smtp")
+    p = (str(raw.get("EMAIL_PROVIDER") or os.environ.get("EMAIL_PROVIDER") or "smtp").strip().lower() or "smtp")
     if p not in ("smtp", "sendgrid", "resend", "mailgun", "gmail_oauth", "outlook_oauth"):
         p = "smtp"
     if p == "smtp":
