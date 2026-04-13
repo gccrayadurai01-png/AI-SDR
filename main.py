@@ -195,8 +195,8 @@ def _rebuild_hot_cache():
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
-            "stability": 0.70,
-            "similarity_boost": 0.85,
+            "stability": 0.90,
+            "similarity_boost": 0.75,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -375,7 +375,7 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    "user_idle_timeout_seconds": 15,
+                    "user_idle_timeout_seconds": 45,
                 },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
@@ -384,8 +384,8 @@ def sync_assistant_to_script():
                 patch_body["voice_settings"] = {
                     "voice": f"ElevenLabs.eleven_turbo_v2_5.{voice_id}",
                     "api_key_ref": api_key_ref,
-                    "stability": 0.70,
-                    "similarity_boost": 0.85,
+                    "stability": 0.90,
+                    "similarity_boost": 0.75,
                 }
             r = httpx.patch(
                 f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
@@ -462,8 +462,8 @@ async def _silence_watchdog(cc_id: str):
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
             await asyncio.sleep(5)
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 45:
-                logger.info("SILENCE WATCHDOG: No speech for 45s on %s — auto-hanging up", cc_id)
+            if last and (time.time() - last) > 60:
+                logger.info("SILENCE WATCHDOG: No speech for 60s on %s — auto-hanging up", cc_id)
                 try:
                     await hangup_call(cc_id)
                 except Exception as e:
