@@ -195,6 +195,7 @@ def _rebuild_hot_cache():
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
+            "voice_speed": 0.9,
             "stability": 0.85,
             "similarity_boost": 0.80,
             "use_speaker_boost": False,
@@ -385,6 +386,7 @@ def sync_assistant_to_script():
                 patch_body["voice_settings"] = {
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
+                    "voice_speed": 0.9,
                     "stability": 0.85,
                     "similarity_boost": 0.80,
                     "use_speaker_boost": False,
@@ -2069,6 +2071,9 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         "greeting": greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
+        "telephony_settings": {
+            "user_idle_timeout_seconds": 300,
+        },
     }
     ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:
