@@ -196,8 +196,8 @@ def _rebuild_hot_cache():
             "type": "elevenlabs",
             "api_key_ref": ref,
             "voice_speed": 0.9,
-            "stability": 0.70,
-            "similarity_boost": 0.85,
+            "stability": 0.85,
+            "similarity_boost": 0.75,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -386,10 +386,8 @@ def sync_assistant_to_script():
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
-                    "stability": 0.70,
-                    "similarity_boost": 0.85,
-                    "style": 0.15,
-                    "use_speaker_boost": True,
+                    "stability": 0.85,
+                    "similarity_boost": 0.75,
                 }
             r = httpx.patch(
                 f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
