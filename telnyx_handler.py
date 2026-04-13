@@ -334,6 +334,7 @@ async def _elevenlabs_direct_to_playback(call_control_id: str, payload: str) -> 
             "stability": 0.85,
             "similarity_boost": 0.80,
             "use_speaker_boost": False,
+            "speed": 0.9,
         },
     }
     headers = {
@@ -341,7 +342,7 @@ async def _elevenlabs_direct_to_playback(call_control_id: str, payload: str) -> 
         "Content-Type": "application/json",
         "Accept": "audio/mpeg",
     }
-    params: dict[str, str] = {"output_format": "mp3_44100_128"}
+    params: dict[str, str] = {"output_format": "mp3_22050_32"}
 
     async def _fetch_mp3(use_stream: bool) -> bytes:
         url = (
@@ -351,7 +352,7 @@ async def _elevenlabs_direct_to_playback(call_control_id: str, payload: str) -> 
         )
         p = dict(params)
         if use_stream:
-            p["optimize_streaming_latency"] = "4"
+            p["optimize_streaming_latency"] = "2"
         async with httpx.AsyncClient(timeout=15.0) as ac:
             if use_stream:
                 async with ac.stream("POST", url, json=el_body, headers=headers, params=p) as r:

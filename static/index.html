@@ -585,6 +585,12 @@ tbody tr.clickable { cursor: pointer; }
                 </select>
               </div>
               <div class="form-group">
+                <label>Voice</label>
+                <select id="campaignVoiceSelect">
+                  <option value="">Default Voice</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label>Break Between Calls (sec)</label>
                 <input type="number" id="autoCallBreak" min="5" value="60" placeholder="60"/>
               </div>
@@ -1452,6 +1458,7 @@ function navigate(page) {
   else if (page === 'campaigns') {
     loadCampaignsList();
     loadCampaignAgentOptions();
+    loadCampaignVoiceOptions();
   }
   else if (page === 'bella') loadBellaPage();
   else if (page === 'contacts') loadContacts();
@@ -1716,6 +1723,17 @@ async function loadCampaignAgentOptions() {
   });
 }
 
+async function loadCampaignVoiceOptions() {
+  const d = await GET('/api/voices');
+  const voices = (d && d.voices) ? d.voices : [];
+  const sel = document.getElementById('campaignVoiceSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+  voices.forEach(v => {
+    sel.innerHTML += '<option value="' + escHtml(v.id) + '">' + escHtml(v.name) + '</option>';
+  });
+}
+
 async function uploadCSV() {
   const file = document.getElementById('csvFile').files[0];
   if (!file) return toast('Please select a file', 'error');
@@ -1770,6 +1788,7 @@ async function createAndStartCampaign() {
   if (!name) return toast('Enter a campaign name', 'error');
   if (campaignQueue.length === 0) return toast('Add prospects first', 'error');
   const agentId = document.getElementById('campaignAgentSelect').value;
+  const voiceId = document.getElementById('campaignVoiceSelect').value;
   const breakSec = parseInt(document.getElementById('autoCallBreak').value) || 60;
   const autoCall = document.getElementById('autoCallToggle').checked;
 
@@ -1777,6 +1796,7 @@ async function createAndStartCampaign() {
     name: name,
     prospects: campaignQueue,
     agent_id: agentId,
+    voice_id: voiceId,
     spacing_seconds: breakSec,
     auto_mode: autoCall,
     start_now: true
@@ -1795,12 +1815,14 @@ async function saveCampaignDraft() {
   if (!name) return toast('Enter a campaign name', 'error');
   if (campaignQueue.length === 0) return toast('Add prospects first', 'error');
   const agentId = document.getElementById('campaignAgentSelect').value;
+  const voiceId = document.getElementById('campaignVoiceSelect').value;
   const breakSec = parseInt(document.getElementById('autoCallBreak').value) || 60;
 
   const payload = {
     name: name,
     prospects: campaignQueue,
     agent_id: agentId,
+    voice_id: voiceId,
     spacing_seconds: breakSec,
     auto_mode: true,
     start_now: false

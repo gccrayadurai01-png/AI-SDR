@@ -1,1 +1,40 @@
-[]
+[
+  {
+    "id": "626dca69",
+    "name": "SupportIcon - Meddic",
+    "type": "outbound",
+    "status": "active",
+    "created_at": "2026-04-13T16:16:04.085824",
+    "sdr_name": "Sarah",
+    "company_name": "SupportIcon",
+    "call_objective": "Book a 15-minute demo to show how AI can reduce support ticket volume",
+    "target_persona": "VP of Customer Support, Support Directors, Head of Customer Success at SaaS companies with 50-500 employees experiencing high support ticket volumes",
+    "value_proposition": "We help support teams reduce ticket volume by up to 40% using AI that automatically resolves common customer issues before they reach human agents. Our platform integrates seamlessly with existing support tools and learns from your team's responses to continuously improve resolution accuracy.",
+    "opening_line": "Hi {name}, this is {sdr_name} from {company}. We help teams hit their KPIs. Quick question \u2014 how are you tracking success today?",
+    "discovery_questions": "How do you measure success in this area?\nWho signs off on decisions like this?\nWhat factors matter most when evaluating solutions?\nWhat's the #1 thing you'd fix if you could?",
+    "objection_handling": "Not interested: Understood \u2014 what metrics are you focused on this quarter?\nToo busy: When would be better? I want to make sure this is relevant.\nHave a solution: How's it tracking against your KPIs?\nNo budget: If we could show measurable ROI, who would need to see it?",
+    "booking_phrase": "Based on what you've shared about your support challenges, I'd love to show you a quick 15-minute demo of how other companies in your space have reduced their ticket volume significantly. Do you have 15 minutes available Tuesday afternoon or would Wednesday morning work better?",
+    "voicemail_message": "Hi {name}, this is {sdr_name} from SupportIcon. I'm reaching out because I help support teams at companies like {company} reduce their ticket volume by up to 40% using AI that resolves common issues before they reach your team. I'd love to show you a quick 15-minute demo of how this works. Please give me a call back at this number or I'll try you again tomorrow. Thanks!",
+    "website": "https://supporticon.com/",
+    "sales_technique": "meddic"
+  },
+  {
+    "id": "a85cd595",
+    "name": "SupportIcon - Sandler",
+    "type": "outbound",
+    "status": "active",
+    "created_at": "2026-04-13T17:23:55.371205",
+    "sdr_name": "Sarah",
+    "company_name": "SupportIcon",
+    "call_objective": "Book a 15-minute demo to show how AI can reduce support ticket volume",
+    "target_persona": "VP of Customer Support, Support Directors, Head of Customer Success at SaaS companies with 50-500 employees experiencing high support ticket volumes",
+    "value_proposition": "We help support teams reduce ticket volume by up to 40% using AI that automatically resolves common customer issues before they reach human agents. Our platform integrates seamlessly with existing support tools and learns from your team's responses to continuously improve resolution accuracy.",
+    "opening_line": "Hi {name}, this is {sdr_name} from {company} \u2014 did I catch you at a bad time?",
+    "discovery_questions": "What tools are you currently using to handle this?\nWhat's the biggest challenge you're facing?\nHow are you measuring success today?\nWho else is involved in decisions like this?",
+    "objection_handling": "Not interested: Totally fair \u2014 can I ask what you're using today?\nToo busy: When would be a better time to chat?\nSend email: A quick 15-min call might be more valuable.\nWe have a solution: How's that working for you? Any gaps?",
+    "booking_phrase": "Based on what you've shared about your support challenges, I'd love to show you a quick 15-minute demo of how other companies in your space have reduced their ticket volume significantly. Do you have 15 minutes available Tuesday afternoon or would Wednesday morning work better?",
+    "voicemail_message": "Hi {name}, this is {sdr_name} from SupportIcon. I'm reaching out because I help support teams at companies like {company} reduce their ticket volume by up to 40% using AI that resolves common issues before they reach your team. I'd love to show you a quick 15-minute demo of how this works. Please give me a call back at this number or I'll try you again tomorrow. Thanks!",
+    "website": "https://supporticon.com/",
+    "sales_technique": "sandler"
+  }
+]

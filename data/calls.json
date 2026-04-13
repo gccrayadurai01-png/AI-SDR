@@ -1,5 +1,306 @@
 [
   {
+    "call_control_id": "v3:ZoH2n_EqY-EmZbWLB5I91CNcA53OuriyAEbQ5oItZAHoN8_W7YGVmg",
+    "call_leg_id": "09c2bda8-376c-11f1-9712-02420aef50a1",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [
+      {
+        "role": "agent",
+        "text": "[VOICEMAIL] Hi raya, this is Sarah from SupportIcon. I'm reaching out because I help support teams at companies like SupportIcon reduce their ticket volume by up to 40% using AI that resolves common issues before they reach your team. I'd love to show you a quick 15-minute demo of how this works. Please give me a call back at this number or I'll try you again tomorrow. Thanks!"
+      }
+    ],
+    "started_at": "2026-04-13T19:07:38.877009",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-13/09c2bda8-376c-11f1-9712-02420aef50a1-1776107271377882.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260413%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T190818Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=87467de9375662d56af0200014ec2733185d1ec939c4fd9fd690e65399f87aa8",
+    "ai_assistant": false,
+    "voicemail": true,
+    "ended_at": "2026-04-13T19:08:18.240849",
+    "duration_seconds": 39,
+    "insights": {
+      "short_tag": "Initial interest",
+      "summary": "Conversation with Raya from Revoyant Inc about AI solution to reduce support ticket volume. Sarah introduced the topic and Raya expressed interest. Following Sandler methodology to build trust and understand needs before determining fit.",
+      "outcome": "interested",
+      "sentiment": "positive",
+      "interest_level": 75,
+      "action_items": [
+        "Ask discovery questions to understand Raya's specific needs",
+        "Determine if AI solution is good fit for Revoyant Inc",
+        "Continue following Sandler methodology"
+      ],
+      "key_points": [
+        "Prospect is Raya from Revoyant Inc",
+        "Discussion about AI to cut ticket volume",
+        "Raya has expressed interest",
+        "Using Sandler selling methodology"
+      ],
+      "objections": [],
+      "next_step": "Ask discovery questions to determine solution fit",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [
+        "High support ticket volume"
+      ],
+      "buying_signals": [
+        "Expressed interest in AI solution for ticket reduction"
+      ]
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:ZoH2n_EqY-EmZbWLB5I91CNcA53OuriyAEbQ5oItZAHoN8_W7YGVmg",
+      "call_leg_id": "09c2bda8-376c-11f1-9712-02420aef50a1",
+      "call_session_id": "09bcf1f2-376c-11f1-8406-02420aef50a1",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "54018b42-ccec-4324-858f-5f7c5bf31855",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya from Revoyant Inc, and the goal is to discuss potential support for their team using AI to cut ticket volume. The assistant, Sarah, has introduced herself and the topic, and Raya has expressed interest. The conversation is following the Sandler selling methodology, aiming to build trust and understand Raya's needs. The next step is to ask a few questions to determine if the solution is a good fit for Revoyant Inc."
+        }
+      ],
+      "to": "+918220593392"
+    }
+  },
+  {
+    "call_control_id": "v3:2oI_kHnamzOkje-IeZkxXpowFRbl1jbwGZuFut-KHMgn2pK4s3_C3A",
+    "call_leg_id": "0a01705e-376a-11f1-b99c-02420aef50a1",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [
+      {
+        "role": "agent",
+        "text": "[VOICEMAIL] Hi raya, this is Sarah from SupportIcon. I'm reaching out because I help support teams at companies like SupportIcon reduce their ticket volume by up to 40% using AI that resolves common issues before they reach your team. I'd love to show you a quick 15-minute demo of how this works. Please give me a call back at this number or I'll try you again tomorrow. Thanks!"
+      }
+    ],
+    "started_at": "2026-04-13T18:53:20.333190",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-13/0a01705e-376a-11f1-b99c-02420aef50a1-1776106409319527.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260413%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T185400Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=94dad91319b83ec01b8b38c693ed7e1835da10b9f05591418e39b522374a9d00",
+    "ai_assistant": false,
+    "voicemail": true,
+    "ended_at": "2026-04-13T18:53:58.768670",
+    "duration_seconds": 38,
+    "insights": {
+      "short_tag": "Rapport building",
+      "summary": "Initial contact with Raya from Revoyant Inc using Sandler methodology. Sarah successfully built rapport and set expectations for the call. Raya agreed to continue the conversation to explore current support management tools.",
+      "outcome": "interested",
+      "sentiment": "positive",
+      "interest_level": 65,
+      "action_items": [
+        "Continue discovery of current support tools",
+        "Identify specific pain points in support management",
+        "Explore budget and decision-making process"
+      ],
+      "key_points": [
+        "Contact established with Raya from Revoyant Inc",
+        "Using Sandler selling methodology",
+        "Prospect agreed to continue conversation",
+        "Focus area identified as support management tools"
+      ],
+      "objections": [],
+      "next_step": "Proceed with discovery phase to understand current support tools and pain points",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": [
+        "Agreed to spare time for conversation",
+        "Willing to discuss current support management tools"
+      ]
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:2oI_kHnamzOkje-IeZkxXpowFRbl1jbwGZuFut-KHMgn2pK4s3_C3A",
+      "call_leg_id": "0a01705e-376a-11f1-b99c-02420aef50a1",
+      "call_session_id": "09fd8bd8-376a-11f1-87b6-02420aef50a1",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "d7ed54ad-be42-42d0-9280-f1b2562df2b4",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya from Revoyant Inc. The goal is to have a natural conversation using the Sandler selling methodology. The assistant, Sarah, has started by building rapport and setting expectations for the call. Raya has agreed to spare a moment, and the conversation is proceeding with the aim of discovering their current tools and potential pain points in managing support. The next step is to explore Raya's current support management tools and identify potential areas for improvement."
+        }
+      ],
+      "to": "+918220593392"
+    }
+  },
+  {
+    "call_control_id": "v3:zLyMsW30sXhMT0ODfRH4lGgAPjuTxCvuoME3X8H9-Iz9u6rGm2lPwA",
+    "call_leg_id": "f87c9494-3769-11f1-b3d4-02420aef50a1",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-13T18:52:50.960732",
+    "recording_url": null,
+    "ended_at": "2026-04-13T18:53:11.212444",
+    "duration_seconds": 20,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:R3or_Zit4i58IN2uynUEwCLa3ae3QcbnsMPZzlAoA29qZsGvcPAZLA",
+    "call_leg_id": "e67545f2-3764-11f1-98bd-02420aef8fa1",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-13T18:16:33.203922",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-13/e67545f2-3764-11f1-98bd-02420aef8fa1-1776104203137129.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260413%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T181713Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=23bcee2c49e3d9bff72b2a679754acebd0d61538451ec41c0d7a23c054947c01",
+    "ended_at": "2026-04-13T18:17:11.545436",
+    "duration_seconds": 38,
+    "insights": {
+      "short_tag": "Call started",
+      "summary": "Initial conversation with Raya from Revoyant Inc using Sandler methodology. Sarah has begun building rapport and setting expectations for the call. The conversation is in early discovery phase with questions about current support tools.",
+      "outcome": "interested",
+      "sentiment": "neutral",
+      "interest_level": 50,
+      "action_items": [
+        "Continue discovery process to identify pain points",
+        "Explore current support tools in more detail",
+        "Uncover specific business challenges"
+      ],
+      "key_points": [
+        "Prospect is Raya from Revoyant Inc",
+        "Using Sandler selling methodology",
+        "Rapport building phase completed",
+        "Initial questions about support tools asked"
+      ],
+      "objections": [],
+      "next_step": "Continue needs discovery to identify pain points and business challenges",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": [
+        "Prospect engaged in conversation",
+        "Willing to discuss current tools"
+      ]
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:R3or_Zit4i58IN2uynUEwCLa3ae3QcbnsMPZzlAoA29qZsGvcPAZLA",
+      "call_leg_id": "e67545f2-3764-11f1-98bd-02420aef8fa1",
+      "call_session_id": "e6724f28-3764-11f1-a26d-02420aef8fa1",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "76c3add4-b682-4de6-93bb-0edf96163ee5",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya from Revoyant Inc. The goal is to have a natural conversation using the Sandler selling methodology. The assistant, Sarah, has started by building rapport and setting expectations for the call. She has asked Raya about the support tools they are currently using. No specific pain points or interests have been discussed yet. The conversation is in its initial stages, with the next step being to discover Raya's needs and potential pain points."
+        }
+      ],
+      "to": "+918220593392"
+    }
+  },
+  {
+    "call_control_id": "v3:qU8YAYmiy6OoaZxepKwRqxKNfyhvmgYJgqbcbfjfpyJ7Fg1i8iuOCw",
+    "call_leg_id": "20de4fd2-3755-11f1-8bf2-02420aef5520",
+    "state": "ended",
+    "to": "+918667347679",
+    "prospect_name": "Mani",
+    "company": "supporticon",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-13T16:23:39.179364",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-13/20de4fd2-3755-11f1-8bf2-02420aef5520-1776097428086382.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260413%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T162417Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=1189a424a00305a7d27be6dc477bd969b93b3e7f9170fff0dc202e3164ec29bf",
+    "ended_at": "2026-04-13T16:24:17.468541",
+    "duration_seconds": 38,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:qU8YAYmiy6OoaZxepKwRqxKNfyhvmgYJgqbcbfjfpyJ7Fg1i8iuOCw",
+      "call_leg_id": "20de4fd2-3755-11f1-8bf2-02420aef5520",
+      "call_session_id": "20dabc82-3755-11f1-82da-02420aef5520",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "e3af18be-39e4-4d99-8ad1-b60ade6f5066",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Mani from SupportIcon, discussing their success tracking methods. Mani mentioned they are tracking Average Support Conversation (ASC) as a key metric. The assistant, Sarah, is using the Sandler selling methodology to build rapport and understand Mani's pain points. The current goal is to understand what a good ASC looks like for Mani's team, to potentially connect their needs to a solution."
+        }
+      ],
+      "to": "+918667347679"
+    }
+  },
+  {
+    "call_control_id": "v3:7pBUdNS7VFfPn7Ts8bK9dUynLD6nK6TAooQb9wP7cbKoF_h4GDz0Mw",
+    "call_leg_id": "d596b010-3753-11f1-844d-02420aef8c20",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "raya@revoyant.com",
+    "transcript": [],
+    "started_at": "2026-04-13T16:14:23.442412",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-13/d596b010-3753-11f1-844d-02420aef8c20-1776096873936095.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260413%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260413T161503Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=38fb072a93bf5a05f513d9c2a22d6bddcab2f2ab17a9d382d5781841fcd18690",
+    "ended_at": "2026-04-13T16:15:03.572011",
+    "duration_seconds": 40,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:7pBUdNS7VFfPn7Ts8bK9dUynLD6nK6TAooQb9wP7cbKoF_h4GDz0Mw",
+      "call_leg_id": "d596b010-3753-11f1-844d-02420aef8c20",
+      "call_session_id": "d5930280-3753-11f1-840e-02420aef8c20",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "21e5bd5c-b90e-4fb5-a55f-2ba340b80ce4",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya from Revoyant Inc. The goal is to gather information about their team and tools, as no detailed information was found prior to the conversation. Anthony, the voice assistant, has initiated a call with Raya and is attempting to ask questions, but has not yet disclosed the purpose of the call. Raya has agreed to listen to Anthony's questions. The conversation is still in its introductory phase."
+        }
+      ],
+      "to": "+918220593392"
+    }
+  },
+  {
     "call_control_id": "v3:Q5wZBDXlAduOxjGhqEnDtdIN2nWd2wcRz1dgz2sOCt9i22xpQjosKA",
     "call_leg_id": "190a41b0-371b-11f1-9831-02420aef5220",
     "state": "ended",

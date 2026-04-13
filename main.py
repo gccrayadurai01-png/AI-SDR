@@ -842,6 +842,19 @@ async def api_tts_config():
     }
 
 
+@app.get("/api/voices")
+async def api_list_voices():
+    """Return available ElevenLabs voices for campaign voice selection."""
+    default_id = config.ELEVENLABS_VOICE_ID or ""
+    voices = [
+        {"id": "", "name": "Default Voice", "description": "Uses the default ElevenLabs voice from settings"},
+    ]
+    if default_id:
+        voices.append({"id": default_id, "name": "Sarah (Default)", "description": "Current default voice"})
+    voices.append({"id": "a9paacvZxTlkONiCPzfC", "name": "Indian Voice", "description": "Indian accent voice"})
+    return {"voices": voices}
+
+
 @app.post("/api/settings")
 async def save_settings(request: Request):
     import re
@@ -1537,6 +1550,7 @@ async def create_campaign(request: Request):
         "created_at": datetime.now().isoformat(),
         "status": "draft",
         "agent_id": body.get("agent_id", ""),
+        "voice_id": body.get("voice_id", ""),
         "spacing_seconds": body.get("spacing_seconds", 60),
         "auto_mode": body.get("auto_mode", True),
         "prospects": prospects,
@@ -1633,6 +1647,14 @@ async def _start_named_campaign(camp_id: str) -> bool:
             sync_assistant_to_script()
 
     spacing = c.get("spacing_seconds", 60)
+
+    # ── Voice override: if campaign specifies a voice_id, use it for all calls ──
+    _original_voice_id = config.ELEVENLABS_VOICE_ID
+    campaign_voice_id = (c.get("voice_id") or "").strip()
+    if campaign_voice_id:
+        config.ELEVENLABS_VOICE_ID = campaign_voice_id
+        logger.info("Campaign voice override: %s → %s", _original_voice_id, campaign_voice_id)
+
     _update_campaign(camp_id, {"status": "running", "started_at": datetime.now().isoformat()})
     _active_campaign_id = camp_id
 
@@ -1662,6 +1684,10 @@ async def _start_named_campaign(camp_id: str) -> bool:
     async def _on_done():
         """Called when campaign runner finishes — update persisted state."""
         global _active_campaign_id
+        # Restore original voice when campaign ends
+        if campaign_voice_id:
+            config.ELEVENLABS_VOICE_ID = _original_voice_id
+            logger.info("Campaign ended — voice restored to: %s", _original_voice_id)
         st = campaign_lib.state
         updates = {
             "dialed": st.index,
@@ -2072,6 +2098,7 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         "greeting": greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
+        "telephony_settings": {"user_idle_timeout_secs": 300},
     }
     ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:

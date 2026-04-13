@@ -1,13 +1,13 @@
 {
-  "sdr_name": "Anthony",
-  "company_name": "",
-  "call_objective": "Book a 15-minute discovery call",
-  "target_persona": "",
-  "value_proposition": "",
-  "opening_line": "Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?",
-  "discovery_questions": "What tools are you currently using to handle this?\nWhat's the biggest challenge you're facing in this area?\nHow are you measuring success today?\nWho else is involved in decisions like this?",
-  "objection_handling": "Not interested: Totally fair — can I ask what you're using today?\nToo busy: When would be a better time to chat?\nSend email: Can do — but a quick 15-min call might be more valuable since every situation is different.\nWe have a solution: Great — how's that working for you? Any gaps?",
-  "booking_phrase": "Would you have 15 minutes this week or next for a quick chat?",
-  "voicemail_message": "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we help companies like yours tackle key challenges. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
+  "sdr_name": "Sarah",
+  "company_name": "SupportIcon",
+  "call_objective": "Book a 15-minute demo to show how AI can reduce support ticket volume",
+  "target_persona": "VP of Customer Support, Support Directors, Head of Customer Success at SaaS companies with 50-500 employees experiencing high support ticket volumes",
+  "value_proposition": "We help support teams reduce ticket volume by up to 40% using AI that automatically resolves common customer issues before they reach human agents. Our platform integrates seamlessly with existing support tools and learns from your team's responses to continuously improve resolution accuracy.",
+  "opening_line": "Hi {name}, this is {sdr_name} from {company} \u2014 did I catch you at a bad time?",
+  "discovery_questions": "What tools are you currently using to handle this?\nWhat's the biggest challenge you're facing?\nHow are you measuring success today?\nWho else is involved in decisions like this?",
+  "objection_handling": "Not interested: Totally fair \u2014 can I ask what you're using today?\nToo busy: When would be a better time to chat?\nSend email: A quick 15-min call might be more valuable.\nWe have a solution: How's that working for you? Any gaps?",
+  "booking_phrase": "Based on what you've shared about your support challenges, I'd love to show you a quick 15-minute demo of how other companies in your space have reduced their ticket volume significantly. Do you have 15 minutes available Tuesday afternoon or would Wednesday morning work better?",
+  "voicemail_message": "Hi {name}, this is {sdr_name} from SupportIcon. I'm reaching out because I help support teams at companies like {company} reduce their ticket volume by up to 40% using AI that resolves common issues before they reach your team. I'd love to show you a quick 15-minute demo of how this works. Please give me a call back at this number or I'll try you again tomorrow. Thanks!",
   "sales_technique": "sandler"
 }
