@@ -2,6 +2,7 @@
 AI SDR Server — Clean single-file version.
 Telnyx speak → transcription → Claude → speak → loop.
 """
+from __future__ import annotations
 
 import asyncio
 import json

@@ -2,6 +2,7 @@
 Telnyx Call Control Handler — v4 SDK
 Uses Telnyx server-side transcription (no WebSocket audio streaming needed).
 """
+from __future__ import annotations
 
 import asyncio
 import base64
@@ -329,6 +330,12 @@ async def _elevenlabs_direct_to_playback(call_control_id: str, payload: str) -> 
     el_body = {
         "text": payload,
         "model_id": config.ELEVENLABS_MODEL_ID or "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.70,
+            "similarity_boost": 0.85,
+            "style": 0.15,
+            "use_speaker_boost": True,
+        },
     }
     headers = {
         "xi-api-key": config.ELEVENLABS_API_KEY or "",

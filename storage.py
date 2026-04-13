@@ -17,11 +17,11 @@ SCRIPT_FILE = DATA_DIR / "script.json"
 
 DEFAULT_SCRIPT: dict[str, Any] = {
     "sdr_name":                "Alex",
-    "company_name":            "CloudFuze",
-    "call_objective":          "Book a 15-minute discovery call to demo CloudFuze Manage",
-    "target_persona":          "VP/Director of IT, SaaS Ops, Security, or Cloud at mid-market and enterprise companies",
-    "value_proposition":       "CloudFuze Manage gives teams full visibility into their SaaS and AI app stack — saving ~30% on licenses, catching shadow IT, and closing security gaps before AI rollouts like Copilot or Gemini.",
-    "voicemail_message":       "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we work with companies like yours to help get full visibility into their SaaS and AI app stack. A lot of teams we talk to are dealing with unused licenses, shadow IT, and permission risks they don't even know about — especially before rolling out tools like Copilot or Gemini. CloudFuze Manage gives you a single dashboard to see all of that — app usage, who has access to what, and where the security gaps are. It usually saves teams around 30 percent on SaaS spend in the first few months. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
+    "company_name":            "Your Company",
+    "call_objective":          "Book a 15-minute discovery call",
+    "target_persona":          "Decision makers at mid-market and enterprise companies",
+    "value_proposition":       "We help companies solve their biggest challenges with our solution.",
+    "voicemail_message":       "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we help companies like yours tackle key challenges. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
 }
 
 

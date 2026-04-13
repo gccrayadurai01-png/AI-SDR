@@ -1,129 +1,164 @@
 {
   "contacts": [
     {
-      "id": "seed-1",
-      "name": "Sarah Chen",
-      "email": "sarah@techcorp.com",
-      "phone": "+1 415-555-0101",
-      "company": "TechCorp",
-      "title": "VP Engineering",
-      "status": "qualified",
-      "score": 85,
-      "tags": [
-        "Enterprise",
-        "Tech"
-      ],
-      "call_history": [
-        {
-          "at": "2026-03-28T17:34:00+00:00",
-          "outcome": "Interested",
-          "summary": "Discussed platform capabilities. Prospect showed interest in AI calling features. Requested demo."
-        },
-        {
-          "at": "2026-03-20T14:00:00+00:00",
-          "outcome": "Follow-up",
-          "summary": "Left voicemail. Asked to reconnect this week."
-        }
-      ],
-      "emails_sent": [
-        {
-          "subject": "Follow-up: Meeting Request",
-          "sent_at": "2026-03-20T10:00:00+00:00",
-          "opened": true
-        }
-      ]
-    },
-    {
-      "id": "seed-2",
-      "name": "Marcus Webb",
-      "email": "marcus@dataflow.io",
-      "phone": "+1 415-555-0142",
-      "company": "DataFlow",
-      "title": "CTO",
-      "status": "contacted",
-      "score": 62,
-      "tags": [
-        "Mid-Market"
-      ],
-      "call_history": [
-        {
-          "at": "2026-03-25T16:10:00+00:00",
-          "outcome": "No Answer",
-          "summary": "No pickup. Scheduled retry."
-        }
-      ],
-      "emails_sent": []
-    },
-    {
-      "id": "seed-3",
-      "name": "Elena Park",
-      "email": "elena@nimbus.ai",
-      "phone": "+1 650-555-0199",
-      "company": "Nimbus AI",
-      "title": "Head of IT",
-      "status": "meeting_booked",
-      "score": 92,
-      "tags": [
-        "AI",
-        "Enterprise"
-      ],
-      "call_history": [],
-      "emails_sent": [
-        {
-          "subject": "CloudFuze — quick intro",
-          "sent_at": "2026-03-22T09:30:00+00:00",
-          "opened": true
-        }
-      ]
-    },
-    {
-      "id": "seed-4",
-      "name": "James O'Neil",
-      "email": "j.oneil@legacy.com",
-      "phone": "+1 212-555-0177",
-      "company": "Legacy Systems Inc",
-      "title": "Director Ops",
+      "id": "a0ea54bb-373c-4ca7-8572-3ec550ab6717",
+      "name": "Ephraim Deary",
+      "email": "ephraim.deary@metrobrokers.com",
+      "phone": "'+1 404-843-2500",
+      "company": "Better Homes and Gardens Real Estate Metro Brokers",
+      "title": "Information Technology Administrator",
       "status": "new",
-      "score": 34,
-      "tags": [],
-      "call_history": [],
-      "emails_sent": []
-    },
-    {
-      "id": "seed-5",
-      "name": "Priya Shah",
-      "email": "priya@bright.co",
-      "phone": "+1 408-555-0123",
-      "company": "Bright Co",
-      "title": "CISO",
-      "status": "closed",
-      "score": 78,
+      "score": 0,
       "tags": [
-        "Security"
-      ],
-      "call_history": [
-        {
-          "at": "2026-03-15T11:00:00+00:00",
-          "outcome": "Interested",
-          "summary": "Wants pricing follow-up next quarter."
-        }
-      ],
-      "emails_sent": []
-    },
-    {
-      "id": "seed-6",
-      "name": "David Kim",
-      "email": "dkim@vertex.net",
-      "phone": "+1 206-555-0165",
-      "company": "Vertex Net",
-      "title": "IT Manager",
-      "status": "qualified",
-      "score": 71,
-      "tags": [
-        "Tech"
+        "campaign:new"
       ],
       "call_history": [],
-      "emails_sent": []
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.482560+00:00"
+    },
+    {
+      "id": "554dcfb3-fd02-415b-a0ea-a9b8e6064b35",
+      "name": "Stephen Williams",
+      "email": "stephen.williams@c-tran.org",
+      "phone": "'+1 360-695-0123",
+      "company": "C-TRAN",
+      "title": "Information Technology Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.528149+00:00"
+    },
+    {
+      "id": "936969c6-be20-43d6-b971-2142e3949d8e",
+      "name": "Brett Sanders",
+      "email": "bsanders@copado.com",
+      "phone": "'+1 917-615-2434",
+      "company": "Copado",
+      "title": "IT Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.533110+00:00"
+    },
+    {
+      "id": "9a198ab4-0971-4186-a58b-81f17e5aa192",
+      "name": "Obaid Raza",
+      "email": "obaid@cphysicians.org",
+      "phone": "'+1 630-320-6871",
+      "company": "Community Physicians",
+      "title": "Information Technology Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.535474+00:00"
+    },
+    {
+      "id": "77dc52fc-aa9c-4f1d-82ba-50a0de423bfc",
+      "name": "Andrew Montjoy",
+      "email": "andrew.montjoy@fidelissecurity.com",
+      "phone": "'+1 301-652-7190",
+      "company": "Fidelis Security",
+      "title": "Information Technology Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.538737+00:00"
+    },
+    {
+      "id": "9e545e3e-e653-4c7d-81b8-47e974e0a140",
+      "name": "Michael Custer",
+      "email": "michael.custer@outschool.com",
+      "phone": "'+1 415-968-1685",
+      "company": "Outschool",
+      "title": "IT Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.541132+00:00"
+    },
+    {
+      "id": "88d23001-bf45-4174-829a-4df023bb719c",
+      "name": "Zishe Katz",
+      "email": "zkatz@utaw.org",
+      "phone": "",
+      "company": "United Talmudical Academy",
+      "title": "IT Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.543522+00:00"
+    },
+    {
+      "id": "b2e30a7c-6b9e-4854-8139-bf98584d9f8c",
+      "name": "Marcos Almendariz",
+      "email": "marcos@mikulaitconsulting.com",
+      "phone": "'+1 234-620-1705",
+      "company": "MIKULA IT CONSULTING",
+      "title": "IT Admin",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.550617+00:00"
+    },
+    {
+      "id": "5ea71065-6b34-4ee1-8dae-eccb035e18a3",
+      "name": "Joshua Ryskoski",
+      "email": "jryskoski@weinbrennerusa.com",
+      "phone": "'+1 715-536-5521",
+      "company": "Weinbrenner Shoe Co Inc",
+      "title": "IT Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.555599+00:00"
+    },
+    {
+      "id": "d4dd75be-2b55-4275-acb7-f60f36d68905",
+      "name": "David Barta",
+      "email": "barta@walkerwarner.com",
+      "phone": "'+1 415-318-8903",
+      "company": "Walker Warner",
+      "title": "Information Technology Administrator",
+      "status": "new",
+      "score": 0,
+      "tags": [
+        "campaign:new"
+      ],
+      "call_history": [],
+      "emails_sent": [],
+      "created_at": "2026-04-13T09:27:52.558713+00:00"
     }
   ]
 }

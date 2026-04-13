@@ -1,18 +1,19 @@
 """
-AI SDR — FastAPI server
+Knight AI SDR — FastAPI server
 Uses Telnyx server-side transcription (no WebSocket audio streaming).
 Flow: call.answered → speak → start_transcription → call.transcription → Claude → speak → loop
 """
-
 from __future__ import annotations
 
 import asyncio
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 import json
 import logging
+import re as _re
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from typing import Any
@@ -38,17 +39,7 @@ from campaign import (
 )
 import config
 import qa_kb
-from email_sequences import (
-    router as email_sequences_router,
-    email_delivery_ready,
-    smtp_ready,
-    start_email_scheduler,
-    stop_email_scheduler,
-    test_email_delivery,
-    test_smtp_connection,
-)
 from qa_kb_api import router as learn_router
-from email_oauth import router as email_oauth_router, oauth_connection_status
 from knowledge_base import get_full_knowledge, UPLOADED_DOCS_KNOWLEDGE, CLOUDFUZE_KNOWLEDGE
 from prospect_import import parse_csv_bytes, parse_xlsx_bytes
 from sdr_agent import (
@@ -75,7 +66,6 @@ from telnyx_handler import (
     estimate_tts_playback_seconds,
 )
 import contacts_store
-from post_call_email import resolve_prospect_email, run_post_call_followup_email
 from storage import (
     load_calls,
     save_call,
@@ -98,21 +88,41 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI):
-    """Starts email sequence scheduler; outbound Telnyx flow is unchanged."""
-    start_email_scheduler()
+    # Ensure data directory and files exist (for fresh deployments)
+    data_dir = Path(__file__).parent / "data"
+    data_dir.mkdir(exist_ok=True)
+    (data_dir / "research").mkdir(exist_ok=True)
+    defaults = {
+        "calls.json": "[]",
+        "contacts.json": '{"contacts": []}',
+        "script.json": json.dumps({
+            "sdr_name": "Anthony",
+            "company_name": "",
+            "call_objective": "Book a 15-minute discovery call",
+            "target_persona": "",
+            "value_proposition": "",
+            "opening_line": "Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?",
+            "discovery_questions": "What tools are you currently using?\nWhat's your biggest challenge?\nHow do you measure success?\nWho else is involved?",
+            "objection_handling": "Not interested: Totally fair — can I ask what you're using today?\nToo busy: When would be a better time?\nSend email: A quick 15-min call might be more valuable.\nWe have a solution: How's that working for you?",
+            "booking_phrase": "Would you have 15 minutes this week or next for a quick chat?",
+            "voicemail_message": "Hey {name}, this is {sdr_name} from {company}. I'd love to set up a quick call. Feel free to call me back!",
+        }),
+        "email_sequences.json": '{"sequences": []}',
+    }
+    for fname, default_content in defaults.items():
+        fpath = data_dir / fname
+        if not fpath.exists():
+            fpath.write_text(default_content)
     yield
-    stop_email_scheduler()
 
 
 # ─── app ────────────────────────────────────────────────────
-app = FastAPI(title="AI SDR", version="3.0.0", lifespan=_app_lifespan)
+app = FastAPI(title="Knight AI SDR", version="3.0.0", lifespan=_app_lifespan)
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-app.include_router(email_sequences_router)
 app.include_router(learn_router)
-app.include_router(email_oauth_router)
 
 # In-memory active calls: { call_control_id: {...} }
 active_calls: dict = {}
@@ -128,6 +138,10 @@ opened_calls: set = set()
 
 # Track AI Assistant activity (watchdog: detect silent assistant)
 _ai_assistant_first_event: dict[str, float] = {}  # cc_id -> timestamp of first AI event
+
+# ─── Health check background task ────────────────────────
+_health_check_task: asyncio.Task | None = None
+_last_health_check: dict[str, Any] = {"status": "pending", "last_run": None, "result": None}
 
 # ─── Telnyx AI Assistant (speech-to-speech) ───────────────
 import telnyx
@@ -182,6 +196,8 @@ def _rebuild_hot_cache():
             "type": "elevenlabs",
             "api_key_ref": ref,
             "voice_speed": 0.9,
+            "stability": 0.70,
+            "similarity_boost": 0.85,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -190,70 +206,139 @@ def _rebuild_hot_cache():
                 len(_cached_script), len(_cached_knowledge_history), vkw.get("voice", "?")[:40])
 
 
+SALES_TECHNIQUES = {
+    "sandler": {
+        "name": "Sandler",
+        "description": "Low-pressure, Pain-based, Consultant approach",
+        "prompt": """SANDLER METHOD:
+1. BOND: Wait for response. Then low-pressure: "Not sure if this is relevant -- got a sec?"
+2. CONTRACT: "Quick question or two, if it doesn't fit, no worries. Fair?"
+3. PAIN: Ask what tools they use, what's broken. Listen, reflect, go deeper.
+4. BUDGET: "Is that something with budget?" "Who else weighs in?"
+5. BOOK: "Worth a quick 15-min look? Thursday or Friday?"
+6. CLOSE: Confirm, thank, bye.""",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?",
+        "objection_handling": "Not interested: Totally fair — can I ask what you're using today?\nToo busy: When would be a better time to chat?\nSend email: A quick 15-min call might be more valuable.\nWe have a solution: How's that working for you? Any gaps?",
+    },
+    "gap": {
+        "name": "Gap Selling",
+        "description": "Quantifying Current vs. Future State",
+        "prompt": """GAP SELLING METHOD:
+1. CURRENT STATE: Ask about their current situation. "Walk me through how you handle X today."
+2. IDENTIFY PROBLEMS: "What's not working?" "What does that cost you?"
+3. FUTURE STATE: "If you could wave a magic wand, what would it look like?"
+4. THE GAP: Quantify the gap between current and future. "So that gap is costing you roughly X?"
+5. BRIDGE: Position your solution as the bridge. "We close exactly that gap."
+6. BOOK: "Let me show you how — 15 minutes this week?"
+""",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. I help companies like yours close the gap between where they are and where they want to be. Got a quick minute?",
+        "objection_handling": "Not interested: What does your current process cost you monthly?\nToo busy: Totally get it. When's a better time?\nHave a solution: How close is it getting you to your ideal state?\nNo budget: Usually the gap we close pays for itself. Worth a quick look?",
+    },
+    "challenger": {
+        "name": "Challenger",
+        "description": "Teach, Tailor, Take Control",
+        "prompt": """CHALLENGER METHOD:
+1. TEACH: Lead with an insight they don't know. "We've been seeing a trend with companies like yours..."
+2. TAILOR: Connect the insight to THEIR specific situation. "For a company your size, that usually means..."
+3. TAKE CONTROL: Be direct about next steps. Don't be afraid to push back respectfully.
+4. REFRAME: If they object, reframe the problem. "Most teams think X, but actually Y."
+5. COMMERCIAL TEACHING: Share a perspective that leads to your solution naturally.
+6. BOOK: "I've got a framework for this. 15 minutes — I'll share the data."
+""",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. I've been researching companies like {company_prospect} and found something interesting. Got 30 seconds?",
+        "objection_handling": "Not interested: Fair — but most of our customers said that before seeing the data. What if I shared one insight?\nToo busy: I'll be quick — one question: are you seeing X trend?\nHave a solution: Interesting — are you getting Y result? Most aren't.\nNo budget: This usually saves more than it costs. Worth validating?",
+    },
+    "spin": {
+        "name": "SPIN",
+        "description": "Questioning to discover needs",
+        "prompt": """SPIN METHOD:
+1. SITUATION: Ask about their current setup. "What are you using for X right now?"
+2. PROBLEM: Identify issues. "What challenges do you run into with that?"
+3. IMPLICATION: Explore impact. "When that happens, what does it cost you?"
+4. NEED-PAYOFF: Get them to articulate value. "If you could fix that, what would it mean for your team?"
+5. SOLUTION: Brief connection to your offering. Only AFTER they articulate the need.
+6. BOOK: "Sounds like it's worth exploring. 15 minutes this week?"
+""",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. I work with teams that handle {target_area} — mind if I ask a quick question?",
+        "objection_handling": "Not interested: No worries — quick question though, how are you handling X today?\nToo busy: Totally understand. When would work better?\nHave a solution: Great — how's it performing on Y?\nNo budget: If it saved you Z hours a week, would that change things?",
+    },
+    "meddic": {
+        "name": "MEDDIC",
+        "description": "Rigorous Qualification Framework",
+        "prompt": """MEDDIC METHOD:
+1. METRICS: What metrics matter to them? "How do you measure success in this area?"
+2. ECONOMIC BUYER: "Who signs off on decisions like this?"
+3. DECISION CRITERIA: "What factors matter most when evaluating solutions?"
+4. DECISION PROCESS: "Walk me through how you'd evaluate something like this."
+5. IDENTIFY PAIN: "What's the #1 thing you'd fix if you could?"
+6. CHAMPION: Build them as your internal champion. "Would you be open to exploring this with your team?"
+7. BOOK: "Let me put together something specific for your metrics. 15 minutes?"
+""",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. We help teams hit their KPIs in {target_area}. Quick question — how are you tracking success there today?",
+        "objection_handling": "Not interested: Understood — what metrics are you focused on this quarter?\nToo busy: When would be better? I want to make sure this is relevant.\nHave a solution: How's it tracking against your KPIs?\nNo budget: If we could show measurable ROI, who would need to see it?",
+    },
+}
+
+
+def _get_technique_prompt(technique: str) -> str:
+    """Return the sales technique prompt block for the given technique key."""
+    tech = SALES_TECHNIQUES.get(technique, SALES_TECHNIQUES["sandler"])
+    return tech["prompt"]
+
+
 def get_system_prompt() -> str:
-    """Compact Sandler prompt for Telnyx AI Assistant -- must stay SHORT for voice to work."""
+    """Compact sales prompt for Telnyx AI Assistant -- must stay SHORT for voice to work."""
     s = load_script()
     sdr = s.get("sdr_name", "Alex")
-    co = s.get("company_name", "CloudFuze")
+    co = s.get("company_name", "Your Company")
     obj = s.get("call_objective", "Book a 15-minute discovery call")
     persona = s.get("target_persona", "IT / SaaS decision makers")
     vp = s.get("value_proposition", "")
 
-    return f"""You={sdr}, SDR at {co}. LIVE cold call. Never say you're AI.
+    technique = s.get("sales_technique", "sandler")
+    technique_block = _get_technique_prompt(technique)
+
+    return f"""You={sdr}, SDR at {co}. LIVE cold call. You are a real human, never say you're AI.
 Goal: {obj}. Target: {persona}.
 
-SANDLER:
-1. BOND: Casual opener. "Not sure if this is relevant for you -- got a sec?" Low-pressure.
-2. CONTRACT: "I'll ask a couple questions, if it doesn't fit, totally cool. Fair?"
-3. PAIN: Ask about THEIR world. What tools they use, what's broken, what costs them. ONE Q, listen, reflect, go deeper. Share a quick insight back: "Yeah teams we talk to hit that same wall." Then next Q.
-4. BUDGET+DECISION: After pain. "Is that something with budget?" "Who else weighs in?"
-5. FULFILL: Connect pain to solution briefly. "Might make sense to show you -- 15 min Thursday or Friday?"
-6. POST-SELL: Lock it, send invite, thank them.
+IMPORTANT: The greeting has ALREADY been spoken. Do NOT repeat it. Do NOT say hi again. Wait for the prospect to respond, then continue the conversation.
 
-STYLE:
-- EXCHANGE: They share, you give a relevant insight, then next question. Don't just collect OR just pitch.
-- 1-2 sentences max per turn. ONE question at a time.
-- Curious not scripted. "yeah", "got it", "makes sense", "interesting".
-- They ask you something? Answer briefly and honestly, then steer back with a question.
-- Never list features. Never monologue.
-OBJECTIONS: Busy=when's better. Not interested=one probe then respect. Has tool="how's that working?" No budget="usually saves money."
-END: Confirm, thank, bye.""".strip()
+RULES:
+- Reply in 1 sentence max. NEVER more than 15 words per turn.
+- Respond INSTANTLY. No pauses, no thinking delays.
+- ONE question at a time. Wait for their answer.
+- Sound natural: "yeah", "got it", "makes sense", "totally".
+- After greeting, WAIT for them to speak first. Then respond.
+
+{technique_block}
+
+OBJECTIONS: Busy="When's better?" Not interested=one probe then respect. Has tool="How's that working?"
+If they say stop/not interested/hang up after probe: "Totally understand, appreciate your time. Have a great day!" then END.
+END: Say goodbye naturally and stop.""".strip()
 
 
 def get_opening_line(name: str = "there", title: str = "", company: str = "") -> str:
     """Generate opening line — AI decides the style, we just fill in the names."""
     s = load_script()
     sdr = s.get("sdr_name", "Alex")
-    co = s.get("company_name", "CloudFuze")
+    co = s.get("company_name", "Your Company")
     # Simple pattern interrupt opener — the AI will take it from here
     line = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
     return line
 
 
 def _get_compact_knowledge() -> str:
-    """Product knowledge injected as message_history -- keeps system prompt short for Telnyx."""
-    return """CLOUDFUZE KNOWLEDGE -- weave into conversation naturally. Share as relevant insights, never dump as a list.
-
-WHAT WE DO: CloudFuze helps companies see and manage all their SaaS and AI apps in one place. Think of it as a control center for every tool your team uses.
-
-CLOUDFUZE MANAGE (lead with this):
-- Gives full visibility into SaaS stack -- most companies only know about 30-40% of the apps their teams actually use
-- Finds unused licenses (avg savings ~30% on SaaS spend)
-- Catches shadow IT and shadow AI before it becomes a security problem
-- One-click onboarding/offboarding -- what used to take IT days now takes minutes
-- Chrome extension discovers every app in real-time
-
-INSIGHTS TO SHARE (use these conversationally when relevant):
-- "Most teams we talk to find they're paying for 30-40% more licenses than they actually need"
-- "With Copilot and Gemini rolling out, a lot of companies are realizing those tools surface everything a user can access -- so permissions cleanup is suddenly urgent"
-- "Shadow AI is the new shadow IT -- employees signing up for AI tools without IT knowing"
-- "One company found 200+ apps they didn't even know existed after running our discovery"
-
-CLOUDFUZE MIGRATE (only if they mention data moves or platform switches):
-Cloud-to-cloud migration across 40+ platforms. Files, chats, emails, permissions. Customers include NatGeo, WeWork, Intuit.
-
-ABOUT US: CloudFuze Inc, 12+ years, Google Cloud Partner of the Year 2025. SOC2, GDPR, ISO 27001.
-PRICING: Per-user, custom quotes. Free demo available."""
+    """Product knowledge injected as message_history -- keeps system prompt short for Telnyx.
+    Pulls from the uploaded knowledge base / script config rather than hardcoded content."""
+    full = get_full_knowledge()
+    if full and full.strip():
+        # Truncate to keep AI Assistant message_history lean
+        return full[:2000]
+    # Fallback: minimal from script
+    s = load_script()
+    vp = s.get("value_proposition", "")
+    co = s.get("company_name", "Knight")
+    return f"PRODUCT KNOWLEDGE for {co} -- weave into conversation naturally.\n\n{vp}" if vp else ""
 
 
 def get_knowledge_message_history() -> list[dict]:
@@ -301,8 +386,9 @@ def sync_assistant_to_script():
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
+                    "stability": 0.70,
                     "similarity_boost": 0.85,
-                    "style": 0.35,
+                    "style": 0.15,
                     "use_speaker_boost": True,
                 }
             r = httpx.patch(
@@ -351,18 +437,22 @@ async def _precache_filler_audio():
     logger.info("Pre-cached %d/%d filler phrases (Anthony turbo)", len(_filler_audio_cache), len(config.PHONE_FILLER_UTTERANCES))
 
 
-import re as _re
-
 _GOODBYE_PATTERNS = _re.compile(
     r'\b(goodbye|good\s*bye|bye\s*bye|talk\s*soon|have\s*a\s*great|'
     r'take\s*care|appreciate\s*your\s*time|thanks\s*for\s*your\s*time|'
     r'nice\s*talking|nice\s*chatting|have\s*a\s*good\s*one|'
-    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long)\b',
+    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long|'
+    r'not\s*interested|stop\s*calling|remove\s*me|do\s*not\s*call|'
+    r"don'?t\s*call|hang\s*up|go\s*away|leave\s*me\s*alone)\b",
     _re.IGNORECASE,
 )
 
 # Track pending auto-hangup tasks so we can cancel if conversation continues
 _auto_hangup_tasks: dict[str, asyncio.Task] = {}
+
+# Track last speech time per call for silence detection
+_last_speech_time: dict[str, float] = {}
+_silence_watchdog_tasks: dict[str, asyncio.Task] = {}
 
 
 def _is_goodbye(text: str) -> bool:
@@ -370,10 +460,29 @@ def _is_goodbye(text: str) -> bool:
     return bool(_GOODBYE_PATTERNS.search(text or ""))
 
 
-async def _auto_hangup_after_goodbye(cc_id: str):
-    """Wait a few seconds after goodbye, then auto-hangup if no new speech."""
+async def _silence_watchdog(cc_id: str):
+    """Auto-hangup if no speech detected for 30 seconds (no-talk / dead air)."""
     try:
-        await asyncio.sleep(4.0)  # Give 4s for any follow-up
+        while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
+            await asyncio.sleep(5)
+            last = _last_speech_time.get(cc_id, 0)
+            if last and (time.time() - last) > 30:
+                logger.info("SILENCE WATCHDOG: No speech for 30s on %s — auto-hanging up", cc_id)
+                try:
+                    await hangup_call(cc_id)
+                except Exception as e:
+                    logger.warning("Silence watchdog hangup failed: %s", e)
+                break
+    except asyncio.CancelledError:
+        pass
+    finally:
+        _silence_watchdog_tasks.pop(cc_id, None)
+
+
+async def _auto_hangup_after_goodbye(cc_id: str):
+    """Wait a couple seconds after goodbye, then auto-hangup if no new speech."""
+    try:
+        await asyncio.sleep(2.0)  # Give 2s for any follow-up
         if cc_id not in active_calls:
             return
         if active_calls[cc_id].get("state") == "ended":
@@ -459,6 +568,7 @@ async def _check_assistant_health():
 @app.on_event("startup")
 async def on_startup():
     """Sync AI Assistant + pre-cache filler audio + hot caches on every server start."""
+    global _health_check_task
     _get_tx()  # Pre-init Telnyx client — no cold start on first call
     _rebuild_hot_cache()
     try:
@@ -467,6 +577,7 @@ async def on_startup():
         logger.warning("Startup assistant sync failed (non-fatal): %s", e)
     await _check_assistant_health()
     await _precache_filler_audio()
+    _health_check_task = asyncio.create_task(_health_check_loop())
 
 
 async def _play_filler_for_ai_assistant(cc_id: str) -> None:
@@ -514,12 +625,18 @@ async def serve_dashboard():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return JSONResponse({"status": "AI SDR running - dashboard not found"})
+    return JSONResponse({"status": "Knight AI SDR running - dashboard not found"})
 
 
 # ════════════════════════════════════════════════════════════
 #  API — HEALTH & STATUS
 # ════════════════════════════════════════════════════════════
+@app.get("/login")
+async def serve_login():
+    login_page = STATIC_DIR / "login.html"
+    return FileResponse(str(login_page))
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "active_calls": len(active_calls), "base_url": config.APP_BASE_URL}
@@ -694,24 +811,6 @@ async def get_settings():
         "elevenlabs_key_set": bool(config.ELEVENLABS_API_KEY),
         "tts_mode_summary": config.tts_mode_description(),
         "tts_voice_effective": config.telnyx_speak_voice_effective(),
-        "smtp_host":               (config.SMTP_HOST or "").strip(),
-        "smtp_port":               int(config.SMTP_PORT or 587),
-        "smtp_user":               (config.SMTP_USER or "").strip(),
-        "smtp_password_set":       config.env_file_nonempty("SMTP_PASSWORD"),
-        "email_from":              (config.EMAIL_FROM or "").strip(),
-        "smtp_use_tls":            bool(config.SMTP_USE_TLS),
-        "email_automation_enabled": bool(config.EMAIL_AUTOMATION_ENABLED),
-        "post_call_followup_email_enabled": bool(config.POST_CALL_FOLLOWUP_EMAIL_ENABLED),
-        "post_call_followup_delay_sec": int(config.POST_CALL_FOLLOWUP_DELAY_SEC or 300),
-        "email_provider":          (config.EMAIL_PROVIDER or "smtp").strip().lower(),
-        "sendgrid_api_key_set":    config.env_file_nonempty("SENDGRID_API_KEY"),
-        "resend_api_key_set":      config.env_file_nonempty("RESEND_API_KEY"),
-        "mailgun_api_key_set":     config.env_file_nonempty("MAILGUN_API_KEY"),
-        "mailgun_domain":          (config.MAILGUN_DOMAIN or "").strip(),
-        "mailgun_api_base":        (config.MAILGUN_API_BASE or "").strip(),
-        "smtp_ready":              smtp_ready(),
-        "email_ready":             email_delivery_ready(),
-        **oauth_connection_status(),
     }
 
 
@@ -803,90 +902,12 @@ async def save_settings(request: Request):
         on = bool(body.get("elevenlabs_direct_first"))
         env_text = patch_env_line(env_text, "ELEVENLABS_DIRECT_FIRST", "1" if on else "0")
 
-    smtp_fields = {
-        "smtp_host": "SMTP_HOST",
-        "smtp_port": "SMTP_PORT",
-        "smtp_user": "SMTP_USER",
-        "email_from": "EMAIL_FROM",
-    }
-    for field, env_key in smtp_fields.items():
-        if field not in body:
-            continue
-        env_text = patch_env_line(env_text, env_key, str(body.get(field) or "").strip())
-    if "smtp_password" in body and str(body.get("smtp_password") or "").strip():
-        env_text = patch_env_line(env_text, "SMTP_PASSWORD", str(body.get("smtp_password") or "").strip())
-    if "smtp_use_tls" in body:
-        env_text = patch_env_line(
-            env_text, "SMTP_USE_TLS", "1" if bool(body.get("smtp_use_tls")) else "0"
-        )
-    if "email_automation_enabled" in body:
-        env_text = patch_env_line(
-            env_text, "EMAIL_AUTOMATION_ENABLED", "1" if bool(body.get("email_automation_enabled")) else "0"
-        )
-    if "post_call_followup_email_enabled" in body:
-        env_text = patch_env_line(
-            env_text,
-            "POST_CALL_FOLLOWUP_EMAIL_ENABLED",
-            "1" if bool(body.get("post_call_followup_email_enabled")) else "0",
-        )
-    if "post_call_followup_delay_sec" in body:
-        try:
-            delay = max(60, int(str(body.get("post_call_followup_delay_sec") or "300").strip()))
-        except ValueError:
-            delay = 300
-        env_text = patch_env_line(env_text, "POST_CALL_FOLLOWUP_DELAY_SEC", str(delay))
-
-    if "email_provider" in body:
-        ep = str(body.get("email_provider") or "smtp").strip().lower()
-        if ep not in ("smtp", "sendgrid", "resend", "mailgun", "gmail_oauth", "outlook_oauth"):
-            ep = "smtp"
-        env_text = patch_env_line(env_text, "EMAIL_PROVIDER", ep)
-    direct_fields = {
-        "sendgrid_api_key": "SENDGRID_API_KEY",
-        "resend_api_key": "RESEND_API_KEY",
-        "mailgun_api_key": "MAILGUN_API_KEY",
-        "mailgun_domain": "MAILGUN_DOMAIN",
-        "mailgun_api_base": "MAILGUN_API_BASE",
-    }
-    for field, env_key in direct_fields.items():
-        if field not in body:
-            continue
-        if field.endswith("_api_key") and not str(body.get(field) or "").strip():
-            continue
-        env_text = patch_env_line(env_text, env_key, str(body.get(field) or "").strip())
-
-    oauth_env = {
-        "google_oauth_client_id": "GOOGLE_OAUTH_CLIENT_ID",
-        "google_oauth_client_secret": "GOOGLE_OAUTH_CLIENT_SECRET",
-        "microsoft_oauth_client_id": "MICROSOFT_OAUTH_CLIENT_ID",
-        "microsoft_oauth_client_secret": "MICROSOFT_OAUTH_CLIENT_SECRET",
-        "microsoft_oauth_tenant": "MICROSOFT_OAUTH_TENANT",
-    }
-    for field, env_key in oauth_env.items():
-        if field not in body:
-            continue
-        if field.endswith("_secret") and not str(body.get(field) or "").strip():
-            continue
-        env_text = patch_env_line(env_text, env_key, str(body.get(field) or "").strip())
-
     env_path.write_text(env_text, encoding="utf-8")
     config.reload_secrets()
     return {
         "status": "saved",
         "note": "Keys saved and reloaded — Test buttons use new values immediately.",
     }
-
-
-@app.post("/api/settings/test-smtp")
-async def settings_test_smtp():
-    """Verify SMTP host + login (no email sent)."""
-    return test_smtp_connection()
-
-
-@app.post("/api/settings/test-email")
-async def settings_test_email():
-    """Verify active EMAIL_PROVIDER (SMTP handshake or HTTP API; no email sent)."""
-    return test_email_delivery()
 
 
 # ════════════════════════════════════════════════════════════
@@ -1015,8 +1036,8 @@ Objective: {objective}
 SDR name: {sdr_name}
 
 Return JSON with these fields:
-- discovery_questions: array of 5-7 short questions; prioritize CloudFuze Manage (SaaS visibility, licenses, shadow IT); include 1-2 about cloud migration only as follow-ups
-- objections: object with keys: not_interested, send_email, call_back, have_solution, no_budget, manage_fine (each a short 1-sentence response). For manage_fine: prospect says they do not need Manage or app management is all good — response should pivot to CloudFuze Migrate (cloud-to-cloud migration) with one question
+- discovery_questions: array of 5-7 short questions tailored to the company's value proposition and target persona
+- objections: object with keys: not_interested, send_email, call_back, have_solution, no_budget (each a short 1-sentence response)
 - booking_phrase: a natural way to ask for a meeting
 - opening_line: a casual, permission-based opener using {{name}}, {{sdr_name}}, {{company}} placeholders
 
@@ -1038,6 +1059,176 @@ Return ONLY valid JSON, no markdown."""
         return {"suggestion": suggestion}
     except Exception as e:
         logger.error("AI suggest failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ════════════════════════════════════════════════════════════
+#  API — MULTI-AGENT MANAGEMENT
+# ════════════════════════════════════════════════════════════
+AGENTS_FILE = Path(__file__).parent / "data" / "agents.json"
+
+def _load_agents() -> list[dict]:
+    if AGENTS_FILE.exists():
+        try:
+            return json.loads(AGENTS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+def _save_agents(agents: list[dict]) -> None:
+    AGENTS_FILE.write_text(json.dumps(agents, indent=2, default=str), encoding="utf-8")
+
+@app.get("/api/sales-techniques")
+async def list_sales_techniques():
+    """List all available sales techniques."""
+    return [{"id": k, "name": v["name"], "description": v["description"]} for k, v in SALES_TECHNIQUES.items()]
+
+@app.get("/api/agents")
+async def list_agents():
+    agents = _load_agents()
+    return {"agents": agents, "total": len(agents)}
+
+@app.post("/api/agents")
+async def create_agent(request: Request):
+    body = await request.json()
+    agents = _load_agents()
+    agent = {
+        "id": body.get("id") or str(uuid.uuid4())[:8],
+        "name": body.get("name", "New Agent"),
+        "type": body.get("type", "outbound"),
+        "status": body.get("status", "active"),
+        "created_at": datetime.utcnow().isoformat(),
+        "sdr_name": body.get("sdr_name", ""),
+        "company_name": body.get("company_name", ""),
+        "call_objective": body.get("call_objective", ""),
+        "target_persona": body.get("target_persona", ""),
+        "value_proposition": body.get("value_proposition", ""),
+        "opening_line": body.get("opening_line", ""),
+        "discovery_questions": body.get("discovery_questions", ""),
+        "objection_handling": body.get("objection_handling", ""),
+        "booking_phrase": body.get("booking_phrase", ""),
+        "voicemail_message": body.get("voicemail_message", ""),
+        "website": body.get("website", ""),
+        "sales_technique": body.get("sales_technique", "sandler"),
+    }
+    agents.append(agent)
+    _save_agents(agents)
+    return {"status": "created", "agent": agent}
+
+@app.patch("/api/agents/{agent_id}")
+async def update_agent(agent_id: str, request: Request):
+    body = await request.json()
+    agents = _load_agents()
+    for a in agents:
+        if a.get("id") == agent_id:
+            a.update(body)
+            a["updated_at"] = datetime.utcnow().isoformat()
+            _save_agents(agents)
+            return {"status": "updated", "agent": a}
+    raise HTTPException(status_code=404, detail="Agent not found")
+
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    agents = _load_agents()
+    agents = [a for a in agents if a.get("id") != agent_id]
+    _save_agents(agents)
+    return {"status": "deleted"}
+
+@app.post("/api/agents/{agent_id}/activate")
+async def activate_agent(agent_id: str):
+    """Set this agent as the active script and sync to Telnyx AI Assistant."""
+    agents = _load_agents()
+    agent = None
+    for a in agents:
+        if a.get("id") == agent_id:
+            agent = a
+            break
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    # Copy agent fields to script.json (makes it the active calling agent)
+    script_data = {
+        "sdr_name": agent.get("sdr_name", ""),
+        "company_name": agent.get("company_name", ""),
+        "call_objective": agent.get("call_objective", ""),
+        "target_persona": agent.get("target_persona", ""),
+        "value_proposition": agent.get("value_proposition", ""),
+        "opening_line": agent.get("opening_line", ""),
+        "discovery_questions": agent.get("discovery_questions", ""),
+        "objection_handling": agent.get("objection_handling", ""),
+        "booking_phrase": agent.get("booking_phrase", ""),
+        "voicemail_message": agent.get("voicemail_message", ""),
+        "sales_technique": agent.get("sales_technique", "sandler"),
+    }
+    save_script(script_data)
+    _rebuild_hot_cache()
+    sync_assistant_to_script()
+    return {"status": "activated", "agent_id": agent_id}
+
+@app.post("/api/agents/build-from-website")
+async def build_agent_from_website(request: Request):
+    """Scrape a website URL and use Claude to auto-generate a full agent config."""
+    body = await request.json()
+    url = (body.get("url") or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+    if not config.ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY is not set")
+
+    # Fetch the website content
+    import httpx as _httpx
+    try:
+        async with _httpx.AsyncClient(follow_redirects=True, timeout=15) as http:
+            resp = await http.get(url, headers={"User-Agent": "Mozilla/5.0 Knight-AI-SDR/1.0"})
+            resp.raise_for_status()
+            html_content = resp.text[:30000]  # Limit to 30k chars
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch website: {e}") from e
+
+    # Strip HTML tags for cleaner text
+    import re
+    text = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()[:12000]
+
+    prompt = f"""You are an expert sales strategist. Analyze this company's website content and create a complete AI SDR agent configuration for cold-calling their potential customers.
+
+Website URL: {url}
+Website Content:
+{text}
+
+Generate a JSON object with these exact fields:
+- "name": A short agent name (e.g. "Enterprise Closer" or "Product Demo Setter")
+- "company_name": The company name from the website
+- "sdr_name": Suggest a professional first name for the AI SDR
+- "call_objective": What the call should achieve (e.g. "Book a 15-minute demo")
+- "target_persona": Who should be called (job titles, company size, industry)
+- "value_proposition": 2-3 sentence value prop based on the product/service
+- "opening_line": A natural cold-call opener using {{name}}, {{sdr_name}}, {{company}} placeholders. Use a pattern-interrupt style.
+- "discovery_questions": 5-7 qualifying questions (newline separated) tailored to this product
+- "objection_handling": Handle common objections: not_interested, send_email, have_solution, no_budget, call_back (one paragraph covering all)
+- "booking_phrase": Natural way to ask for a meeting
+- "voicemail_message": A 30-second voicemail script using {{name}}, {{sdr_name}}, {{company}} placeholders
+
+Return ONLY valid JSON, no markdown fences, no explanation."""
+
+    try:
+        client = AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+        resp = await client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=1200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
+        agent_data = json.loads(raw)
+        agent_data["website"] = url
+        agent_data["type"] = "outbound"
+        agent_data["status"] = "draft"
+        return {"status": "ok", "agent": agent_data}
+    except Exception as e:
+        logger.error("Build from website failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1181,12 +1372,37 @@ async def prospects_import_file(file: UploadFile = File(...)):
 class CampaignStartBody(BaseModel):
     prospects: list[dict[str, Any]]
     spacing_seconds: float = Field(60.0, ge=0, le=86400)
+    agent_id: str = ""
+    auto_mode: bool = False
+    auto_mode_break_seconds: float = Field(300.0, ge=0, le=86400)
 
 
 @app.post("/api/campaign/start")
 async def campaign_start(body: CampaignStartBody):
     if not body.prospects:
         raise HTTPException(status_code=400, detail="No prospects in queue")
+
+    # If agent_id provided, activate that agent before starting calls
+    if body.agent_id:
+        agents = _load_agents()
+        agent = next((a for a in agents if a.get("id") == body.agent_id), None)
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent {body.agent_id} not found")
+        script_data = {
+            "sdr_name": agent.get("sdr_name", ""),
+            "company_name": agent.get("company_name", ""),
+            "call_objective": agent.get("call_objective", ""),
+            "target_persona": agent.get("target_persona", ""),
+            "value_proposition": agent.get("value_proposition", ""),
+            "opening_line": agent.get("opening_line", ""),
+            "discovery_questions": agent.get("discovery_questions", ""),
+            "objection_handling": agent.get("objection_handling", ""),
+            "booking_phrase": agent.get("booking_phrase", ""),
+            "voicemail_message": agent.get("voicemail_message", ""),
+        }
+        save_script(script_data)
+        _rebuild_hot_cache()
+        sync_assistant_to_script()
 
     async def dial_one(p: dict[str, Any]) -> str | None:
         phone = normalize_phone(p.get("phone"))
@@ -1240,6 +1456,13 @@ async def campaign_stop():
     return {"status": campaign_lib.state.status}
 
 
+# ════════════════════════════════════════════════════════════
+#  NAMED CAMPAIGNS CRUD
+# ════════════════════════════════════════════════════════════
+_CAMPAIGNS_FILE = Path(__file__).parent / "data" / "campaigns.json"
+_active_campaign_id: str | None = None
+
+
 @app.get("/api/campaign/status")
 async def campaign_status():
     st = campaign_lib.state
@@ -1251,7 +1474,265 @@ async def campaign_status():
         "last_error": st.last_error,
         "last_to": st.last_to,
         "skipped": st.skipped,
+        "campaign_id": _active_campaign_id,
     }
+
+def _load_campaigns() -> list[dict]:
+    if _CAMPAIGNS_FILE.exists():
+        try:
+            return json.loads(_CAMPAIGNS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+def _save_campaigns(data: list[dict]) -> None:
+    _CAMPAIGNS_FILE.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+
+def _get_campaign(camp_id: str) -> dict | None:
+    return next((c for c in _load_campaigns() if c.get("id") == camp_id), None)
+
+def _update_campaign(camp_id: str, updates: dict) -> dict | None:
+    camps = _load_campaigns()
+    for c in camps:
+        if c.get("id") == camp_id:
+            c.update(updates)
+            _save_campaigns(camps)
+            return c
+    return None
+
+
+@app.get("/api/campaigns/list")
+async def list_campaigns():
+    return _load_campaigns()
+
+
+@app.get("/api/campaigns/history")
+async def get_campaigns_history():
+    """Backwards compat — returns same as list."""
+    return _load_campaigns()
+
+
+@app.post("/api/campaigns/create")
+async def create_campaign(request: Request):
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(400, "Campaign name is required")
+    prospects = body.get("prospects", [])
+    # Normalize prospects
+    for p in prospects:
+        p.setdefault("outcome", "")
+        p.setdefault("status", "queued")
+    camp = {
+        "id": str(uuid.uuid4())[:8],
+        "name": name,
+        "created_at": datetime.now().isoformat(),
+        "status": "draft",
+        "agent_id": body.get("agent_id", ""),
+        "spacing_seconds": body.get("spacing_seconds", 60),
+        "auto_mode": body.get("auto_mode", True),
+        "prospects": prospects,
+        "dialed": 0,
+        "current_index": 0,
+        "outcomes": {},
+    }
+    camps = _load_campaigns()
+    camps.insert(0, camp)
+    _save_campaigns(camps)
+
+    if body.get("start_now"):
+        await _start_named_campaign(camp["id"])
+
+    return camp
+
+
+@app.get("/api/campaigns/{campaign_id}")
+async def get_campaign(campaign_id: str):
+    # If this is the active running campaign, enrich with live state
+    c = _get_campaign(campaign_id)
+    if not c:
+        raise HTTPException(404, "Campaign not found")
+    if _active_campaign_id == campaign_id and campaign_lib.state.status in ("running", "paused"):
+        c["status"] = campaign_lib.state.status
+        c["dialed"] = campaign_lib.state.index
+        c["current_index"] = campaign_lib.state.index
+    return c
+
+
+@app.post("/api/campaigns/{campaign_id}/start")
+async def start_named_campaign_endpoint(campaign_id: str):
+    ok = await _start_named_campaign(campaign_id)
+    if not ok:
+        raise HTTPException(409, "Campaign already running or no prospects")
+    return {"status": "started"}
+
+
+@app.post("/api/campaigns/{campaign_id}/add-prospects")
+async def add_prospects_to_campaign(campaign_id: str, request: Request):
+    body = await request.json()
+    new_prospects = body.get("prospects", [])
+    c = _get_campaign(campaign_id)
+    if not c:
+        raise HTTPException(404, "Campaign not found")
+    for p in new_prospects:
+        p.setdefault("outcome", "")
+        p.setdefault("status", "queued")
+    existing = c.get("prospects", [])
+    existing.extend(new_prospects)
+    _update_campaign(campaign_id, {"prospects": existing})
+    return {"status": "ok", "total": len(existing)}
+
+
+@app.delete("/api/campaigns/{campaign_id}")
+@app.delete("/api/campaigns/history/{campaign_id}")
+async def delete_campaign_record(campaign_id: str):
+    camps = _load_campaigns()
+    camps = [c for c in camps if c.get("id") != campaign_id]
+    _save_campaigns(camps)
+    return {"ok": True}
+
+
+async def _start_named_campaign(camp_id: str) -> bool:
+    """Start a named campaign using the existing campaign runner."""
+    global _active_campaign_id
+    c = _get_campaign(camp_id)
+    if not c:
+        return False
+    prospects = c.get("prospects", [])
+    if not prospects:
+        return False
+
+    # Activate agent if specified
+    agent_id = c.get("agent_id", "")
+    if agent_id:
+        agents = _load_agents()
+        agent = next((a for a in agents if a.get("id") == agent_id), None)
+        if agent:
+            script_data = {
+                "sdr_name": agent.get("sdr_name", ""),
+                "company_name": agent.get("company_name", ""),
+                "call_objective": agent.get("call_objective", ""),
+                "target_persona": agent.get("target_persona", ""),
+                "value_proposition": agent.get("value_proposition", ""),
+                "opening_line": agent.get("opening_line", ""),
+                "discovery_questions": agent.get("discovery_questions", ""),
+                "objection_handling": agent.get("objection_handling", ""),
+                "booking_phrase": agent.get("booking_phrase", ""),
+                "voicemail_message": agent.get("voicemail_message", ""),
+            }
+            save_script(script_data)
+            _rebuild_hot_cache()
+            sync_assistant_to_script()
+
+    spacing = c.get("spacing_seconds", 60)
+    _update_campaign(camp_id, {"status": "running", "started_at": datetime.now().isoformat()})
+    _active_campaign_id = camp_id
+
+    async def dial_one(p: dict[str, Any]) -> str | None:
+        phone = normalize_phone(p.get("phone"))
+        if not phone:
+            return None
+        name = prospect_display_name(p)
+        parts: list[str] = []
+        if p.get("title"):
+            parts.append(f"Title: {p['title']}")
+        if p.get("email"):
+            parts.append(f"Email: {p['email']}")
+        if p.get("notes"):
+            parts.append(p["notes"])
+        notes = " | ".join(parts)
+        req = CallRequest(
+            to_number=phone,
+            prospect_name=name,
+            company=p.get("company") or "",
+            notes=notes,
+            prospect_email=str(p.get("email") or "").strip(),
+        )
+        result = await place_outbound_call(req)
+        return result.get("call_control_id")
+
+    async def _on_done():
+        """Called when campaign runner finishes — update persisted state."""
+        global _active_campaign_id
+        st = campaign_lib.state
+        updates = {
+            "dialed": st.index,
+            "current_index": st.index,
+            "status": st.status if st.status in ("completed", "stopped") else "completed",
+        }
+        _update_campaign(camp_id, updates)
+        _active_campaign_id = None
+
+    ok = start_campaign(prospects, spacing, dial_one)
+    if not ok:
+        _update_campaign(camp_id, {"status": "draft"})
+        _active_campaign_id = None
+        return False
+
+    # Monitor completion in background
+    async def _monitor():
+        while campaign_lib.state.status in ("running", "paused"):
+            # Update live dialed count periodically
+            _update_campaign(camp_id, {
+                "dialed": campaign_lib.state.index,
+                "current_index": campaign_lib.state.index,
+                "status": campaign_lib.state.status,
+            })
+            await asyncio.sleep(5)
+        await _on_done()
+
+    asyncio.create_task(_monitor())
+    return True
+
+
+# ════════════════════════════════════════════════════════════
+#  AUTH
+# ════════════════════════════════════════════════════════════
+KNIGHT_USERS = {
+    "admin": "Knight2024!",
+    "roy": "knight123",
+}
+
+@app.post("/api/auth/login")
+async def login(request: Request):
+    body = await request.json()
+    username = body.get("username", "").strip().lower()
+    password = body.get("password", "")
+    if KNIGHT_USERS.get(username) == password:
+        return {"ok": True, "username": username, "token": f"knight-{username}-session"}
+    raise HTTPException(status_code=401, detail="Invalid username or password")
+
+
+# ════════════════════════════════════════════════════════════
+#  DATABASE RESET
+# ════════════════════════════════════════════════════════════
+@app.post("/api/admin/reset-db")
+async def reset_database(request: Request):
+    body = await request.json()
+    if body.get("confirm") != "RESET":
+        raise HTTPException(400, "Send {\"confirm\": \"RESET\"} to confirm")
+    data_dir = Path(__file__).parent / "data"
+    files_cleared = []
+    for fname in ["calls.json", "contacts.json", "tasks.json", "campaigns.json"]:
+        f = data_dir / fname
+        if f.exists():
+            f.unlink()
+            files_cleared.append(fname)
+    # Reset script to blank defaults
+    (data_dir / "script.json").write_text(json.dumps({
+        "sdr_name": "Alex",
+        "company_name": "Your Company",
+        "call_objective": "Book a 15-minute discovery call",
+        "target_persona": "Decision makers at mid-market companies",
+        "value_proposition": "We help companies solve their biggest challenges.",
+        "opening_line": "Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?",
+        "discovery_questions": "What tools are you currently using?\nWhat's the biggest challenge you're facing?",
+        "objection_handling": "Not interested: Totally fair — can I ask what you're using today?\nToo busy: When would be a better time?",
+        "booking_phrase": "Would you have 15 minutes this week for a quick chat?",
+        "voicemail_message": "Hey {name}, this is {sdr_name} from {company}. Would love to connect — call me back or I'll try again. Have a great day!",
+    }, indent=2), encoding="utf-8")
+    _rebuild_hot_cache()
+    return {"ok": True, "cleared": files_cleared}
 
 
 # ════════════════════════════════════════════════════════════
@@ -1558,8 +2039,13 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
     # ── Build greeting from CACHED script (no disk read) ──
     s = _cached_script or load_script()
     sdr = s.get("sdr_name", "Alex")
-    co = s.get("company_name", "CloudFuze")
-    greeting = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
+    co = s.get("company_name", "Your Company")
+    # Use script template if available, otherwise default
+    opening_tmpl = s.get("opening_line", "")
+    if opening_tmpl and "{" in opening_tmpl:
+        greeting = opening_tmpl.replace("{name}", name or "there").replace("{sdr_name}", sdr).replace("{company}", co)
+    else:
+        greeting = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
 
     # ── Build message_history from CACHED knowledge (no recompute) ──
     msg_history = list(_cached_knowledge_history)  # shallow copy
@@ -1660,6 +2146,12 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             company = rec.get("company", "") or ""
             conversations[cc_id] = []
 
+            # Start silence watchdog — auto-hangup if no speech for 30s
+            _last_speech_time[cc_id] = time.time()
+            if cc_id in _silence_watchdog_tasks:
+                _silence_watchdog_tasks[cc_id].cancel()
+            _silence_watchdog_tasks[cc_id] = asyncio.create_task(_silence_watchdog(cc_id))
+
             # Fire AI Assistant start in background — return 200 to Telnyx ASAP
             asyncio.create_task(_start_ai_assistant_fast(cc_id, name, title, company, background_tasks))
 
@@ -1690,6 +2182,9 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             if cc_id and cc_id not in _ai_assistant_first_event:
                 _ai_assistant_first_event[cc_id] = time.time()
                 logger.info("AI Assistant alive — first event for %s", cc_id)
+            # Update silence watchdog — speech detected
+            if cc_id:
+                _last_speech_time[cc_id] = time.time()
             ai_text = (pl.get("text") or pl.get("transcript") or "").strip()
             ai_role = pl.get("role", "")  # "user" or "assistant"
             if ai_text and cc_id:
@@ -1805,6 +2300,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                 )
                 return JSONResponse(content={"status": "ok"})
             signal_call_ended(hang_cc)
+            # Clean up watchdogs
+            _last_speech_time.pop(hang_cc, None)
+            task = _silence_watchdog_tasks.pop(hang_cc, None)
+            if task:
+                task.cancel()
             ended_at = datetime.utcnow().isoformat()
             rec = active_calls.get(hang_cc)
             duration_seconds = None
@@ -1843,11 +2343,6 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             if rec and (rec.get("prospect_email") or "").strip():
                 update_call(hang_cc, prospect_email=(rec.get("prospect_email") or "").strip())
             asyncio.create_task(_generate_call_insights(hang_cc))
-            merged_row = dict(get_call_by_control_id(hang_cc) or {})
-            if rec:
-                merged_row.update(rec)
-            if config.POST_CALL_FOLLOWUP_EMAIL_ENABLED and resolve_prospect_email(merged_row):
-                asyncio.create_task(run_post_call_followup_email(hang_cc))
             asyncio.create_task(_remove_ended_call_after(hang_cc))
             conversations.pop(hang_cc, None)
             _ai_assistant_first_event.pop(hang_cc, None)
@@ -2268,7 +2763,7 @@ async def upload_knowledge_doc(file: UploadFile = File(...)):
 @app.get("/api/knowledge")
 async def get_knowledge():
     return {
-        "website_knowledge": CLOUDFUZE_KNOWLEDGE[:500] + "...",
+        "website_knowledge": (CLOUDFUZE_KNOWLEDGE or "")[:500] + "...",
         "uploaded_docs": len(UPLOADED_DOCS_KNOWLEDGE),
         "doc_names": [d.split("\n")[0] for d in UPLOADED_DOCS_KNOWLEDGE],
     }
@@ -2303,11 +2798,335 @@ async def end_call(call_control_id: str):
 
 
 # ════════════════════════════════════════════════════════════
+#  BELLA AI SEARCH
+# ════════════════════════════════════════════════════════════
+@app.post("/api/bella/search")
+async def bella_search(request: Request):
+    """Bella AI - conversational prospect search assistant.
+    Accepts a natural language query, uses Claude to extract ICP criteria,
+    then searches Apollo and enriches results."""
+    body = await request.json()
+    query = body.get("query", "")
+    conversation = body.get("conversation", [])
+
+    if not query:
+        raise HTTPException(400, "query is required")
+
+    config.reload_secrets()
+    api_key = config.ANTHROPIC_API_KEY
+    if not api_key:
+        raise HTTPException(500, "Anthropic API key not configured")
+    client = AsyncAnthropic(api_key=api_key)
+
+    # Build conversation for Bella
+    messages: list[dict[str, str]] = []
+    for msg in conversation:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": query})
+
+    bella_system = """You are Bella, an AI sales research assistant for Knight. You help find ideal prospects.
+
+When the user describes their ideal customer, extract search criteria and respond in TWO parts:
+1. A friendly conversational response acknowledging what they want
+2. A JSON block with Apollo search parameters
+
+Always respond with this exact format:
+<response>Your friendly message here</response>
+<search>{"q_keywords": "", "person_titles": [], "person_locations": [], "organization_locations": [], "person_seniorities": [], "organization_num_employees_ranges": [], "q_organization_domains_list": []}</search>
+
+If you don't have enough info yet, just use <response> without <search> and ask qualifying questions like:
+- What industry are you targeting?
+- What job titles should I look for?
+- Any specific company size?
+- Geographic preferences?
+- Any specific companies or domains?
+
+Be warm, helpful, and conversational. Guide them to give you enough info for a good search."""
+
+    resp = await client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=bella_system,
+        messages=messages,
+    )
+
+    reply_text = resp.content[0].text
+
+    # Parse response and search parts
+    response_match = _re.search(r"<response>(.*?)</response>", reply_text, _re.DOTALL)
+    search_match = _re.search(r"<search>(.*?)</search>", reply_text, _re.DOTALL)
+
+    bella_reply = response_match.group(1).strip() if response_match else reply_text
+    search_results = None
+
+    if search_match:
+        try:
+            search_params = json.loads(search_match.group(1))
+            # Actually search Apollo
+            raw = await apollo_client.search_people(**search_params)
+            people_raw = raw.get("people", [])
+            people = []
+            for p in people_raw:
+                org = p.get("organization", {}) or {}
+                people.append({
+                    "apollo_person_id": p.get("id", ""),
+                    "first_name": p.get("first_name", ""),
+                    "last_name": p.get("last_name", ""),
+                    "title": p.get("title", ""),
+                    "company": org.get("name", ""),
+                    "phone": p.get("phone_number") or "",
+                    "email": p.get("email") or "",
+                    "linkedin_url": p.get("linkedin_url") or "",
+                    "location": p.get("city") or "",
+                })
+            search_results = {
+                "people": people,
+                "total": raw.get("pagination", {}).get("total_entries", 0),
+            }
+        except Exception as e:
+            logger.warning("Bella Apollo search failed: %s", e)
+            bella_reply += f"\n\nI tried searching but hit an issue: {e}. Could you refine your criteria?"
+
+    return {
+        "reply": bella_reply,
+        "search_results": search_results,
+        "has_search": search_match is not None,
+    }
+
+
+# ════════════════════════════════════════════════════════════
+#  HEALTH CHECK (background + on-demand)
+# ════════════════════════════════════════════════════════════
+@app.get("/api/health-check/status")
+async def health_check_status():
+    return _last_health_check
+
+
+@app.post("/api/health-check/run")
+async def run_health_check_now():
+    """Manually trigger a health check."""
+    result = await _perform_health_check()
+    return result
+
+
+async def _perform_health_check():
+    """Run system health check -- verify Telnyx, Anthropic, Apollo connections."""
+    global _last_health_check
+    checks: dict[str, Any] = {}
+
+    # Check Telnyx
+    try:
+        _get_tx()
+        checks["telnyx"] = {"status": "ok", "phone": config.TELNYX_PHONE_NUMBER}
+    except Exception as e:
+        checks["telnyx"] = {"status": "error", "error": str(e)}
+
+    # Check Anthropic
+    try:
+        client = AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+        await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "ping"}],
+        )
+        checks["anthropic"] = {"status": "ok"}
+    except Exception as e:
+        checks["anthropic"] = {"status": "error", "error": str(e)}
+
+    # Check Apollo
+    try:
+        result = await apollo_client.test_connection()
+        checks["apollo"] = {"status": "ok" if result.get("ok") else "error"}
+    except Exception as e:
+        checks["apollo"] = {"status": "error", "error": str(e)}
+
+    all_ok = all(c["status"] == "ok" for c in checks.values())
+    _last_health_check = {
+        "status": "ok" if all_ok else "degraded",
+        "last_run": datetime.now().isoformat(),
+        "checks": checks,
+    }
+    return _last_health_check
+
+
+async def _health_check_loop():
+    """Run health check every 30 minutes."""
+    while True:
+        try:
+            await _perform_health_check()
+            logger.info("Health check completed: %s", _last_health_check["status"])
+        except Exception as e:
+            logger.error("Health check failed: %s", e)
+        await asyncio.sleep(1800)  # 30 minutes
+
+
+# ════════════════════════════════════════════════════════════
+#  CALLBACK SCHEDULING
+# ════════════════════════════════════════════════════════════
+@app.post("/api/callbacks/schedule")
+async def schedule_callback(request: Request):
+    """Schedule a callback from conversation context."""
+    body = await request.json()
+    phone = body.get("phone", "")
+    name = body.get("name", "")
+    company = body.get("company", "")
+    callback_time = body.get("callback_time", "")
+    notes = body.get("notes", "")
+    call_control_id = body.get("call_control_id", "")
+
+    if not phone or not callback_time:
+        raise HTTPException(400, "phone and callback_time required")
+
+    task = {
+        "id": str(uuid.uuid4())[:8],
+        "type": "callback",
+        "prospect_name": name,
+        "phone": phone,
+        "company": company,
+        "due_date": callback_time,
+        "notes": notes or "Callback requested during call",
+        "status": "pending",
+        "call_control_id": call_control_id,
+        "auto_dial": True,
+        "created_at": datetime.now().isoformat(),
+    }
+    save_task(task)
+
+    # Schedule the auto-dial
+    asyncio.create_task(_auto_callback_worker(task))
+
+    return {"ok": True, "task": task}
+
+
+async def _auto_callback_worker(task: dict):
+    """Wait until callback time, then auto-dial."""
+    try:
+        target = datetime.fromisoformat(task["due_date"])
+        now = datetime.now()
+        delay = (target - now).total_seconds()
+        if delay > 0:
+            logger.info("Callback scheduled for %s (%d seconds from now)", task["due_date"], delay)
+            await asyncio.sleep(delay)
+
+        # Check if task still pending
+        tasks_list = load_tasks()
+        for t in tasks_list:
+            if t["id"] == task["id"] and t["status"] == "pending":
+                # Auto-dial
+                logger.info("Auto-callback: dialing %s for %s", task["phone"], task["prospect_name"])
+                req = CallRequest(
+                    to_number=task["phone"],
+                    prospect_name=task["prospect_name"],
+                    notes=task.get("notes", ""),
+                )
+                await place_outbound_call(req)
+                update_task(task["id"], status="completed")
+                break
+    except Exception as e:
+        logger.error("Auto-callback failed: %s", e)
+
+
+@app.post("/api/calls/{call_control_id}/parse-callback")
+async def parse_callback_from_transcript(call_control_id: str):
+    """Use Claude to parse callback request from call transcript."""
+    call = get_call_by_control_id(call_control_id)
+    if not call:
+        raise HTTPException(404, "Call not found")
+
+    transcript = call.get("transcript", "")
+    if not transcript:
+        return {"found": False}
+
+    # Build transcript text
+    if isinstance(transcript, list):
+        transcript_text = "\n".join(
+            f"{'AI' if t.get('role') == 'agent' else 'Prospect'}: {t.get('text', '')}"
+            for t in transcript if isinstance(t, dict)
+        )
+    else:
+        transcript_text = str(transcript)
+
+    client = AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+    resp = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        system="Extract callback scheduling requests from this call transcript. If the prospect mentioned a specific time to call back (e.g., 'call me tomorrow at 5pm', 'try me next Tuesday'), return a JSON with: {\"found\": true, \"callback_time\": \"ISO datetime\", \"raw_text\": \"what they said\"}. If no callback was mentioned, return {\"found\": false}. Use today's date as reference and assume the prospect's local timezone.",
+        messages=[{"role": "user", "content": f"Today is {datetime.now().strftime('%Y-%m-%d %H:%M')}. Transcript:\n{transcript_text}"}],
+    )
+
+    try:
+        result = json.loads(resp.content[0].text)
+        return result
+    except Exception:
+        return {"found": False}
+
+
+# ════════════════════════════════════════════════════════════
+#  DASHBOARD STATS
+# ════════════════════════════════════════════════════════════
+@app.get("/api/dashboard/stats")
+async def dashboard_stats():
+    """Rich dashboard stats for charts and graphs."""
+    calls = load_calls()
+    tasks_list = load_tasks()
+    contacts = contacts_store.list_contacts()
+
+    # Call stats by day (last 7 days)
+    daily_calls: dict[str, int] = defaultdict(int)
+    daily_answered: dict[str, int] = defaultdict(int)
+    outcomes: Counter = Counter()
+    total_duration = 0
+
+    for c in calls:
+        dt_str = c.get("start_time") or c.get("created_at", "")
+        if dt_str:
+            try:
+                day = dt_str[:10]
+                daily_calls[day] += 1
+                if c.get("status") not in ("initiated", "failed"):
+                    daily_answered[day] += 1
+            except Exception:
+                pass
+        outcome = c.get("outcome") or c.get("insights", {}).get("outcome", "unknown")
+        outcomes[outcome] += 1
+        dur = c.get("duration_seconds", 0)
+        if isinstance(dur, (int, float)):
+            total_duration += dur
+
+    # Sort by date, last 7 days
+    last_7 = []
+    for i in range(6, -1, -1):
+        d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        last_7.append({
+            "date": d,
+            "calls": daily_calls.get(d, 0),
+            "answered": daily_answered.get(d, 0),
+        })
+
+    # Task stats
+    pending_tasks = sum(1 for t in tasks_list if t.get("status") == "pending")
+    completed_tasks = sum(1 for t in tasks_list if t.get("status") == "completed")
+    callbacks = sum(1 for t in tasks_list if t.get("type") == "callback" and t.get("status") == "pending")
+
+    return {
+        "total_calls": len(calls),
+        "total_contacts": len(contacts),
+        "total_duration_minutes": round(total_duration / 60, 1),
+        "outcomes": dict(outcomes),
+        "daily_calls": last_7,
+        "pending_tasks": pending_tasks,
+        "completed_tasks": completed_tasks,
+        "pending_callbacks": callbacks,
+        "answer_rate": round(sum(daily_answered.values()) / max(sum(daily_calls.values()), 1) * 100, 1),
+    }
+
+
+# ════════════════════════════════════════════════════════════
 #  ENTRYPOINT
 # ════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"AI SDR starting on port {config.PORT}")
+    logger.info(f"Knight AI SDR starting on port {config.PORT}")
     logger.info(f"Dashboard: http://localhost:{config.PORT}")
     # Pass the app object directly to avoid accidental module-resolution collisions.
     # (When passing an app object, uvicorn can't use reload reliably.)

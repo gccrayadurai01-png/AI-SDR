@@ -1,0 +1,107 @@
+[
+  {
+    "id": "bb5e89ea",
+    "name": "new",
+    "created_at": "2026-04-13T14:57:48.956186",
+    "status": "stopped",
+    "agent_id": "",
+    "spacing_seconds": 60,
+    "auto_mode": true,
+    "prospects": [
+      {
+        "name": "Ephraim Deary",
+        "phone": "'+1 404-843-2500",
+        "email": "ephraim.deary@metrobrokers.com",
+        "company": "Better Homes and Gardens Real Estate Metro Brokers",
+        "title": "Information Technology Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Stephen Williams",
+        "phone": "'+1 360-695-0123",
+        "email": "stephen.williams@c-tran.org",
+        "company": "C-TRAN",
+        "title": "Information Technology Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brett Sanders",
+        "phone": "'+1 917-615-2434",
+        "email": "bsanders@copado.com",
+        "company": "Copado",
+        "title": "IT Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Obaid Raza",
+        "phone": "'+1 630-320-6871",
+        "email": "obaid@cphysicians.org",
+        "company": "Community Physicians",
+        "title": "Information Technology Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Andrew Montjoy",
+        "phone": "'+1 301-652-7190",
+        "email": "andrew.montjoy@fidelissecurity.com",
+        "company": "Fidelis Security",
+        "title": "Information Technology Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael Custer",
+        "phone": "'+1 415-968-1685",
+        "email": "michael.custer@outschool.com",
+        "company": "Outschool",
+        "title": "IT Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Zishe Katz",
+        "phone": "",
+        "email": "zkatz@utaw.org",
+        "company": "United Talmudical Academy",
+        "title": "IT Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marcos Almendariz",
+        "phone": "'+1 234-620-1705",
+        "email": "marcos@mikulaitconsulting.com",
+        "company": "MIKULA IT CONSULTING",
+        "title": "IT Admin",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joshua Ryskoski",
+        "phone": "'+1 715-536-5521",
+        "email": "jryskoski@weinbrennerusa.com",
+        "company": "Weinbrenner Shoe Co Inc",
+        "title": "IT Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David Barta",
+        "phone": "'+1 415-318-8903",
+        "email": "barta@walkerwarner.com",
+        "company": "Walker Warner",
+        "title": "Information Technology Administrator",
+        "outcome": "",
+        "status": "queued"
+      }
+    ],
+    "dialed": 0,
+    "current_index": 0,
+    "outcomes": {},
+    "started_at": "2026-04-13T14:58:14.324057"
+  }
+]

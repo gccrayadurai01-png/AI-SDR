@@ -2,6 +2,7 @@
 Telnyx WebSocket (μ-law) → Deepgram live STT → Claude → Telnyx speak.
 Uses raw websockets to connect to Deepgram (no SDK dependency issues).
 """
+from __future__ import annotations
 
 from __future__ import annotations
 

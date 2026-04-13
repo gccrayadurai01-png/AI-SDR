@@ -2,6 +2,7 @@
 Sequential outbound campaign: dial one prospect at a time, wait for call to end,
 then optional spacing delay before the next dial.
 """
+from __future__ import annotations
 
 from __future__ import annotations
 

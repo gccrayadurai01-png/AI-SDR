@@ -2,6 +2,7 @@
 Apollo.io REST API — People API Search (master API key, x-api-key header).
 Docs: https://docs.apollo.io/reference/people-api-search
 """
+from __future__ import annotations
 
 from __future__ import annotations
 

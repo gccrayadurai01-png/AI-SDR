@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Knight — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0F172A;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Glow orbs */
+    body::after {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
+      top: -100px;
+      left: -100px;
+      border-radius: 50%;
+    }
+
+    .login-card {
+      position: relative;
+      z-index: 10;
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      justify-content: center;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 0 20px rgba(59,130,246,0.4);
+    }
+
+    .logo-text h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .logo-text p {
+      font-size: 12px;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #F1F5F9;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #64748B;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94A3B8;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #F1F5F9;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    input::placeholder { color: #475569; }
+
+    input:focus {
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(59,130,246,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(59,130,246,0.4);
+    }
+
+    .btn-login:active { transform: translateY(0); }
+
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-msg {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #FCA5A5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 12px;
+      display: none;
+      text-align: center;
+    }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 28px 0;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .powered {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 11px;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="logo">
+    <div class="logo-icon">&#9876;</div>
+    <div class="logo-text">
+      <h1>Knight</h1>
+      <p>AI Sales Development</p>
+    </div>
+  </div>
+
+  <h2>Welcome back</h2>
+  <p class="subtitle">Sign in to your Knight dashboard</p>
+
+  <div class="form-group">
+    <label>Username</label>
+    <input type="text" id="username" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+  </div>
+  <div class="form-group">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+  </div>
+
+  <button class="btn-login" onclick="doLogin()" id="loginBtn">
+    <div class="spinner" id="spinner"></div>
+    <span id="loginBtnText">Sign In</span>
+  </button>
+
+  <div class="error-msg" id="errorMsg">Invalid username or password</div>
+
+  <div class="divider"></div>
+
+  <div class="powered">Powered by Knight AI</div>
+</div>
+
+<script>
+  // If already logged in, go to dashboard
+  if (sessionStorage.getItem('knight_user')) {
+    window.location.href = '/';
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('loginBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('loginBtnText');
+    const errorMsg = document.getElementById('errorMsg');
+
+    if (!username || !password) {
+      errorMsg.textContent = 'Please enter username and password';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Signing in...';
+    errorMsg.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        sessionStorage.setItem('knight_user', data.username);
+        sessionStorage.setItem('knight_token', data.token);
+        window.location.href = '/';
+      } else {
+        errorMsg.textContent = 'Invalid username or password';
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Sign In';
+      }
+    } catch (e) {
+      errorMsg.textContent = 'Connection error — is the server running?';
+      errorMsg.style.display = 'block';
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Sign In';
+    }
+  }
+</script>
+</body>
+</html>

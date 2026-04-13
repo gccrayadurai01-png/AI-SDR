@@ -82,7 +82,7 @@ def _default_file() -> dict[str, Any]:
                 "call_history": [],
                 "emails_sent": [
                     {
-                        "subject": "CloudFuze — quick intro",
+                        "subject": "Quick intro",
                         "sent_at": "2026-03-22T09:30:00+00:00",
                         "opened": True,
                     }
