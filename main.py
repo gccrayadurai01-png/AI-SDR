@@ -377,7 +377,7 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    "user_idle_timeout_seconds": 300,
+                    "user_idle_timeout_secs": 300,
                 },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
@@ -389,6 +389,7 @@ def sync_assistant_to_script():
                     "voice_speed": 0.9,
                     "stability": 0.85,
                     "similarity_boost": 0.80,
+                    "style": 0,
                     "use_speaker_boost": False,
                 }
             r = httpx.patch(
@@ -2071,9 +2072,6 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         "greeting": greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
-        "telephony_settings": {
-            "user_idle_timeout_seconds": 300,
-        },
     }
     ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:
