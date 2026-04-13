@@ -195,8 +195,9 @@ def _rebuild_hot_cache():
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
-            "stability": 0.70,
-            "similarity_boost": 0.85,
+            "stability": 0.85,
+            "similarity_boost": 0.80,
+            "use_speaker_boost": False,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -384,8 +385,9 @@ def sync_assistant_to_script():
                 patch_body["voice_settings"] = {
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
-                    "stability": 0.90,
-                    "similarity_boost": 0.75,
+                    "stability": 0.85,
+                    "similarity_boost": 0.80,
+                    "use_speaker_boost": False,
                 }
             r = httpx.patch(
                 f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
@@ -438,10 +440,11 @@ async def _precache_filler_audio():
 # "have a great day" — the AI says these naturally mid-conversation and they caused
 # calls to be killed after 2 seconds mid-pitch.
 _GOODBYE_PATTERNS = _re.compile(
-    r'\b(stop\s*calling(\s*me)?|remove\s*me(\s*from)?|do\s*not\s*call|'
-    r"don'?t\s*call(\s*me)?|go\s*away|leave\s*me\s*alone|'
-    r'i\s*need\s*to\s*go\s*now|i\s*have\s*to\s*go\s*now|'
-    r'hang(ing)?\s*up\s*now|i\s*m\s*hanging\s*up)\b",
+    r"\b(stop\s*calling(\s*me)?|remove\s*me(\s*from)?"
+    r"|do\s*not\s*call|don'?t\s*call(\s*me)?"
+    r"|go\s*away|leave\s*me\s*alone"
+    r"|i\s*need\s*to\s*go\s*now|i\s*have\s*to\s*go\s*now"
+    r"|hang(ing)?\s*up\s*now|i\s*m\s*hanging\s*up)\b",
     _re.IGNORECASE,
 )
 

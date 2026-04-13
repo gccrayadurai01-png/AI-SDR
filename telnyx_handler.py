@@ -331,8 +331,9 @@ async def _elevenlabs_direct_to_playback(call_control_id: str, payload: str) -> 
         "text": payload,
         "model_id": config.ELEVENLABS_MODEL_ID or "eleven_multilingual_v2",
         "voice_settings": {
-            "stability": 0.70,
-            "similarity_boost": 0.85,
+            "stability": 0.85,
+            "similarity_boost": 0.80,
+            "use_speaker_boost": False,
         },
     }
     headers = {
