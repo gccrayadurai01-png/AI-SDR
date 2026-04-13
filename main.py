@@ -191,12 +191,12 @@ def _rebuild_hot_cache():
     vid = config.ELEVENLABS_VOICE_ID
     ref = config.ELEVENLABS_API_KEY_REF
     if vid and ref:
-        vkw["voice"] = f"ElevenLabs.eleven_turbo_v2_5.{vid}"
+        vkw["voice"] = f"ElevenLabs.eleven_multilingual_v2.{vid}"
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
-            "stability": 0.90,
-            "similarity_boost": 0.75,
+            "stability": 0.70,
+            "similarity_boost": 0.85,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -382,7 +382,7 @@ def sync_assistant_to_script():
             api_key_ref = config.ELEVENLABS_API_KEY_REF
             if voice_id and api_key_ref:
                 patch_body["voice_settings"] = {
-                    "voice": f"ElevenLabs.eleven_turbo_v2_5.{voice_id}",
+                    "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "stability": 0.90,
                     "similarity_boost": 0.75,
@@ -420,7 +420,7 @@ async def _precache_filler_audio():
             try:
                 r = await ac.post(url, json={
                     "text": phrase,
-                    "model_id": "eleven_turbo_v2_5",
+                    "model_id": "eleven_multilingual_v2",
                 }, headers=headers, params=params)
                 r.raise_for_status()
                 import base64
@@ -433,13 +433,15 @@ async def _precache_filler_audio():
     logger.info("Pre-cached %d/%d filler phrases (Anthony turbo)", len(_filler_audio_cache), len(config.PHONE_FILLER_UTTERANCES))
 
 
+# STRICT goodbye — only fire on unambiguous hard call-end signals from the PROSPECT.
+# Do NOT add casual phrases like "take care", "cheers", "appreciate your time",
+# "have a great day" — the AI says these naturally mid-conversation and they caused
+# calls to be killed after 2 seconds mid-pitch.
 _GOODBYE_PATTERNS = _re.compile(
-    r'\b(goodbye|good\s*bye|bye\s*bye|talk\s*soon|have\s*a\s*great|'
-    r'take\s*care|appreciate\s*your\s*time|thanks\s*for\s*your\s*time|'
-    r'nice\s*talking|nice\s*chatting|have\s*a\s*good\s*one|'
-    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long|'
-    r'not\s*interested|stop\s*calling|remove\s*me|do\s*not\s*call|'
-    r"don'?t\s*call|hang\s*up|go\s*away|leave\s*me\s*alone)\b",
+    r'\b(stop\s*calling(\s*me)?|remove\s*me(\s*from)?|do\s*not\s*call|'
+    r"don'?t\s*call(\s*me)?|go\s*away|leave\s*me\s*alone|'
+    r'i\s*need\s*to\s*go\s*now|i\s*have\s*to\s*go\s*now|'
+    r'hang(ing)?\s*up\s*now|i\s*m\s*hanging\s*up)\b",
     _re.IGNORECASE,
 )
 
@@ -480,9 +482,9 @@ async def _silence_watchdog(cc_id: str):
 
 
 async def _auto_hangup_after_goodbye(cc_id: str):
-    """Wait a couple seconds after goodbye, then auto-hangup if no new speech."""
+    """Wait after hard prospect rejection, then auto-hangup if no new speech."""
     try:
-        await asyncio.sleep(2.0)  # Give 2s for any follow-up
+        await asyncio.sleep(8.0)  # Give 8s — prospect may continue talking
         if cc_id not in active_calls:
             return
         if active_calls[cc_id].get("state") == "ended":
@@ -2202,22 +2204,21 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                         logger.info(f"AI-ASST HEARD: \"{ai_text}\"")
                         if config.PHONE_THINK_FILLER and config.should_play_think_filler(ai_text):
                             asyncio.create_task(_play_filler_for_ai_assistant(cc_id))
-                        # If prospect says goodbye, don't cancel — let auto-hangup proceed
+                        # Only hang up if prospect explicitly demands to be removed/stop calling
                         if _is_goodbye(ai_text):
-                            logger.info("Prospect said goodbye — keeping auto-hangup active")
+                            logger.info("Prospect hard-reject — scheduling hangup in 8s")
+                            if cc_id in _auto_hangup_tasks:
+                                _auto_hangup_tasks[cc_id].cancel()
+                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
                         elif cc_id in _auto_hangup_tasks:
-                            # Prospect said something that's NOT goodbye — cancel pending hangup
                             _auto_hangup_tasks[cc_id].cancel()
                             _auto_hangup_tasks.pop(cc_id, None)
                     else:
                         logger.info(f"AI-ASST SAID: \"{ai_text}\"")
                         _stop_filler_if_playing(cc_id)
-                        # Detect goodbye from AI → schedule auto-hangup
-                        if _is_goodbye(ai_text):
-                            logger.info("Goodbye detected in AI response — scheduling auto-hangup in 4s")
-                            if cc_id in _auto_hangup_tasks:
-                                _auto_hangup_tasks[cc_id].cancel()
-                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
+                        # DO NOT trigger hangup based on what the AI says —
+                        # it uses polite phrases like "appreciate your time" / "take care"
+                        # naturally mid-conversation. Let Telnyx AI Assistant manage its own ending.
 
         # ── AI ASSISTANT SPEAKING → stop filler + reset silence clock ──
         elif etype in ("call.ai_assistant.speaking_started", "call.ai_assistant.response_started",
