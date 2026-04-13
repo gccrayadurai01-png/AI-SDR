@@ -375,7 +375,7 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    "user_idle_timeout_seconds": 45,
+                    "user_idle_timeout_seconds": 300,
                 },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
@@ -457,13 +457,17 @@ def _is_goodbye(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Auto-hangup if no speech detected for 30 seconds (no-talk / dead air)."""
+    """Auto-hangup only for TTS-fallback mode dead air (120s).
+    When Telnyx AI Assistant is active, skip entirely — Telnyx manages its own flow."""
     try:
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
+            # NEVER fire when AI Assistant is active — Telnyx handles conversation lifecycle
+            if active_calls.get(cc_id, {}).get("ai_assistant"):
+                continue
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 60:
-                logger.info("SILENCE WATCHDOG: No speech for 60s on %s — auto-hanging up", cc_id)
+            if last and (time.time() - last) > 120:
+                logger.info("SILENCE WATCHDOG (TTS mode): No speech for 120s on %s — auto-hanging up", cc_id)
                 try:
                     await hangup_call(cc_id)
                 except Exception as e:
@@ -2215,15 +2219,18 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                                 _auto_hangup_tasks[cc_id].cancel()
                             _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
 
-        # ── AI ASSISTANT SPEAKING → stop filler ──
-        elif etype in ("call.ai_assistant.speaking_started", "call.ai_assistant.response_started"):
+        # ── AI ASSISTANT SPEAKING → stop filler + reset silence clock ──
+        elif etype in ("call.ai_assistant.speaking_started", "call.ai_assistant.response_started",
+                       "call.ai_assistant.speaking_ended", "call.ai_assistant.response_ended"):
             if cc_id:
                 # Mark alive (disarm watchdog)
                 if cc_id not in _ai_assistant_first_event:
                     _ai_assistant_first_event[cc_id] = time.time()
                     logger.info("AI Assistant alive (speaking) — first event for %s", cc_id)
+                # Reset silence clock — AI activity counts as live conversation
+                _last_speech_time[cc_id] = time.time()
                 _stop_filler_if_playing(cc_id)
-                logger.info("AI Assistant speaking — filler stopped")
+                logger.info("AI Assistant speaking event: %s", etype)
 
         # ── AI ASSISTANT ERROR → fall back to TTS pipeline ──
         elif etype == "call.ai_assistant.error":
@@ -2255,17 +2262,14 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             asyncio.create_task(_main_bg_transcription_reply(cc_id, text))
             return JSONResponse(content={"status": "ok"})
 
-        # ── CONVERSATION ENDED → auto-hangup + generate AI insights ──
+        # ── CONVERSATION ENDED → generate insights only; let Telnyx send call.hangup naturally ──
         elif etype == "call.conversation.ended":
             if cc_id:
-                logger.info("Conversation ended for %s — auto-hanging up + generating insights", cc_id)
+                logger.info("Conversation ended for %s — generating insights (NOT force-hanging up)", cc_id)
                 asyncio.create_task(_generate_call_insights(cc_id))
-                # Auto-hangup: Telnyx says conversation is done
-                try:
-                    await hangup_call(cc_id)
-                    logger.info("Auto-hangup after conversation.ended for %s", cc_id)
-                except Exception as e:
-                    logger.warning("Auto-hangup on conversation.ended failed (may already be hung up): %s", e)
+                # Do NOT force-hangup here. Telnyx will send call.hangup when the call
+                # truly ends. Hanging up here caused calls to drop mid-conversation when
+                # user_idle_timeout fired between AI turns.
 
         # ── TELNYX CONVERSATION INSIGHTS ──
         elif etype == "call.conversation_insights.generated":
