@@ -191,11 +191,10 @@ def _rebuild_hot_cache():
     vid = config.ELEVENLABS_VOICE_ID
     ref = config.ELEVENLABS_API_KEY_REF
     if vid and ref:
-        vkw["voice"] = f"ElevenLabs.eleven_multilingual_v2.{vid}"
+        vkw["voice"] = f"ElevenLabs.eleven_turbo_v2_5.{vid}"
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
-            "voice_speed": 0.9,
             "stability": 0.70,
             "similarity_boost": 0.85,
         }
@@ -383,9 +382,8 @@ def sync_assistant_to_script():
             api_key_ref = config.ELEVENLABS_API_KEY_REF
             if voice_id and api_key_ref:
                 patch_body["voice_settings"] = {
-                    "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
+                    "voice": f"ElevenLabs.eleven_turbo_v2_5.{voice_id}",
                     "api_key_ref": api_key_ref,
-                    "voice_speed": 0.9,
                     "stability": 0.70,
                     "similarity_boost": 0.85,
                 }
@@ -464,8 +462,8 @@ async def _silence_watchdog(cc_id: str):
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
             await asyncio.sleep(5)
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 30:
-                logger.info("SILENCE WATCHDOG: No speech for 30s on %s — auto-hanging up", cc_id)
+            if last and (time.time() - last) > 45:
+                logger.info("SILENCE WATCHDOG: No speech for 45s on %s — auto-hanging up", cc_id)
                 try:
                     await hangup_call(cc_id)
                 except Exception as e:
@@ -498,7 +496,7 @@ async def _auto_hangup_after_goodbye(cc_id: str):
 
 async def _ai_assistant_watchdog(cc_id: str, greeting: str):
     """Watchdog: if no AI Assistant event within 8s, fall back to TTS pipeline."""
-    await asyncio.sleep(8)
+    await asyncio.sleep(15)
     if cc_id not in active_calls:
         return  # Call already ended
     if cc_id in _ai_assistant_first_event:
@@ -507,7 +505,7 @@ async def _ai_assistant_watchdog(cc_id: str, greeting: str):
     if not rec.get("ai_assistant"):
         return  # Already fell back
 
-    logger.warning("WATCHDOG: AI Assistant silent for 8s on %s — falling back to TTS pipeline", cc_id)
+    logger.warning("WATCHDOG: AI Assistant silent for 15s on %s — falling back to TTS pipeline", cc_id)
     rec["ai_assistant"] = False
 
     # Try speaking the greeting via Polly + start transcription as TTS fallback
