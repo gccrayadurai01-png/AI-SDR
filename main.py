@@ -2044,8 +2044,7 @@ async def _main_bg_transcription_reply(cc_id: str, text: str) -> None:
 
 
 async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: str, background_tasks: BackgroundTasks):
-    """Start AI Assistant off the main webhook thread — zero blocking on call.answered.
-    Uses pre-cached values + Telnyx SDK for reliable start."""
+    """Start AI Assistant off the main webhook thread — zero blocking on call.answered."""
     loop = asyncio.get_event_loop()
 
     # ── Build greeting from CACHED script (no disk read) ──
@@ -2061,7 +2060,7 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         msg_history.append({"role": "user", "content": f"[BRIEFING]\n{research[:500]}"})
         msg_history.append({"role": "assistant", "content": "Got it."})
 
-    # ── Build kwargs using CACHED voice settings (no config lookups) ──
+    # ── Build AI Assistant kwargs — let assistant use its own voice config ──
     ai_kwargs: dict[str, Any] = {
         "call_control_id": cc_id,
         "assistant": {"id": ASSISTANT_ID},
@@ -2069,7 +2068,6 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
     }
-    ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:
         ai_kwargs["message_history"] = msg_history
 
@@ -2090,9 +2088,7 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         active_calls.setdefault(cc_id, {})["ai_assistant"] = True
         _ai_assistant_started.add(cc_id)
         logger.info("AI Assistant started in %.0fms — greeting: %s", latency_ms, greeting[:60])
-        # Recording in background — don't block greeting
         asyncio.create_task(_fire_recording_detached())
-        asyncio.create_task(_ai_assistant_watchdog(cc_id, greeting))
     except Exception as e:
         logger.exception("AI Assistant failed: %s — falling back to TTS", e)
         active_calls.setdefault(cc_id, {})["ai_assistant"] = False
