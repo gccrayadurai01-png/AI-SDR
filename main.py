@@ -378,6 +378,12 @@ def sync_assistant_to_script():
                     "user_idle_timeout_secs": 90,
                     "max_duration_secs": 1800,
                 },
+                "interruption_settings": {
+                    "enable": True,
+                    "start_speaking_plan": {
+                        "wait_seconds": 1.5,
+                    },
+                },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
             api_key_ref = config.ELEVENLABS_API_KEY_REF
@@ -2073,8 +2079,9 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
 
     tx = _get_tx()
 
-    # ── Fire recording detached (don't block greeting) ──
+    # ── Fire recording detached — delay 5s so it doesn't overlap greeting ──
     async def _fire_recording_detached():
+        await asyncio.sleep(5)
         try:
             await loop.run_in_executor(None, lambda: tx.calls.actions.start_recording(
                 call_control_id=cc_id, format="mp3", channels="single"))
