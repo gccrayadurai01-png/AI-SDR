@@ -163,8 +163,15 @@ try:
 except ValueError:
     EMAIL_SEQUENCE_TICK_SEC = 60
 
-# App
-_bu = _env_str("APP_BASE_URL") or "http://localhost:8000"
+# App — auto-detect Railway URL if APP_BASE_URL not explicitly set in env
+_bu_explicit = os.environ.get("APP_BASE_URL", "").strip()
+_railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if _bu_explicit:
+    _bu = _bu_explicit
+elif _railway_domain:
+    _bu = f"https://{_railway_domain}"
+else:
+    _bu = _env_str("APP_BASE_URL") or "http://localhost:8000"
 APP_BASE_URL = _bu.strip().rstrip("/")
 PORT = int(os.getenv("PORT", "8000"))
 
@@ -301,8 +308,15 @@ def reload_secrets() -> None:
             QA_KB_MIN_SCORE = 0.82
     except (ValueError, AttributeError):
         QA_KB_MIN_SCORE = 0.82
-    _bu2 = _env_str("APP_BASE_URL") or "http://localhost:8000"
-    APP_BASE_URL = _bu2.strip().rstrip("/")
+    _bu2_explicit = os.environ.get("APP_BASE_URL", "").strip()
+    _rd2 = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
+    if _bu2_explicit:
+        APP_BASE_URL = _bu2_explicit.rstrip("/")
+    elif _rd2:
+        APP_BASE_URL = f"https://{_rd2}"
+    else:
+        _bu2 = _env_str("APP_BASE_URL") or "http://localhost:8000"
+        APP_BASE_URL = _bu2.strip().rstrip("/")
     PORT = int(os.getenv("PORT", "8000"))
     COMPANY_NAME         = os.getenv("COMPANY_NAME", "Your Company")
     SDR_NAME             = os.getenv("SDR_NAME", "Alex")

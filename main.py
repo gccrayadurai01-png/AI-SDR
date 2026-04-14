@@ -6,6 +6,7 @@ Flow: call.answered → speak → start_transcription → call.transcription →
 from __future__ import annotations
 
 import asyncio
+import os
 from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 import json
@@ -560,6 +561,11 @@ async def _check_assistant_health():
 async def on_startup():
     """Sync AI Assistant + pre-cache filler audio + hot caches on every server start."""
     global _health_check_task
+    logger.info("=== STARTUP: APP_BASE_URL = %s ===", config.APP_BASE_URL)
+    logger.info("=== STARTUP: Webhook URL = %s/webhooks/telnyx ===", config.APP_BASE_URL)
+    if "ngrok" in config.APP_BASE_URL and os.environ.get("RAILWAY_ENVIRONMENT"):
+        logger.error("!!! CRITICAL: APP_BASE_URL points to ngrok but running on Railway — webhooks will FAIL !!!")
+        logger.error("!!! Set APP_BASE_URL in Railway env vars or enable RAILWAY_PUBLIC_DOMAIN !!!")
     _get_tx()  # Pre-init Telnyx client — no cold start on first call
     _rebuild_hot_cache()
     try:
