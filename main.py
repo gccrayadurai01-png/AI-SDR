@@ -375,7 +375,8 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    "user_idle_timeout_secs": 15,
+                    "user_idle_timeout_secs": 90,
+                    "max_duration_secs": 1800,
                 },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
