@@ -493,24 +493,9 @@ async def _auto_hangup_after_goodbye(cc_id: str):
 
 
 async def _ai_assistant_watchdog(cc_id: str, greeting: str):
-    """Watchdog: if no AI Assistant event within 8s, fall back to TTS pipeline."""
-    await asyncio.sleep(8)
-    if cc_id not in active_calls:
-        return  # Call already ended
-    if cc_id in _ai_assistant_first_event:
-        return  # AI Assistant is working — all good
-    rec = active_calls.get(cc_id, {})
-    if not rec.get("ai_assistant"):
-        return  # Already fell back
-
-    logger.warning("WATCHDOG: AI Assistant silent for 8s on %s — falling back to TTS pipeline", cc_id)
-    rec["ai_assistant"] = False
-
-    # Try speaking the greeting via Polly + start transcription as TTS fallback
-    try:
-        speak_on_call(cc_id, greeting)
-    except Exception as e:
-        logger.error("Watchdog TTS fallback failed: %s", e)
+    """Watchdog DISABLED — Telnyx AI Assistant manages its own lifecycle.
+    Keeping function stub so callers don't break."""
+    return
 
 
 async def _check_assistant_health():
