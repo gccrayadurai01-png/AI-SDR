@@ -196,10 +196,8 @@ def _rebuild_hot_cache():
             "type": "elevenlabs",
             "api_key_ref": ref,
             "voice_speed": 0.9,
-            "speed": 0.9,
-            "similarity_boost": 0.80,
-            "style": 0,
-            "use_speaker_boost": False,
+            "stability": 0.70,
+            "similarity_boost": 0.85,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
@@ -377,9 +375,6 @@ def sync_assistant_to_script():
                 "model": "anthropic/claude-haiku-4-5",
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
-                "telephony_settings": {
-                    "user_idle_timeout_secs": 300,
-                },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
             api_key_ref = config.ELEVENLABS_API_KEY_REF
@@ -388,10 +383,8 @@ def sync_assistant_to_script():
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
-                    "speed": 0.9,
-                    "similarity_boost": 0.80,
-                    "style": 0,
-                    "use_speaker_boost": False,
+                    "stability": 0.70,
+                    "similarity_boost": 0.85,
                 }
             r = httpx.patch(
                 f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
@@ -400,33 +393,9 @@ def sync_assistant_to_script():
                 timeout=15.0,
             )
             if r.status_code < 300:
-                # Verify telephony_settings persisted
-                resp_data = r.json().get("data", r.json())
-                ts = resp_data.get("telephony_settings", {})
-                idle = ts.get("user_idle_timeout_secs")
-                logger.info("Assistant synced: claude-haiku-4-5, distil-whisper, ElevenLabs, idle_timeout=%s", idle)
-                if idle != 300:
-                    logger.warning("user_idle_timeout_secs did NOT persist (%s) — retrying standalone PATCH", idle)
-                    r2 = httpx.patch(
-                        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={"telephony_settings": {"user_idle_timeout_secs": 300}},
-                        timeout=15.0,
-                    )
-                    logger.info("Standalone telephony PATCH: %s", r2.status_code)
+                logger.info("Assistant synced: claude-haiku-4-5, distil-whisper, ElevenLabs")
             else:
                 logger.warning("Assistant PATCH %s: %s", r.status_code, r.text[:300])
-                # Even if main PATCH fails, ensure telephony_settings is set
-                try:
-                    httpx.patch(
-                        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={"telephony_settings": {"user_idle_timeout_secs": 300}},
-                        timeout=15.0,
-                    )
-                    logger.info("Fallback telephony PATCH succeeded")
-                except Exception:
-                    pass
     except Exception as e:
         logger.warning("Assistant PATCH failed (non-fatal): %s", e)
 
@@ -463,16 +432,13 @@ async def _precache_filler_audio():
     logger.info("Pre-cached %d/%d filler phrases (Anthony turbo)", len(_filler_audio_cache), len(config.PHONE_FILLER_UTTERANCES))
 
 
-# STRICT goodbye — only fire on unambiguous hard call-end signals from the PROSPECT.
-# Do NOT add casual phrases like "take care", "cheers", "appreciate your time",
-# "have a great day" — the AI says these naturally mid-conversation and they caused
-# calls to be killed after 2 seconds mid-pitch.
 _GOODBYE_PATTERNS = _re.compile(
-    r"\b(stop\s*calling(\s*me)?|remove\s*me(\s*from)?"
-    r"|do\s*not\s*call|don'?t\s*call(\s*me)?"
-    r"|go\s*away|leave\s*me\s*alone"
-    r"|i\s*need\s*to\s*go\s*now|i\s*have\s*to\s*go\s*now"
-    r"|hang(ing)?\s*up\s*now|i\s*m\s*hanging\s*up)\b",
+    r'\b(goodbye|good\s*bye|bye\s*bye|talk\s*soon|have\s*a\s*great|'
+    r'take\s*care|appreciate\s*your\s*time|thanks\s*for\s*your\s*time|'
+    r'nice\s*talking|nice\s*chatting|have\s*a\s*good\s*one|'
+    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long|'
+    r'not\s*interested|stop\s*calling|remove\s*me|do\s*not\s*call|'
+    r"don'?t\s*call|hang\s*up|go\s*away|leave\s*me\s*alone)\b",
     _re.IGNORECASE,
 )
 
@@ -491,24 +457,15 @@ def _is_goodbye(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Auto-hangup only for TTS-fallback mode dead air (180s).
-    When AI Assistant was ever started for this call, NEVER fire — Telnyx manages its own flow.
-    The ai_assistant flag in active_calls may get cleared by other code paths,
-    so we also track whether AI Assistant was started via _ai_assistant_started."""
+    """Monitor call silence — only log, NEVER auto-hangup.
+    Telnyx AI Assistant manages its own conversation lifecycle.
+    We must not kill calls — data collection requires full conversations."""
     try:
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(15)
-            # NEVER fire if AI Assistant was started for this call — Telnyx handles lifecycle
-            if cc_id in _ai_assistant_started:
-                continue
+            await asyncio.sleep(30)
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 180:
-                logger.info("SILENCE WATCHDOG (TTS mode): No speech for 180s on %s — auto-hanging up", cc_id)
-                try:
-                    await hangup_call(cc_id)
-                except Exception as e:
-                    logger.warning("Silence watchdog hangup failed: %s", e)
-                break
+            if last and (time.time() - last) > 60:
+                logger.info("SILENCE MONITOR: No speech for 60s on %s — logging only (NOT hanging up)", cc_id)
     except asyncio.CancelledError:
         pass
     finally:
@@ -516,20 +473,17 @@ async def _silence_watchdog(cc_id: str):
 
 
 async def _auto_hangup_after_goodbye(cc_id: str):
-    """Wait after hard prospect rejection, then auto-hangup if no new speech."""
+    """DISABLED — previously hung up calls mid-conversation. Now just logs.
+    Telnyx AI Assistant handles conversation ending on its own."""
     try:
-        await asyncio.sleep(8.0)  # Give 8s — prospect may continue talking
+        await asyncio.sleep(5.0)
         if cc_id not in active_calls:
             return
         if active_calls[cc_id].get("state") == "ended":
             return
-        logger.info("Auto-hangup: conversation ended naturally for %s", cc_id)
-        try:
-            await hangup_call(cc_id)
-        except Exception as e:
-            logger.error("Auto-hangup failed: %s", e)
+        logger.info("Goodbye detected for %s — logging only (NOT hanging up)", cc_id)
     except asyncio.CancelledError:
-        pass  # Conversation continued — hangup cancelled
+        pass
     finally:
         _auto_hangup_tasks.pop(cc_id, None)
 
@@ -2262,34 +2216,32 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                         logger.info(f"AI-ASST HEARD: \"{ai_text}\"")
                         if config.PHONE_THINK_FILLER and config.should_play_think_filler(ai_text):
                             asyncio.create_task(_play_filler_for_ai_assistant(cc_id))
-                        # Only hang up if prospect explicitly demands to be removed/stop calling
+                        # If prospect says goodbye, don't cancel — let auto-hangup proceed
                         if _is_goodbye(ai_text):
-                            logger.info("Prospect hard-reject — scheduling hangup in 8s")
-                            if cc_id in _auto_hangup_tasks:
-                                _auto_hangup_tasks[cc_id].cancel()
-                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
+                            logger.info("Prospect said goodbye — keeping auto-hangup active")
                         elif cc_id in _auto_hangup_tasks:
+                            # Prospect said something that's NOT goodbye — cancel pending hangup
                             _auto_hangup_tasks[cc_id].cancel()
                             _auto_hangup_tasks.pop(cc_id, None)
                     else:
                         logger.info(f"AI-ASST SAID: \"{ai_text}\"")
                         _stop_filler_if_playing(cc_id)
-                        # DO NOT trigger hangup based on what the AI says —
-                        # it uses polite phrases like "appreciate your time" / "take care"
-                        # naturally mid-conversation. Let Telnyx AI Assistant manage its own ending.
+                        # Detect goodbye from AI → schedule auto-hangup
+                        if _is_goodbye(ai_text):
+                            logger.info("Goodbye detected in AI response — scheduling auto-hangup in 4s")
+                            if cc_id in _auto_hangup_tasks:
+                                _auto_hangup_tasks[cc_id].cancel()
+                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
 
-        # ── AI ASSISTANT SPEAKING → stop filler + reset silence clock ──
-        elif etype in ("call.ai_assistant.speaking_started", "call.ai_assistant.response_started",
-                       "call.ai_assistant.speaking_ended", "call.ai_assistant.response_ended"):
+        # ── AI ASSISTANT SPEAKING → stop filler ──
+        elif etype in ("call.ai_assistant.speaking_started", "call.ai_assistant.response_started"):
             if cc_id:
                 # Mark alive (disarm watchdog)
                 if cc_id not in _ai_assistant_first_event:
                     _ai_assistant_first_event[cc_id] = time.time()
                     logger.info("AI Assistant alive (speaking) — first event for %s", cc_id)
-                # Reset silence clock — AI activity counts as live conversation
-                _last_speech_time[cc_id] = time.time()
                 _stop_filler_if_playing(cc_id)
-                logger.info("AI Assistant speaking event: %s", etype)
+                logger.info("AI Assistant speaking — filler stopped")
 
         # ── AI ASSISTANT ERROR → fall back to TTS pipeline ──
         elif etype == "call.ai_assistant.error":
@@ -2321,14 +2273,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             asyncio.create_task(_main_bg_transcription_reply(cc_id, text))
             return JSONResponse(content={"status": "ok"})
 
-        # ── CONVERSATION ENDED → generate insights only; let Telnyx send call.hangup naturally ──
+        # ── CONVERSATION ENDED → generate insights; Telnyx handles hangup ──
         elif etype == "call.conversation.ended":
             if cc_id:
-                logger.info("Conversation ended for %s — generating insights (NOT force-hanging up)", cc_id)
+                logger.info("Conversation ended for %s — generating insights", cc_id)
                 asyncio.create_task(_generate_call_insights(cc_id))
-                # Do NOT force-hangup here. Telnyx will send call.hangup when the call
-                # truly ends. Hanging up here caused calls to drop mid-conversation when
-                # user_idle_timeout fired between AI turns.
 
         # ── TELNYX CONVERSATION INSIGHTS ──
         elif etype == "call.conversation_insights.generated":
