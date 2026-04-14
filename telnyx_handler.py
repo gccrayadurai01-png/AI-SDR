@@ -211,11 +211,13 @@ async def make_outbound_call(to_number: str) -> dict:
             from_=config.TELNYX_PHONE_NUMBER,
             webhook_url=f"{config.APP_BASE_URL}/webhooks/telnyx",
             webhook_url_method="POST",
-            answering_machine_detection="greeting_end",
+            answering_machine_detection="detect_words",
             answering_machine_detection_config={
-                "after_greeting_silence_millis": 600,
-                "greeting_duration_millis": 3500,
-                "total_analysis_time_millis": 3500,
+                "after_greeting_silence_millis": 2500,
+                "greeting_duration_millis": 6000,
+                "total_analysis_time_millis": 8000,
+                "between_words_silence_millis": 1500,
+                "max_number_of_words": 6,
             },
         )
         data = result.data

@@ -148,7 +148,7 @@ _last_health_check: dict[str, Any] = {"status": "pending", "last_run": None, "re
 import telnyx
 import httpx as _httpx
 
-ASSISTANT_ID = "assistant-0a0eb33a-5fc0-4dd1-b366-8f0f1432be42"
+ASSISTANT_ID = "assistant-7b0da1f0-aaff-44c0-ae3e-a75cc89f1ddc"
 
 _tx: telnyx.Telnyx | None = None
 _tx_sig: tuple[str, str, str, str] | None = None
