@@ -182,6 +182,8 @@ _cached_knowledge_history: list[dict] = []
 _cached_voice_kwargs: dict[str, Any] = {}  # voice + voice_settings pre-built
 
 
+_cached_greeting_audio: str = ""  # base64 mp3 of default greeting — pre-generated for instant playback
+
 def _rebuild_hot_cache():
     """Rebuild all hot-path caches from current script + config. Called on startup + script save."""
     global _cached_script, _cached_knowledge_history, _cached_voice_kwargs
@@ -198,12 +200,50 @@ def _rebuild_hot_cache():
             "voice_speed": 0.9,
             "stability": 0.70,
             "similarity_boost": 0.85,
+            "style": 0,
+            "use_speaker_boost": False,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
     _cached_voice_kwargs = vkw
     logger.info("Hot cache rebuilt: script=%d keys, knowledge=%d msgs, voice=%s",
                 len(_cached_script), len(_cached_knowledge_history), vkw.get("voice", "?")[:40])
+
+
+async def _precache_greeting_audio():
+    """Pre-generate the default greeting via ElevenLabs at startup.
+    On call.answered, we play this cached audio INSTANTLY via start_playback
+    (no TTS delay), then start AI Assistant in background with no greeting."""
+    global _cached_greeting_audio
+    import httpx as _hx
+    vid = config.ELEVENLABS_VOICE_ID
+    api_key = config.ELEVENLABS_API_KEY
+    if not vid or not api_key:
+        logger.info("Greeting pre-cache skipped — no ElevenLabs direct API key")
+        return
+    s = _cached_script or load_script()
+    sdr = s.get("sdr_name", "Alex")
+    co = s.get("company_name", "Your Company")
+    tmpl = s.get("opening_line", "")
+    if tmpl and "{" in tmpl:
+        greeting = tmpl.replace("{name}", "there").replace("{sdr_name}", sdr).replace("{company}", co)
+    else:
+        greeting = f"Hey there, this is {sdr} from {co} -- did I catch you at a bad time?"
+    try:
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}"
+        headers = {"xi-api-key": api_key, "Content-Type": "application/json", "Accept": "audio/mpeg"}
+        async with _hx.AsyncClient(timeout=15.0) as ac:
+            r = await ac.post(url, json={
+                "text": greeting,
+                "model_id": config.ELEVENLABS_MODEL_ID or "eleven_multilingual_v2",
+                "voice_settings": {"stability": 0.70, "similarity_boost": 0.85},
+            }, headers=headers, params={"output_format": "mp3_22050_32"})
+            r.raise_for_status()
+            import base64
+            _cached_greeting_audio = base64.b64encode(r.content).decode("ascii")
+            logger.info("Pre-cached greeting audio (%d bytes): %s", len(r.content), greeting[:60])
+    except Exception as e:
+        logger.warning("Greeting pre-cache failed (will use AI Assistant greeting instead): %s", e)
 
 
 SALES_TECHNIQUES = {
@@ -385,6 +425,8 @@ def sync_assistant_to_script():
                     "voice_speed": 0.9,
                     "stability": 0.70,
                     "similarity_boost": 0.85,
+                    "style": 0,
+                    "use_speaker_boost": False,
                 }
             r = httpx.patch(
                 f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
@@ -566,6 +608,7 @@ async def on_startup():
         logger.warning("Startup assistant sync failed (non-fatal): %s", e)
     await _check_assistant_health()
     await _precache_filler_audio()
+    await _precache_greeting_audio()
     _health_check_task = asyncio.create_task(_health_check_loop())
 
 
@@ -2050,20 +2093,33 @@ async def _main_bg_transcription_reply(cc_id: str, text: str) -> None:
 
 
 async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: str, background_tasks: BackgroundTasks):
-    """Start AI Assistant off the main webhook thread — zero blocking on call.answered.
-    Uses pre-cached values + Telnyx SDK for reliable start."""
+    """Start AI Assistant with INSTANT greeting playback.
+    1. Play pre-cached greeting audio IMMEDIATELY (no TTS delay)
+    2. Start AI Assistant in background with greeting in message_history"""
     loop = asyncio.get_event_loop()
 
     # ── Build greeting from CACHED script (no disk read) ──
     s = _cached_script or load_script()
     sdr = s.get("sdr_name", "Alex")
     co = s.get("company_name", "Your Company")
-    # Use script template if available, otherwise default
     opening_tmpl = s.get("opening_line", "")
     if opening_tmpl and "{" in opening_tmpl:
         greeting = opening_tmpl.replace("{name}", name or "there").replace("{sdr_name}", sdr).replace("{company}", co)
     else:
         greeting = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
+
+    # ── INSTANT GREETING: play pre-cached audio immediately (0 TTS delay) ──
+    tx = _get_tx()
+    if _cached_greeting_audio:
+        try:
+            await loop.run_in_executor(None, lambda: tx.calls.actions.start_playback(
+                call_control_id=cc_id,
+                playback_content=_cached_greeting_audio,
+                audio_type="mp3",
+            ))
+            logger.info("INSTANT greeting played from cache for %s", cc_id)
+        except Exception as e:
+            logger.warning("Cached greeting playback failed (will use AI greeting): %s", e)
 
     # ── Build message_history from CACHED knowledge (no recompute) ──
     msg_history = list(_cached_knowledge_history)  # shallow copy
@@ -2072,24 +2128,23 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         msg_history.append({"role": "user", "content": f"[BRIEFING]\n{research[:500]}"})
         msg_history.append({"role": "assistant", "content": "Got it."})
     # ── CRITICAL: inject greeting as the first assistant turn so AI knows it already spoke ──
-    # Without this, the AI restarts the conversation and repeats the opener.
     msg_history.append({"role": "assistant", "content": greeting})
 
     # ── Build kwargs using CACHED voice settings (no config lookups) ──
     # NOTE: telephony_settings is an assistant-level config (set via PATCH on startup),
     # NOT a per-call parameter for start_ai_assistant — passing it here would be ignored.
+    # If cached greeting was played, skip AI greeting (avoid double-greeting)
+    use_ai_greeting = "" if _cached_greeting_audio else greeting
     ai_kwargs: dict[str, Any] = {
         "call_control_id": cc_id,
         "assistant": {"id": ASSISTANT_ID},
-        "greeting": greeting,
+        "greeting": use_ai_greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
     }
     ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:
         ai_kwargs["message_history"] = msg_history
-
-    tx = _get_tx()
 
     # ── Fire recording detached (don't block greeting) ──
     async def _fire_recording_detached():
