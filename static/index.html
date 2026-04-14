@@ -941,7 +941,8 @@ tbody tr.clickable { cursor: pointer; }
             <div class="form-group"><label>Prospect Name</label><input id="qd-name" placeholder="John Doe"/></div>
             <div class="form-group"><label>Company</label><input id="qd-company" placeholder="Acme Corp"/></div>
             <div class="form-group"><label>Email</label><input id="qd-email" type="email" placeholder="prospect@company.com"/></div>
-            <div class="form-group full"><label>Notes</label><input id="qd-notes" placeholder="Follow-up on conversation"/></div>
+            <div class="form-group"><label>Voice</label><select id="qd-voice"></select></div>
+            <div class="form-group"><label>Notes</label><input id="qd-notes" placeholder="Follow-up on conversation"/></div>
           </div>
           <div class="form-actions">
             <button class="btn btn-success" onclick="makeCall()"><i data-lucide="phone"></i> Dial Now</button>
@@ -1278,6 +1279,7 @@ tbody tr.clickable { cursor: pointer; }
         <div class="form-group"><label>Prospect Name</label><input id="fab-qd-name" placeholder="John Doe"/></div>
         <div class="form-group"><label>Company</label><input id="fab-qd-company" placeholder="Acme Corp"/></div>
         <div class="form-group"><label>Title</label><input id="fab-qd-title" placeholder="VP Sales"/></div>
+        <div class="form-group"><label>Voice</label><select id="fab-qd-voice"></select></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1302,7 +1304,7 @@ tbody tr.clickable { cursor: pointer; }
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- FAB: Quick Dial -->
-<button class="fab" onclick="openModal('quickDialModal')" title="Quick Dial">
+<button class="fab" onclick="openModal('quickDialModal');loadQuickDialVoices()" title="Quick Dial">
   <i data-lucide="phone"></i>
 </button>
 
@@ -1664,11 +1666,22 @@ async function runHealthCheck() {
   loadDashboard();
 }
 
-function fabQuickCall() {
+async function fabQuickCall() {
   const phone = document.getElementById('fab-qd-number').value;
   if (!phone) return toast('Phone number is required', 'error');
+  const voiceSel = document.getElementById('fab-qd-voice');
+  const voiceId = voiceSel ? voiceSel.value : '';
   closeModal('quickDialModal');
-  dialFromContact(phone, document.getElementById('fab-qd-name').value, document.getElementById('fab-qd-company').value, '');
+  const d = await POST('/call/outbound', {
+    to_number: phone,
+    prospect_name: document.getElementById('fab-qd-name').value || '',
+    company: document.getElementById('fab-qd-company').value || '',
+    voice_id: voiceId
+  });
+  if (d._error) return toast('Call failed: ' + (d.detail || 'Error'), 'error');
+  toast('Call initiated!', 'success');
+  navigate('live-calls');
+  setTimeout(refreshActiveCalls, 1500);
 }
 
 /* ===================================================================
@@ -1717,10 +1730,12 @@ async function loadCampaignAgentOptions() {
   const agents = (d && d.agents) ? d.agents : [];
   const sel = document.getElementById('campaignAgentSelect');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Active Agent (default)</option>';
-  agents.forEach(a => {
-    sel.innerHTML += '<option value="' + escHtml(a.id) + '">' + escHtml(a.name || 'Unnamed') + '</option>';
-  });
+  // Show only the current (first) agent — one agent at a time
+  if (agents.length > 0) {
+    sel.innerHTML = '<option value="' + escHtml(agents[0].id) + '" selected>' + escHtml(agents[0].name || 'Current Agent') + '</option>';
+  } else {
+    sel.innerHTML = '<option value="">No Agent Configured</option>';
+  }
 }
 
 async function loadCampaignVoiceOptions() {
@@ -2340,12 +2355,19 @@ async function saveAgentScript() {
   // Save to script.json (activates it)
   const d = await api('POST', '/api/script', script);
   if (d._error) return toast('Save failed: ' + d.detail, 'error');
-  // Also persist as agent in agents.json for future use
+  // Update existing agent or create first one — only ONE agent at a time
   const agentData = Object.assign({}, script, {
     name: (script.company_name || 'Agent') + ' - ' + (technique.charAt(0).toUpperCase() + technique.slice(1)),
     website: document.getElementById('website-url') ? document.getElementById('website-url').value : '',
   });
-  await api('POST', '/api/agents', agentData);
+  const agentsRes = await api('GET', '/api/agents');
+  const existingAgents = (agentsRes && agentsRes.agents) ? agentsRes.agents : [];
+  if (existingAgents.length > 0) {
+    // Update the first (current) agent instead of creating a new one
+    await api('PATCH', '/api/agents/' + existingAgents[0].id, agentData);
+  } else {
+    await api('POST', '/api/agents', agentData);
+  }
   toast('Agent saved & activated!', 'success');
   updateScriptPreview();
 }
@@ -2488,17 +2510,33 @@ let selectedLiveCallId = null;
 function openQuickDial() {
   document.getElementById('quickDialCard').style.display = 'block';
   document.getElementById('researchResult').style.display = 'none';
+  loadQuickDialVoices();
+}
+
+async function loadQuickDialVoices() {
+  const d = await GET('/api/voices');
+  const voices = (d && d.voices) ? d.voices : [];
+  ['qd-voice', 'fab-qd-voice'].forEach(function(selId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    sel.innerHTML = '';
+    voices.forEach(function(v) {
+      sel.innerHTML += '<option value="' + escHtml(v.id) + '">' + escHtml(v.name) + '</option>';
+    });
+  });
 }
 
 async function makeCall() {
   const num = document.getElementById('qd-number').value;
   if (!num) return toast('Phone number is required', 'error');
+  const voiceSel = document.getElementById('qd-voice');
   const d = await POST('/call/outbound', {
     to_number: num,
     prospect_name: document.getElementById('qd-name').value,
     company: document.getElementById('qd-company').value,
     notes: document.getElementById('qd-notes').value,
-    prospect_email: document.getElementById('qd-email').value || ''
+    prospect_email: document.getElementById('qd-email').value || '',
+    voice_id: voiceSel ? voiceSel.value : ''
   });
   if (d._error) return toast('Call failed: ' + d.detail, 'error');
   toast('Call initiated!', 'success');
@@ -2623,11 +2661,18 @@ async function loadRecentCalls() {
   }).join('');
 }
 
-function redialWithEdit(phone, name, company) {
-  openQuickDial();
-  document.getElementById('qd-number').value = phone || '';
-  document.getElementById('qd-name').value = name || '';
-  document.getElementById('qd-company').value = company || '';
+async function redialWithEdit(phone, name, company) {
+  if (!phone) return toast('No phone number to redial', 'error');
+  toast('Redialing ' + (name || phone) + '...', 'info');
+  const d = await POST('/call/outbound', {
+    to_number: phone,
+    prospect_name: name || 'there',
+    company: company || '',
+    voice_id: ''
+  });
+  if (d._error) return toast('Redial failed: ' + (d.detail || 'Error'), 'error');
+  toast('Call initiated!', 'success');
+  setTimeout(refreshActiveCalls, 1500);
 }
 
 /* ===================================================================

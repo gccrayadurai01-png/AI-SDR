@@ -196,8 +196,9 @@ def _rebuild_hot_cache():
             "type": "elevenlabs",
             "api_key_ref": ref,
             "voice_speed": 0.9,
-            "stability": 0.85,
+            "speed": 0.9,
             "similarity_boost": 0.80,
+            "style": 0,
             "use_speaker_boost": False,
         }
     else:
@@ -387,7 +388,7 @@ def sync_assistant_to_script():
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
-                    "stability": 0.85,
+                    "speed": 0.9,
                     "similarity_boost": 0.80,
                     "style": 0,
                     "use_speaker_boost": False,
@@ -399,9 +400,33 @@ def sync_assistant_to_script():
                 timeout=15.0,
             )
             if r.status_code < 300:
-                logger.info("Assistant synced: claude-haiku-4-5, distil-whisper, ElevenLabs")
+                # Verify telephony_settings persisted
+                resp_data = r.json().get("data", r.json())
+                ts = resp_data.get("telephony_settings", {})
+                idle = ts.get("user_idle_timeout_secs")
+                logger.info("Assistant synced: claude-haiku-4-5, distil-whisper, ElevenLabs, idle_timeout=%s", idle)
+                if idle != 300:
+                    logger.warning("user_idle_timeout_secs did NOT persist (%s) — retrying standalone PATCH", idle)
+                    r2 = httpx.patch(
+                        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json={"telephony_settings": {"user_idle_timeout_secs": 300}},
+                        timeout=15.0,
+                    )
+                    logger.info("Standalone telephony PATCH: %s", r2.status_code)
             else:
                 logger.warning("Assistant PATCH %s: %s", r.status_code, r.text[:300])
+                # Even if main PATCH fails, ensure telephony_settings is set
+                try:
+                    httpx.patch(
+                        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json={"telephony_settings": {"user_idle_timeout_secs": 300}},
+                        timeout=15.0,
+                    )
+                    logger.info("Fallback telephony PATCH succeeded")
+                except Exception:
+                    pass
     except Exception as e:
         logger.warning("Assistant PATCH failed (non-fatal): %s", e)
 
@@ -844,14 +869,11 @@ async def api_tts_config():
 
 @app.get("/api/voices")
 async def api_list_voices():
-    """Return available ElevenLabs voices for campaign voice selection."""
-    default_id = config.ELEVENLABS_VOICE_ID or ""
+    """Return available ElevenLabs voices for campaign and quick-dial voice selection."""
     voices = [
-        {"id": "", "name": "Default Voice", "description": "Uses the default ElevenLabs voice from settings"},
+        {"id": "49uxf7RPOcr58oowljKn", "name": "Anthony - American Voice", "description": "American English voice"},
+        {"id": "a9paacvZxTlkONiCPzfC", "name": "Indian Voice", "description": "Indian accent voice"},
     ]
-    if default_id:
-        voices.append({"id": default_id, "name": "Sarah (Default)", "description": "Current default voice"})
-    voices.append({"id": "a9paacvZxTlkONiCPzfC", "name": "Indian Voice", "description": "Indian accent voice"})
     return {"voices": voices}
 
 
@@ -1889,6 +1911,7 @@ class CallRequest(BaseModel):
     company:         str = ""
     notes:           str = ""
     prospect_email:  str = ""  # for automatic post-call recap email (SMTP + Claude)
+    voice_id:        str = ""  # ElevenLabs voice ID override for this call
 
 
 async def place_outbound_call(req: CallRequest) -> dict:
@@ -1905,6 +1928,11 @@ async def place_outbound_call(req: CallRequest) -> dict:
         )
     if not config.TELNYX_CONNECTION_ID:
         raise HTTPException(status_code=400, detail="TELNYX_CONNECTION_ID is not set in .env.")
+    # Apply voice override for this call if specified
+    voice_id = (req.voice_id or "").strip()
+    if voice_id:
+        config.ELEVENLABS_VOICE_ID = voice_id
+        logger.info("Voice override for call: %s", voice_id)
     logger.info(f"Dialing {to} ({req.prospect_name})")
     # Fire research in background — don't wait for it before dialing
     if req.prospect_name or req.company:
@@ -2092,13 +2120,14 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
     msg_history.append({"role": "assistant", "content": greeting})
 
     # ── Build kwargs using CACHED voice settings (no config lookups) ──
+    # NOTE: telephony_settings is an assistant-level config (set via PATCH on startup),
+    # NOT a per-call parameter for start_ai_assistant — passing it here would be ignored.
     ai_kwargs: dict[str, Any] = {
         "call_control_id": cc_id,
         "assistant": {"id": ASSISTANT_ID},
         "greeting": greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
-        "telephony_settings": {"user_idle_timeout_secs": 300},
     }
     ai_kwargs.update(_cached_voice_kwargs)
     if msg_history:
