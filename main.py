@@ -482,6 +482,7 @@ _auto_hangup_tasks: dict[str, asyncio.Task] = {}
 # Track last speech time per call for silence detection
 _last_speech_time: dict[str, float] = {}
 _silence_watchdog_tasks: dict[str, asyncio.Task] = {}
+_ai_assistant_started: set[str] = set()  # cc_ids where AI Assistant was started — NEVER auto-hangup these
 
 
 def _is_goodbye(text: str) -> bool:
@@ -490,17 +491,19 @@ def _is_goodbye(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Auto-hangup only for TTS-fallback mode dead air (120s).
-    When Telnyx AI Assistant is active, skip entirely — Telnyx manages its own flow."""
+    """Auto-hangup only for TTS-fallback mode dead air (180s).
+    When AI Assistant was ever started for this call, NEVER fire — Telnyx manages its own flow.
+    The ai_assistant flag in active_calls may get cleared by other code paths,
+    so we also track whether AI Assistant was started via _ai_assistant_started."""
     try:
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(10)
-            # NEVER fire when AI Assistant is active — Telnyx handles conversation lifecycle
-            if active_calls.get(cc_id, {}).get("ai_assistant"):
+            await asyncio.sleep(15)
+            # NEVER fire if AI Assistant was started for this call — Telnyx handles lifecycle
+            if cc_id in _ai_assistant_started:
                 continue
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 120:
-                logger.info("SILENCE WATCHDOG (TTS mode): No speech for 120s on %s — auto-hanging up", cc_id)
+            if last and (time.time() - last) > 180:
+                logger.info("SILENCE WATCHDOG (TTS mode): No speech for 180s on %s — auto-hanging up", cc_id)
                 try:
                     await hangup_call(cc_id)
                 except Exception as e:
@@ -532,25 +535,17 @@ async def _auto_hangup_after_goodbye(cc_id: str):
 
 
 async def _ai_assistant_watchdog(cc_id: str, greeting: str):
-    """Watchdog: if no AI Assistant event within 8s, fall back to TTS pipeline."""
-    await asyncio.sleep(15)
+    """Watchdog: monitor AI Assistant but NEVER disable it or fall back.
+    The AI Assistant manages its own conversation via Telnyx — webhook events
+    for AI Assistant turns may not always arrive, but the conversation is still active.
+    Only log a warning; do NOT set ai_assistant=False or attempt TTS fallback."""
+    await asyncio.sleep(30)
     if cc_id not in active_calls:
         return  # Call already ended
     if cc_id in _ai_assistant_first_event:
-        return  # AI Assistant is working — all good
-    rec = active_calls.get(cc_id, {})
-    if not rec.get("ai_assistant"):
-        return  # Already fell back
-
-    logger.warning("WATCHDOG: AI Assistant silent for 15s on %s — falling back to TTS pipeline", cc_id)
-    rec["ai_assistant"] = False
-
-    # Try speaking the greeting via Polly + start transcription as TTS fallback
-    try:
-        speak_on_call(cc_id, greeting)
-        speaking_calls.add(cc_id)
-    except Exception as e:
-        logger.error("Watchdog TTS fallback speak failed: %s", e)
+        return  # AI Assistant confirmed alive
+    # Just log — do NOT disable AI Assistant or fall back to TTS
+    logger.info("WATCHDOG: No AI Assistant webhook events yet for %s — but AI Assistant is still active on Telnyx side. NOT falling back.", cc_id)
 
 
 async def _check_assistant_health():
@@ -2148,6 +2143,7 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         await loop.run_in_executor(None, lambda: tx.calls.actions.start_ai_assistant(**ai_kwargs))
         latency_ms = (time.monotonic() - t0) * 1000
         active_calls.setdefault(cc_id, {})["ai_assistant"] = True
+        _ai_assistant_started.add(cc_id)
         logger.info("AI Assistant started in %.0fms — greeting: %s", latency_ms, greeting[:60])
         # Recording in background — don't block greeting
         asyncio.create_task(_fire_recording_detached())
@@ -2412,6 +2408,7 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             asyncio.create_task(_remove_ended_call_after(hang_cc))
             conversations.pop(hang_cc, None)
             _ai_assistant_first_event.pop(hang_cc, None)
+            _ai_assistant_started.discard(hang_cc)
             task = _auto_hangup_tasks.pop(hang_cc, None)
             if task:
                 task.cancel()
