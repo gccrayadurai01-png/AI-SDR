@@ -381,7 +381,7 @@ def sync_assistant_to_script():
                 "interruption_settings": {
                     "enable": True,
                     "start_speaking_plan": {
-                        "wait_seconds": 1.5,
+                        "wait_seconds": 0.5,
                     },
                 },
             }
