@@ -868,14 +868,37 @@ tbody tr.clickable { cursor: pointer; }
             <div class="form-grid" style="grid-template-columns:1fr 1fr;">
               <div class="form-group"><label>SDR Name</label><input id="script-sdr_name" placeholder="Alex"/></div>
               <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="Knight"/></div>
+              <div class="form-group full"><label>Company Website</label><input id="script-company_website" placeholder="https://www.yourcompany.com"/></div>
               <div class="form-group full"><label>Call Objective</label><input id="script-objective" placeholder="Book a 15-minute discovery call"/></div>
+              <div class="form-group full"><label>End Goal</label><input id="script-end_goal" placeholder="Schedule a demo to explore if there's a fit"/></div>
               <div class="form-group full"><label>Target Persona</label><input id="script-target_persona" placeholder="VP/Director of IT at mid-market companies"/></div>
-              <div class="form-group full"><label>Value Proposition</label><textarea id="script-value_prop" rows="3" placeholder="Enter your value proposition..."></textarea></div>
+            </div>
+
+            <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;">Product & Positioning</div>
+            <div class="form-grid" style="grid-template-columns:1fr;">
+              <div class="form-group full"><label>Value Proposition</label><textarea id="script-value_prop" rows="3" placeholder="We help [target] solve [problem] by [solution], resulting in [benefit]."></textarea></div>
+              <div class="form-group full"><label>Products / Services <span style="font-weight:normal;color:var(--text-muted);">(what can the AI talk about)</span></label><textarea id="script-product_services" rows="3" placeholder="Product 1: Description&#10;Product 2: Description&#10;Service offering details..."></textarea></div>
+              <div class="form-group full"><label>Competitive Advantage</label><textarea id="script-competitive_advantage" rows="2" placeholder="What makes you different from alternatives..."></textarea></div>
+            </div>
+
+            <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;">Pain Points & Discovery</div>
+            <div class="form-grid" style="grid-template-columns:1fr;">
+              <div class="form-group full"><label>Pain Points to Probe <span style="font-weight:normal;color:var(--text-muted);">(one per line)</span></label><textarea id="script-pain_points" rows="3" placeholder="High operational costs&#10;Manual, error-prone processes&#10;Lack of real-time visibility&#10;Difficulty scaling"></textarea></div>
+              <div class="form-group full"><label>Discovery Questions <span style="font-weight:normal;color:var(--text-muted);">(one per line)</span></label><textarea id="script-discovery_questions" rows="3" placeholder="What tools are you currently using?&#10;What's the biggest challenge you're facing?"></textarea></div>
+            </div>
+
+            <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;">Call Script</div>
+            <div class="form-grid" style="grid-template-columns:1fr;">
               <div class="form-group full"><label>Opening Line</label><textarea id="script-opening_line" rows="2" placeholder="Hi {name}, this is {sdr_name} from {company}..."></textarea></div>
-              <div class="form-group full"><label>Discovery Questions (one per line)</label><textarea id="script-discovery_questions" rows="3" placeholder="What tools are you currently using?"></textarea></div>
-              <div class="form-group full"><label>Objection Handling</label><textarea id="script-objection_handling" rows="3" placeholder="Not interested: ..."></textarea></div>
+              <div class="form-group full"><label>Call Flow <span style="font-weight:normal;color:var(--text-muted);">(step-by-step)</span></label><textarea id="script-call_flow" rows="4" placeholder="1. Opening & rapport&#10;2. Discovery questions&#10;3. Pain identification&#10;4. Value connection&#10;5. Booking/next steps&#10;6. Professional close"></textarea></div>
+              <div class="form-group full"><label>Objection Handling</label><textarea id="script-objection_handling" rows="3" placeholder="Not interested: Totally fair — can I ask what you're using today?&#10;Too busy: When would be a better time?"></textarea></div>
               <div class="form-group full"><label>Booking Phrase</label><textarea id="script-booking_phrase" rows="2" placeholder="Would Tuesday at 2pm or Thursday at 10am work better?"></textarea></div>
-              <div class="form-group full"><label>Voicemail Script</label><textarea id="script-voicemail" rows="4" placeholder="Hey {name}, this is {sdr_name} from {company}..."></textarea></div>
+              <div class="form-group full"><label>Voicemail Script</label><textarea id="script-voicemail" rows="3" placeholder="Hey {name}, this is {sdr_name} from {company}..."></textarea></div>
+            </div>
+
+            <div style="margin:16px 0 8px;font-weight:600;font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:0.5px;">Knowledge Base</div>
+            <div class="form-grid" style="grid-template-columns:1fr;">
+              <div class="form-group full"><label>Knowledge Base Notes <span style="font-weight:normal;color:var(--text-muted);">(facts the AI can reference — features, integrations, use cases)</span></label><textarea id="script-knowledge_base_notes" rows="4" placeholder="Key features: ...&#10;Integrations: Salesforce, HubSpot, Slack&#10;Use cases: ...&#10;Pricing: Contact sales for custom quote"></textarea></div>
             </div>
             <div class="form-actions">
               <button class="btn btn-primary" onclick="saveAgentScript()"><i data-lucide="save"></i> Save & Activate</button>
@@ -2289,6 +2312,13 @@ async function loadAgentsPage() {
     document.getElementById('script-objection_handling').value = script.objection_handling || '';
     document.getElementById('script-booking_phrase').value = script.booking_phrase || '';
     document.getElementById('script-voicemail').value = script.voicemail_message || '';
+    document.getElementById('script-company_website').value = script.company_website || '';
+    document.getElementById('script-pain_points').value = script.pain_points || '';
+    document.getElementById('script-product_services').value = script.product_services || '';
+    document.getElementById('script-competitive_advantage').value = script.competitive_advantage || '';
+    document.getElementById('script-call_flow').value = script.call_flow || '';
+    document.getElementById('script-end_goal').value = script.end_goal || '';
+    document.getElementById('script-knowledge_base_notes').value = script.knowledge_base_notes || '';
     // Load saved technique
     const techSelect = document.getElementById('script-technique');
     if (script.sales_technique && techSelect) {
@@ -2323,6 +2353,13 @@ async function buildFromWebsite() {
       document.getElementById('script-objection_handling').value = a.objection_handling || '';
       document.getElementById('script-booking_phrase').value = a.booking_phrase || '';
       document.getElementById('script-voicemail').value = a.voicemail_message || '';
+      document.getElementById('script-company_website').value = a.company_website || url;
+      document.getElementById('script-pain_points').value = a.pain_points || '';
+      document.getElementById('script-product_services').value = a.product_services || '';
+      document.getElementById('script-competitive_advantage').value = a.competitive_advantage || '';
+      document.getElementById('script-call_flow').value = a.call_flow || '';
+      document.getElementById('script-end_goal').value = a.end_goal || '';
+      document.getElementById('script-knowledge_base_notes').value = a.knowledge_base_notes || '';
       updateScriptPreview();
       toast('Agent built from website! Review and save.', 'success');
     } else {
@@ -2350,6 +2387,13 @@ async function saveAgentScript() {
     objection_handling: document.getElementById('script-objection_handling').value,
     booking_phrase: document.getElementById('script-booking_phrase').value,
     voicemail_message: document.getElementById('script-voicemail').value,
+    company_website: document.getElementById('script-company_website').value,
+    pain_points: document.getElementById('script-pain_points').value,
+    product_services: document.getElementById('script-product_services').value,
+    competitive_advantage: document.getElementById('script-competitive_advantage').value,
+    call_flow: document.getElementById('script-call_flow').value,
+    end_goal: document.getElementById('script-end_goal').value,
+    knowledge_base_notes: document.getElementById('script-knowledge_base_notes').value,
     sales_technique: technique,
   };
   // Save to script.json (activates it)

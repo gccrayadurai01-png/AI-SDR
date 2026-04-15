@@ -21,7 +21,18 @@ DEFAULT_SCRIPT: dict[str, Any] = {
     "call_objective":          "Book a 15-minute discovery call",
     "target_persona":          "Decision makers at mid-market and enterprise companies",
     "value_proposition":       "We help companies solve their biggest challenges with our solution.",
+    "pain_points":             "High costs\nManual processes\nLack of visibility\nScalability challenges",
+    "company_website":         "",
+    "product_services":        "",
+    "competitive_advantage":   "",
+    "call_flow":               "1. Opening & rapport\n2. Discovery questions\n3. Pain identification\n4. Value connection\n5. Booking/next steps\n6. Professional close",
+    "end_goal":                "Schedule a 15-minute discovery call to explore fit",
+    "opening_line":            "Hi {name}, this is {sdr_name} from {company}...",
+    "discovery_questions":     "What tools are you currently using?\nWhat's the biggest challenge you're facing?\nHow are you measuring success today?\nWho else is involved in decisions like this?",
+    "objection_handling":      "Not interested: Totally fair — can I ask what you're using today?\nToo busy: When would be a better time to chat?\nSend email: A quick 15-min call might be more valuable.\nWe have a solution: How's that working for you? Any gaps?",
+    "booking_phrase":          "Would Tuesday at 2pm or Thursday at 10am work better?",
     "voicemail_message":       "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we help companies like yours tackle key challenges. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
+    "knowledge_base_notes":    "",
 }
 
 

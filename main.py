@@ -286,34 +286,85 @@ def _get_technique_prompt(technique: str) -> str:
 
 
 def get_system_prompt() -> str:
-    """Compact sales prompt for Telnyx AI Assistant -- must stay SHORT for voice to work."""
+    """Structured sales prompt grounded in script content — prevents hallucination."""
     s = load_script()
     sdr = s.get("sdr_name", "Alex")
     co = s.get("company_name", "Your Company")
     obj = s.get("call_objective", "Book a 15-minute discovery call")
     persona = s.get("target_persona", "IT / SaaS decision makers")
     vp = s.get("value_proposition", "")
+    pain = s.get("pain_points", "")
+    website = s.get("company_website", "")
+    products = s.get("product_services", "")
+    advantage = s.get("competitive_advantage", "")
+    call_flow = s.get("call_flow", "")
+    end_goal = s.get("end_goal", obj)
+    discovery = s.get("discovery_questions", "")
+    objections = s.get("objection_handling", "")
+    booking = s.get("booking_phrase", "")
+    kb_notes = s.get("knowledge_base_notes", "")
 
     technique = s.get("sales_technique", "sandler")
     technique_block = _get_technique_prompt(technique)
 
-    return f"""You={sdr}, SDR at {co}. LIVE cold call. You are a real human, never say you're AI.
-Goal: {obj}. Target: {persona}.
+    # Build structured sections
+    sections = []
+    sections.append(f"You={sdr}, SDR at {co}. LIVE cold call. You are a real human, never say you're AI.")
+    sections.append(f"CALL OBJECTIVE: {obj}")
+    sections.append(f"END GOAL: {end_goal}")
+    sections.append(f"TARGET: {persona}")
 
-IMPORTANT: The greeting has ALREADY been spoken. Do NOT repeat it. Do NOT say hi again. Wait for the prospect to respond, then continue the conversation.
+    sections.append("""IMPORTANT: The greeting has ALREADY been spoken. Do NOT repeat it. Do NOT say hi again. Wait for the prospect to respond, then continue the conversation.""")
 
-RULES:
-- Reply in 1 sentence max. NEVER more than 15 words per turn.
+    sections.append("""ANTI-HALLUCINATION RULES:
+- ONLY discuss what is in your PRODUCT KNOWLEDGE below. NEVER invent features, pricing, stats, or claims.
+- If asked something you don't know, say: "Great question — I'd want to get you the exact details on that. Let me set up a quick call with our specialist."
+- NEVER make up case studies, customer names, percentages, or ROI numbers unless explicitly provided below.
+- If the prospect asks about pricing, say: "Pricing depends on your specific setup — that's exactly what we'd cover in the demo."
+- Stick to the script sections below. Do not freelance.""")
+
+    sections.append("""VOICE RULES:
+- Reply in 1-2 sentences max. NEVER more than 20 words per turn.
 - Respond INSTANTLY. No pauses, no thinking delays.
 - ONE question at a time. Wait for their answer.
 - Sound natural: "yeah", "got it", "makes sense", "totally".
-- After greeting, WAIT for them to speak first. Then respond.
+- After greeting, WAIT for them to speak first. Then respond.""")
 
-{technique_block}
+    if vp:
+        sections.append(f"VALUE PROPOSITION:\n{vp}")
 
-OBJECTIONS: Busy="When's better?" Not interested=one probe then respect. Has tool="How's that working?"
-If they say stop/not interested/hang up after probe: "Totally understand, appreciate your time. Have a great day!" then END.
-END: Say goodbye naturally and stop.""".strip()
+    if products:
+        sections.append(f"PRODUCTS/SERVICES (only mention these):\n{products}")
+
+    if pain:
+        sections.append(f"PAIN POINTS TO PROBE:\n{pain}")
+
+    if advantage:
+        sections.append(f"COMPETITIVE ADVANTAGE:\n{advantage}")
+
+    if website:
+        sections.append(f"COMPANY WEBSITE: {website} — refer prospects here for more details.")
+
+    if discovery:
+        sections.append(f"DISCOVERY QUESTIONS (use these):\n{discovery}")
+
+    if objections:
+        sections.append(f"OBJECTION HANDLING:\n{objections}")
+
+    if booking:
+        sections.append(f"BOOKING: {booking}")
+
+    if call_flow:
+        sections.append(f"CALL FLOW:\n{call_flow}")
+
+    if kb_notes:
+        sections.append(f"KNOWLEDGE BASE:\n{kb_notes}")
+
+    sections.append(technique_block)
+
+    sections.append("""END CALL: If they say stop/not interested after one probe: "Totally understand, appreciate your time. Have a great day!" then END. Say goodbye naturally and stop.""")
+
+    return "\n\n".join(sections).strip()
 
 
 def get_opening_line(name: str = "there", title: str = "", company: str = "") -> str:
@@ -330,14 +381,40 @@ def _get_compact_knowledge() -> str:
     """Product knowledge injected as message_history -- keeps system prompt short for Telnyx.
     Pulls from the uploaded knowledge base / script config rather than hardcoded content."""
     full = get_full_knowledge()
-    if full and full.strip():
-        # Truncate to keep AI Assistant message_history lean
-        return full[:2000]
-    # Fallback: minimal from script
     s = load_script()
+
+    parts = []
+
+    # Script-based knowledge
     vp = s.get("value_proposition", "")
+    products = s.get("product_services", "")
+    pain = s.get("pain_points", "")
+    advantage = s.get("competitive_advantage", "")
+    website = s.get("company_website", "")
+    kb_notes = s.get("knowledge_base_notes", "")
     co = s.get("company_name", "Knight")
-    return f"PRODUCT KNOWLEDGE for {co} -- weave into conversation naturally.\n\n{vp}" if vp else ""
+
+    if vp:
+        parts.append(f"VALUE PROPOSITION: {vp}")
+    if products:
+        parts.append(f"PRODUCTS/SERVICES: {products}")
+    if pain:
+        parts.append(f"PAIN POINTS: {pain}")
+    if advantage:
+        parts.append(f"COMPETITIVE EDGE: {advantage}")
+    if website:
+        parts.append(f"WEBSITE: {website}")
+    if kb_notes:
+        parts.append(f"ADDITIONAL KNOWLEDGE: {kb_notes}")
+
+    if full and full.strip():
+        parts.append(full[:1500])
+
+    if not parts:
+        return f"PRODUCT KNOWLEDGE for {co} — weave into conversation naturally.\n\n{vp}" if vp else ""
+
+    header = f"PRODUCT KNOWLEDGE for {co} — ONLY use this information. NEVER invent details.\n\n"
+    return (header + "\n\n".join(parts))[:2000]
 
 
 def get_knowledge_message_history() -> list[dict]:
@@ -1116,6 +1193,13 @@ async def create_agent(request: Request):
         "booking_phrase": body.get("booking_phrase", ""),
         "voicemail_message": body.get("voicemail_message", ""),
         "website": body.get("website", ""),
+        "company_website": body.get("company_website", ""),
+        "pain_points": body.get("pain_points", ""),
+        "product_services": body.get("product_services", ""),
+        "competitive_advantage": body.get("competitive_advantage", ""),
+        "call_flow": body.get("call_flow", ""),
+        "end_goal": body.get("end_goal", ""),
+        "knowledge_base_notes": body.get("knowledge_base_notes", ""),
         "sales_technique": body.get("sales_technique", "sandler"),
     }
     agents.append(agent)
@@ -1164,6 +1248,13 @@ async def activate_agent(agent_id: str):
         "objection_handling": agent.get("objection_handling", ""),
         "booking_phrase": agent.get("booking_phrase", ""),
         "voicemail_message": agent.get("voicemail_message", ""),
+        "company_website": agent.get("company_website", ""),
+        "pain_points": agent.get("pain_points", ""),
+        "product_services": agent.get("product_services", ""),
+        "competitive_advantage": agent.get("competitive_advantage", ""),
+        "call_flow": agent.get("call_flow", ""),
+        "end_goal": agent.get("end_goal", ""),
+        "knowledge_base_notes": agent.get("knowledge_base_notes", ""),
         "sales_technique": agent.get("sales_technique", "sandler"),
     }
     save_script(script_data)
@@ -1198,24 +1289,33 @@ async def build_agent_from_website(request: Request):
     text = re.sub(r'<[^>]+>', ' ', text)
     text = re.sub(r'\s+', ' ', text).strip()[:12000]
 
-    prompt = f"""You are an expert sales strategist. Analyze this company's website content and create a complete AI SDR agent configuration for cold-calling their potential customers.
+    prompt = f"""You are an expert sales strategist. Analyze this company's website and create a COMPLETE AI SDR agent configuration.
 
 Website URL: {url}
 Website Content:
 {text}
 
-Generate a JSON object with these exact fields:
-- "name": A short agent name (e.g. "Enterprise Closer" or "Product Demo Setter")
-- "company_name": The company name from the website
-- "sdr_name": Suggest a professional first name for the AI SDR
-- "call_objective": What the call should achieve (e.g. "Book a 15-minute demo")
-- "target_persona": Who should be called (job titles, company size, industry)
-- "value_proposition": 2-3 sentence value prop based on the product/service
-- "opening_line": A natural cold-call opener using {{name}}, {{sdr_name}}, {{company}} placeholders. Use a pattern-interrupt style.
-- "discovery_questions": 5-7 qualifying questions (newline separated) tailored to this product
-- "objection_handling": Handle common objections: not_interested, send_email, have_solution, no_budget, call_back (one paragraph covering all)
-- "booking_phrase": Natural way to ask for a meeting
-- "voicemail_message": A 30-second voicemail script using {{name}}, {{sdr_name}}, {{company}} placeholders
+Generate a JSON object with ALL these fields:
+- "name": Short agent name (e.g. "Enterprise Closer")
+- "company_name": Company name from website
+- "company_website": "{url}"
+- "sdr_name": Professional first name for the AI SDR
+- "call_objective": What the call should achieve
+- "target_persona": Who to call (titles, company size, industry)
+- "value_proposition": 2-3 sentence value prop from the website content ONLY
+- "product_services": List the actual products/services from the website (bullet points, newline separated)
+- "pain_points": 4-6 pain points this product solves (newline separated)
+- "competitive_advantage": What makes this company different (from website only)
+- "end_goal": Ultimate call outcome (e.g. "Book a 15-min demo")
+- "call_flow": Numbered call flow steps (newline separated)
+- "opening_line": Natural cold-call opener using {{name}}, {{sdr_name}}, {{company}} placeholders
+- "discovery_questions": 5-7 qualifying questions (newline separated)
+- "objection_handling": Handle objections: not_interested, send_email, have_solution, no_budget (newline separated)
+- "booking_phrase": Natural meeting request
+- "voicemail_message": 30-second voicemail using {{name}}, {{sdr_name}}, {{company}} placeholders
+- "knowledge_base_notes": Key facts from the website the AI should know (features, integrations, use cases)
+
+IMPORTANT: Only extract real information from the website. Do NOT invent features, pricing, or claims.
 
 Return ONLY valid JSON, no markdown fences, no explanation."""
 
