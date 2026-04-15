@@ -639,13 +639,13 @@ async def telnyx_diagnostics():
 @app.get("/api/status")
 async def api_status():
     config.reload_secrets()
-    flags = config.dashboard_connection_flags()
+    # Use actual config values — works on Railway (env vars) AND local (.env file)
     return {
-        "telnyx":    flags["telnyx"],
-        "deepgram":  flags["deepgram"],
-        "anthropic": flags["anthropic"],
-        "apollo":    flags["apollo"],
-        "email":     flags["email"],
+        "telnyx":    bool(config.TELNYX_API_KEY and config.TELNYX_CONNECTION_ID and config.TELNYX_PHONE_NUMBER),
+        "deepgram":  bool(os.environ.get("DEEPGRAM_API_KEY")),
+        "anthropic": bool(config.ANTHROPIC_API_KEY),
+        "apollo":    bool(config.APOLLO_API_KEY),
+        "email":     bool(config.SMTP_HOST and config.EMAIL_FROM) or bool(config.SENDGRID_API_KEY),
         "anthropic_model": config.ANTHROPIC_MODEL,
         "telnyx_phone":      config.TELNYX_PHONE_NUMBER or "",
         "telnyx_connection": config.TELNYX_CONNECTION_ID or "",
