@@ -636,18 +636,6 @@ async def telnyx_diagnostics():
     return run_telnyx_diagnostics()
 
 
-@app.get("/api/debug-env")
-async def api_debug_env():
-    """Temporary debug: check which env vars are present on Railway."""
-    return {
-        "TELNYX_API_KEY": "SET" if os.environ.get("TELNYX_API_KEY") else "MISSING",
-        "ANTHROPIC_API_KEY": "SET" if os.environ.get("ANTHROPIC_API_KEY") else "MISSING",
-        "APOLLO_API_KEY": "SET" if os.environ.get("APOLLO_API_KEY") else "MISSING",
-        "TELNYX_PHONE_NUMBER": os.environ.get("TELNYX_PHONE_NUMBER", "MISSING"),
-        "TELNYX_CONNECTION_ID": os.environ.get("TELNYX_CONNECTION_ID", "MISSING"),
-        "RAILWAY_ENVIRONMENT": os.environ.get("RAILWAY_ENVIRONMENT", "not-railway"),
-    }
-
 
 @app.get("/api/status")
 async def api_status():
