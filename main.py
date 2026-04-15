@@ -2097,10 +2097,18 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         logger.info("AI Assistant started in %.0fms — greeting: %s", latency_ms, greeting[:60])
         asyncio.create_task(_fire_recording_detached())
     except Exception as e:
-        logger.exception("AI Assistant failed: %s — falling back to TTS", e)
-        active_calls.setdefault(cc_id, {})["ai_assistant"] = False
-        speaking_calls.add(cc_id)
-        background_tasks.add_task(_main_bg_opening, cc_id)
+        err_str = str(e)
+        # 422 "already in progress" means Telnyx already auto-started it — treat as success
+        if "90061" in err_str or "already in progress" in err_str.lower():
+            logger.info("AI Assistant already running (auto-started by Telnyx) — continuing normally")
+            active_calls.setdefault(cc_id, {})["ai_assistant"] = True
+            _ai_assistant_started.add(cc_id)
+            asyncio.create_task(_fire_recording_detached())
+        else:
+            logger.exception("AI Assistant failed: %s — falling back to TTS", e)
+            active_calls.setdefault(cc_id, {})["ai_assistant"] = False
+            speaking_calls.add(cc_id)
+            background_tasks.add_task(_main_bg_opening, cc_id)
 
 
 @app.post("/webhooks/telnyx")
