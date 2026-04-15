@@ -638,14 +638,21 @@ async def telnyx_diagnostics():
 
 @app.get("/api/status")
 async def api_status():
-    config.reload_secrets()
-    # Use actual config values — works on Railway (env vars) AND local (.env file)
+    # Read directly from os.environ — works on Railway AND local
+    telnyx_key  = os.environ.get("TELNYX_API_KEY", "").strip()
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    apollo_key  = os.environ.get("APOLLO_API_KEY", "").strip()
+    elevenlabs_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    deepgram_key = os.environ.get("DEEPGRAM_API_KEY", "").strip()
+    smtp_host   = os.environ.get("SMTP_HOST", "").strip()
+    email_from  = os.environ.get("EMAIL_FROM", "").strip()
+    sendgrid    = os.environ.get("SENDGRID_API_KEY", "").strip()
     return {
-        "telnyx":    bool(config.TELNYX_API_KEY and config.TELNYX_CONNECTION_ID and config.TELNYX_PHONE_NUMBER),
-        "deepgram":  bool(os.environ.get("DEEPGRAM_API_KEY")),
-        "anthropic": bool(config.ANTHROPIC_API_KEY),
-        "apollo":    bool(config.APOLLO_API_KEY),
-        "email":     bool(config.SMTP_HOST and config.EMAIL_FROM) or bool(config.SENDGRID_API_KEY),
+        "telnyx":    bool(telnyx_key and config.TELNYX_CONNECTION_ID and config.TELNYX_PHONE_NUMBER),
+        "deepgram":  bool(deepgram_key),
+        "anthropic": bool(anthropic_key),
+        "apollo":    bool(apollo_key),
+        "email":     bool((smtp_host and email_from) or sendgrid),
         "anthropic_model": config.ANTHROPIC_MODEL,
         "telnyx_phone":      config.TELNYX_PHONE_NUMBER or "",
         "telnyx_connection": config.TELNYX_CONNECTION_ID or "",
