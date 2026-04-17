@@ -476,9 +476,15 @@ def sync_assistant_to_script():
                 patch_body["voice_settings"] = {
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
-                    "voice_speed": 0.9,
-                    "similarity_boost": 0.85,
-                    "style": 0.35,
+                    "voice_speed": 0.95,
+                    # ── Stable voice profile — reduces artifacts/choppiness ──
+                    # similarity_boost too high (>0.8) + style > 0 + no stability
+                    # floor produces vocal drift / fabling / choppy artifacts over
+                    # generations longer than ~1 min. ElevenLabs-recommended stable
+                    # values: stability 0.5+, similarity 0.75, style 0.0.
+                    "stability": 0.55,
+                    "similarity_boost": 0.75,
+                    "style": 0.0,
                     "use_speaker_boost": True,
                 }
             r = httpx.patch(
