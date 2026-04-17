@@ -41,7 +41,7 @@ from campaign import (
 import config
 import qa_kb
 from qa_kb_api import router as learn_router
-from knowledge_base import get_full_knowledge, UPLOADED_DOCS_KNOWLEDGE, CLOUDFUZE_KNOWLEDGE
+from knowledge_base import get_full_knowledge, UPLOADED_DOCS_KNOWLEDGE, CLOUDFUZE_KNOWLEDGE, _persist_uploaded_docs
 from prospect_import import parse_csv_bytes, parse_xlsx_bytes
 from sdr_agent import (
     join_streamed_reply_parts,
@@ -360,6 +360,11 @@ def get_system_prompt() -> str:
     if kb_notes:
         sections.append(f"KNOWLEDGE BASE:\n{kb_notes}")
 
+    # Include uploaded-document snippets (persisted) so the Assistant grounds on them too.
+    if UPLOADED_DOCS_KNOWLEDGE:
+        uploaded_blob = "\n\n".join(UPLOADED_DOCS_KNOWLEDGE)[:3500]
+        sections.append(f"UPLOADED DOCUMENTS (cite these facts only, do not invent):\n{uploaded_blob}")
+
     sections.append(technique_block)
 
     sections.append("""END CALL: If they say stop/not interested after one probe: "Totally understand, appreciate your time. Have a great day!" then END. Say goodbye naturally and stop.""")
@@ -536,6 +541,9 @@ _auto_hangup_tasks: dict[str, asyncio.Task] = {}
 _last_speech_time: dict[str, float] = {}
 _silence_watchdog_tasks: dict[str, asyncio.Task] = {}
 _ai_assistant_started: set[str] = set()  # cc_ids where AI Assistant was started — NEVER auto-hangup these
+_ai_user_turn_times: dict[str, list[float]] = {}  # timestamps of prospect speaking turns
+_ai_agent_turn_times: dict[str, list[float]] = {}  # timestamps of AI speaking turns
+_voicemail_watchdog_tasks: dict[str, asyncio.Task] = {}  # cc_id -> watchdog task
 
 
 def _is_goodbye(text: str) -> bool:
@@ -544,15 +552,27 @@ def _is_goodbye(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Monitor call silence — only log, NEVER auto-hangup.
-    Telnyx AI Assistant manages its own conversation lifecycle.
-    We must not kill calls — data collection requires full conversations."""
+    """Monitor call silence. Only hang up if BOTH sides have been quiet for a long
+    time AND the prospect never engaged — a strong signal of voicemail / abandoned call.
+    Normal pauses in human conversation never trigger this."""
     try:
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
             await asyncio.sleep(30)
             last = _last_speech_time.get(cc_id, 0)
-            if last and (time.time() - last) > 60:
-                logger.info("SILENCE MONITOR: No speech for 60s on %s — logging only (NOT hanging up)", cc_id)
+            idle = (time.time() - last) if last else 0
+            user_turns = len(_ai_user_turn_times.get(cc_id) or [])
+            if idle > 120 and user_turns == 0:
+                logger.info(
+                    "SILENCE WATCHDOG: %s — %.0fs idle, prospect never spoke → hanging up",
+                    cc_id, idle,
+                )
+                try:
+                    await hangup_call(cc_id)
+                except Exception as e:
+                    logger.warning("Silence hangup failed: %s", e)
+                return
+            if idle > 60:
+                logger.info("SILENCE MONITOR: %s idle %.0fs (user turns=%d) — watching", cc_id, idle, user_turns)
     except asyncio.CancelledError:
         pass
     finally:
@@ -560,19 +580,80 @@ async def _silence_watchdog(cc_id: str):
 
 
 async def _auto_hangup_after_goodbye(cc_id: str):
-    """DISABLED — previously hung up calls mid-conversation. Now just logs.
-    Telnyx AI Assistant handles conversation ending on its own."""
+    """Hang up call ~5s after a natural goodbye is detected.
+    Critical for bulk dialing — prevents zombie calls after conversation ends."""
     try:
         await asyncio.sleep(5.0)
         if cc_id not in active_calls:
             return
         if active_calls[cc_id].get("state") == "ended":
             return
-        logger.info("Goodbye detected for %s — logging only (NOT hanging up)", cc_id)
+        # Only hang up if no new user speech arrived after goodbye (within last 4s)
+        last_user = 0.0
+        turns = _ai_user_turn_times.get(cc_id) or []
+        if turns:
+            last_user = turns[-1]
+        if last_user and (time.time() - last_user) < 4.0:
+            logger.info("Goodbye auto-hangup CANCELLED for %s — user spoke again", cc_id)
+            return
+        logger.info("Goodbye detected for %s — hanging up naturally", cc_id)
+        try:
+            await hangup_call(cc_id)
+        except Exception as e:
+            logger.warning("Goodbye hangup failed (non-fatal): %s", e)
     except asyncio.CancelledError:
         pass
     finally:
         _auto_hangup_tasks.pop(cc_id, None)
+
+
+async def _voicemail_watchdog(cc_id: str):
+    """Detect voicemail-style one-way conversation and hang up.
+    Rule: After 45s of call, if AI has spoken >=2 turns but prospect has spoken 0 turns,
+    treat as voicemail answer-machine and hang up. Protects bulk dialing from zombie calls.
+    """
+    try:
+        # Wait for initial window
+        await asyncio.sleep(45)
+        if cc_id not in active_calls:
+            return
+        if active_calls[cc_id].get("state") == "ended":
+            return
+        user_turns = len(_ai_user_turn_times.get(cc_id) or [])
+        agent_turns = len(_ai_agent_turn_times.get(cc_id) or [])
+        if user_turns == 0 and agent_turns >= 2:
+            logger.info(
+                "VOICEMAIL WATCHDOG: %s — AI spoke %d turns, prospect 0 turns after 45s — hanging up",
+                cc_id, agent_turns,
+            )
+            active_calls.setdefault(cc_id, {})["voicemail"] = True
+            update_call(cc_id, outcome="voicemail")
+            try:
+                await hangup_call(cc_id)
+            except Exception as e:
+                logger.warning("Voicemail auto-hangup failed: %s", e)
+            return
+        # Second-pass check at 90s for slower answerers
+        await asyncio.sleep(45)
+        if cc_id not in active_calls or active_calls[cc_id].get("state") == "ended":
+            return
+        user_turns = len(_ai_user_turn_times.get(cc_id) or [])
+        agent_turns = len(_ai_agent_turn_times.get(cc_id) or [])
+        if user_turns == 0 and agent_turns >= 3:
+            logger.info(
+                "VOICEMAIL WATCHDOG (90s): %s — still no user speech — hanging up",
+                cc_id,
+            )
+            active_calls.setdefault(cc_id, {})["voicemail"] = True
+            update_call(cc_id, outcome="voicemail")
+            try:
+                await hangup_call(cc_id)
+            except Exception as e:
+                logger.warning("Voicemail auto-hangup (90s) failed: %s", e)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        _voicemail_watchdog_tasks.pop(cc_id, None)
 
 
 async def _ai_assistant_watchdog(cc_id: str, greeting: str):
@@ -2187,14 +2268,21 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
 
     tx = _get_tx()
 
-    # ── Fire recording detached — delay 5s so it doesn't overlap greeting ──
+    # ── Fire recording detached — delay 6s so it doesn't overlap greeting ──
+    # NOTE: Telnyx AI Assistant has built-in recording_settings too (dual/mp3).
+    # We use dual-channel mp3 here to MATCH the assistant's settings — avoids
+    # conflicts that produced empty/unplayable recordings.
     async def _fire_recording_detached():
-        await asyncio.sleep(5)
+        await asyncio.sleep(6)
         try:
             await loop.run_in_executor(None, lambda: tx.calls.actions.start_recording(
-                call_control_id=cc_id, format="mp3", channels="single"))
+                call_control_id=cc_id, format="mp3", channels="dual"))
         except Exception as e:
-            logger.warning("Recording start failed (non-fatal): %s", e)
+            msg = str(e).lower()
+            if "already" in msg or "90061" in msg or "in progress" in msg:
+                logger.info("Recording already running (Telnyx AI Assistant started it) — OK")
+            else:
+                logger.warning("Recording start failed (non-fatal): %s", e)
 
     try:
         t0 = time.monotonic()
@@ -2279,6 +2367,13 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                 _silence_watchdog_tasks[cc_id].cancel()
             _silence_watchdog_tasks[cc_id] = asyncio.create_task(_silence_watchdog(cc_id))
 
+            # Start voicemail watchdog — hangs up if AI talks to a machine (no user response)
+            if cc_id in _voicemail_watchdog_tasks:
+                _voicemail_watchdog_tasks[cc_id].cancel()
+            _voicemail_watchdog_tasks[cc_id] = asyncio.create_task(_voicemail_watchdog(cc_id))
+            _ai_user_turn_times[cc_id] = []
+            _ai_agent_turn_times[cc_id] = []
+
             # Fire AI Assistant start in background — return 200 to Telnyx ASAP
             asyncio.create_task(_start_ai_assistant_fast(cc_id, name, title, company, background_tasks))
 
@@ -2324,9 +2419,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                     save_call(rec)
                     if ai_role == "user":
                         logger.info(f"AI-ASST HEARD: \"{ai_text}\"")
-                        if config.PHONE_THINK_FILLER and config.should_play_think_filler(ai_text):
-                            asyncio.create_task(_play_filler_for_ai_assistant(cc_id))
+                        # NOTE: Filler playback DISABLED for AI Assistant — speech-to-speech
+                        # responds instantly; overlapping Telnyx start_playback with the
+                        # Assistant's own audio causes echo/choppy audio after several turns.
                         # If prospect says goodbye, don't cancel — let auto-hangup proceed
+                        _ai_user_turn_times.setdefault(cc_id, []).append(time.time())
                         if _is_goodbye(ai_text):
                             logger.info("Prospect said goodbye — keeping auto-hangup active")
                         elif cc_id in _auto_hangup_tasks:
@@ -2336,6 +2433,7 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                     else:
                         logger.info(f"AI-ASST SAID: \"{ai_text}\"")
                         _stop_filler_if_playing(cc_id)
+                        _ai_agent_turn_times.setdefault(cc_id, []).append(time.time())
                         # Detect goodbye from AI → schedule auto-hangup
                         if _is_goodbye(ai_text):
                             logger.info("Goodbye detected in AI response — scheduling auto-hangup in 4s")
@@ -2403,13 +2501,21 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
 
         # ── RECORDING SAVED ────────────────────────────
         elif etype == "call.recording.saved":
-            url = event["raw"].get("recording_urls", {}).get("mp3") or \
-                  event["raw"].get("public_recording_urls", {}).get("mp3")
+            raw = event.get("raw") or pl or {}
+            rec_urls = raw.get("recording_urls") or pl.get("recording_urls") or {}
+            pub_urls = raw.get("public_recording_urls") or pl.get("public_recording_urls") or {}
+            url = (
+                rec_urls.get("mp3") or rec_urls.get("wav")
+                or pub_urls.get("mp3") or pub_urls.get("wav")
+                or raw.get("download_url") or pl.get("download_url")
+            )
             if url:
                 logger.info(f"Recording saved: {url}")
                 if cc_id in active_calls:
                     active_calls[cc_id]["recording_url"] = url
                 update_call(cc_id, recording_url=url)
+            else:
+                logger.warning("call.recording.saved had no URL — payload keys: %s", list(raw.keys())[:10])
 
         # ── CALL ENDED ─────────────────────────────────
         elif etype == "call.hangup":
@@ -2426,6 +2532,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             task = _silence_watchdog_tasks.pop(hang_cc, None)
             if task:
                 task.cancel()
+            vm_task = _voicemail_watchdog_tasks.pop(hang_cc, None)
+            if vm_task:
+                vm_task.cancel()
+            _ai_user_turn_times.pop(hang_cc, None)
+            _ai_agent_turn_times.pop(hang_cc, None)
             ended_at = datetime.utcnow().isoformat()
             rec = active_calls.get(hang_cc)
             duration_seconds = None
@@ -2872,7 +2983,14 @@ async def upload_knowledge_doc(file: UploadFile = File(...)):
         if text.strip():
             doc_entry = f"--- Document: {fname} ---\n{text[:3000]}"
             UPLOADED_DOCS_KNOWLEDGE.append(doc_entry)
-            logger.info("Knowledge doc uploaded: %s (%d chars)", fname, len(text))
+            _persist_uploaded_docs()  # survive Railway restarts
+            logger.info("Knowledge doc uploaded: %s (%d chars, persisted)", fname, len(text))
+            # Re-sync the Telnyx AI Assistant so new KB is available on the next call
+            try:
+                _rebuild_hot_cache()
+                sync_assistant_to_script()
+            except Exception as e:
+                logger.warning("Post-upload assistant sync failed (non-fatal): %s", e)
             return {"status": "ok", "filename": fname, "chars": len(text[:3000]),
                     "total_docs": len(UPLOADED_DOCS_KNOWLEDGE)}
         else:
@@ -2894,6 +3012,12 @@ async def get_knowledge():
 @app.delete("/api/knowledge")
 async def clear_knowledge():
     UPLOADED_DOCS_KNOWLEDGE.clear()
+    _persist_uploaded_docs()
+    try:
+        _rebuild_hot_cache()
+        sync_assistant_to_script()
+    except Exception as e:
+        logger.warning("Post-clear assistant sync failed (non-fatal): %s", e)
     return {"status": "ok", "message": "Knowledge base cleared"}
 
 

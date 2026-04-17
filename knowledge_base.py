@@ -1,7 +1,31 @@
 """
 Knight AI SDR — Dynamic knowledge base.
 Product knowledge is loaded from agent scripts and uploaded documents.
+Uploaded docs are persisted to disk so they survive Railway restarts.
 """
+import json
+from pathlib import Path
+
+_KB_FILE = Path(__file__).parent / "data" / "uploaded_docs.json"
+
+
+def _persist_uploaded_docs() -> None:
+    try:
+        _KB_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _KB_FILE.write_text(json.dumps(UPLOADED_DOCS_KNOWLEDGE, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _load_uploaded_docs() -> list[str]:
+    try:
+        if _KB_FILE.exists():
+            data = json.loads(_KB_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return [str(x) for x in data]
+    except Exception:
+        pass
+    return []
 
 CLOUDFUZE_KNOWLEDGE = """
 PRODUCT KNOWLEDGE:
@@ -68,8 +92,8 @@ def _research_kb_text() -> str:
     return "\n\n".join(f"=== {title} ===\n{body}" for title, body in RESEARCH_KB_TOPICS)
 
 
-# Optional: loaded from uploaded documents (API compatibility)
-UPLOADED_DOCS_KNOWLEDGE: list[str] = []
+# Loaded from uploaded documents — persisted on disk so it survives restarts.
+UPLOADED_DOCS_KNOWLEDGE: list[str] = _load_uploaded_docs()
 
 
 def get_full_knowledge() -> str:
