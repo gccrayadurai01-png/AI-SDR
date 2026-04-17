@@ -534,12 +534,14 @@ async def _precache_filler_audio():
 
 
 _GOODBYE_PATTERNS = _re.compile(
-    r'\b(goodbye|good\s*bye|bye\s*bye|talk\s*soon|have\s*a\s*great|'
+    # Only match unambiguous call-ending phrases. Do NOT include "not
+    # interested"/"stop calling" etc. — prospects say those mid-conversation
+    # ("I'm not interested YET, tell me more") and the AI handles them via
+    # objection flow. Hard-stop phrases live in _HARD_STOP_PATTERNS below.
+    r'\b(goodbye|good\s*bye|bye\s*bye|talk\s*soon|have\s*a\s*great\s*(day|one|week)|'
     r'take\s*care|appreciate\s*your\s*time|thanks\s*for\s*your\s*time|'
     r'nice\s*talking|nice\s*chatting|have\s*a\s*good\s*one|'
-    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long|'
-    r'not\s*interested|stop\s*calling|remove\s*me|do\s*not\s*call|'
-    r"don'?t\s*call|hang\s*up|go\s*away|leave\s*me\s*alone)\b",
+    r'catch\s*you\s*later|speak\s*soon|cheers|so\s*long)\b',
     _re.IGNORECASE,
 )
 
@@ -1614,6 +1616,7 @@ async def campaign_stop():
 # ════════════════════════════════════════════════════════════
 _CAMPAIGNS_FILE = Path(__file__).parent / "data" / "campaigns.json"
 _active_campaign_id: str | None = None
+_campaign_start_lock: asyncio.Lock = asyncio.Lock()
 
 
 @app.get("/api/campaign/status")
@@ -1747,6 +1750,13 @@ async def delete_campaign_record(campaign_id: str):
 
 
 async def _start_named_campaign(camp_id: str) -> bool:
+    # Serialize campaign starts — prevents two rapid start clicks from
+    # racing on _active_campaign_id and each other's voice config.
+    async with _campaign_start_lock:
+        return await _start_named_campaign_unlocked(camp_id)
+
+
+async def _start_named_campaign_unlocked(camp_id: str) -> bool:
     """Start a named campaign using the existing campaign runner."""
     global _active_campaign_id
     c = _get_campaign(camp_id)
@@ -2038,11 +2048,15 @@ async def place_outbound_call(req: CallRequest) -> dict:
         )
     if not config.TELNYX_CONNECTION_ID:
         raise HTTPException(status_code=400, detail="TELNYX_CONNECTION_ID is not set in .env.")
-    # Apply voice override for this call if specified
+    # Voice override: stored on the call record rather than mutating the
+    # global config — global mutation races between concurrent outbound
+    # calls (two dials requesting different voices would stomp each other).
+    # The assistant itself is tuned via sync_assistant_to_script once at
+    # startup, so per-call voice swaps are tracked but not applied to the
+    # shared AI Assistant config.
     voice_id = (req.voice_id or "").strip()
     if voice_id:
-        config.ELEVENLABS_VOICE_ID = voice_id
-        logger.info("Voice override for call: %s", voice_id)
+        logger.info("Voice override requested for call: %s (call-local only)", voice_id)
     logger.info(f"Dialing {to} ({req.prospect_name})")
     # Fire research in background — don't wait for it before dialing
     if req.prospect_name or req.company:
@@ -2313,7 +2327,9 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             name = rec.get("prospect_name", "there")
             title = rec.get("title", "") or ""
             company = rec.get("company", "") or ""
-            conversations[cc_id] = []
+            # setdefault: don't wipe history if a duplicate call.answered
+            # webhook sneaks past the opened_calls guard (rare race).
+            conversations.setdefault(cc_id, [])
 
             # Start silence watchdog — auto-hangup if no speech for 30s
             _last_speech_time[cc_id] = time.time()
