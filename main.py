@@ -562,6 +562,50 @@ def _is_goodbye(text: str) -> bool:
     return bool(_GOODBYE_PATTERNS.search(text or ""))
 
 
+# ── Hard stops from prospect: definitive "end the call NOW" signals ──
+# These are unambiguous disinterest/rejection. When the PROSPECT says one
+# of these, we should wrap up quickly — not keep probing. Tighter than
+# _GOODBYE_PATTERNS so ordinary speech never false-matches.
+_HARD_STOP_PATTERNS = _re.compile(
+    r"(?:\b(?:i'?m|we'?re|we\s+are)\s+not\s+interested\b|"
+    r"\bnot\s+interested\s+(?:at\s+all|right\s+now|today|period|thanks)\b|"
+    r"\bstop\s+calling\s+me\b|\bplease\s+stop\s+calling\b|"
+    r"\btake\s+me\s+off\b|\bremove\s+me\s+from\b|"
+    r"\bdo\s+not\s+call\s+(?:me|again|back)\b|"
+    r"\bdon'?t\s+call\s+(?:me|again|back)\b|"
+    r"\bnever\s+call\s+(?:me\s+)?again\b|"
+    r"\bleave\s+me\s+alone\b|\bgo\s+away\b|"
+    r"\bhang\s+up\b)",
+    _re.IGNORECASE,
+)
+
+
+def _is_hard_stop(text: str) -> bool:
+    """Prospect issued an unambiguous 'end call' signal."""
+    return bool(_HARD_STOP_PATTERNS.search(text or ""))
+
+
+# ── Booking-confirmed signals: meeting is locked, wrap up politely ──
+# Fires on AI or prospect saying clear meeting-booked phrases. After
+# these, exchange farewell and end.
+_BOOKING_CONFIRMED_PATTERNS = _re.compile(
+    r"(?:\bcalendar\s+invite\s+(?:sent|is\s+on\s+the\s+way|coming)|"
+    r"\bi'?ll\s+send\s+(?:you\s+)?(?:the\s+|a\s+|an\s+)?(?:calendar\s+)?invite\b|"
+    r"\bmeeting\s+is\s+(?:booked|confirmed|scheduled|set)\b|"
+    r"\bwe'?re\s+(?:booked|set|confirmed)\s+for\b|"
+    r"\byou'?re\s+(?:all\s+)?set\s+for\b|"
+    r"\bsee\s+you\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b|"
+    r"\btalk\s+to\s+you\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b|"
+    r"\blooking\s+forward\s+to\s+(?:our|the|chatting|speaking|meeting)\b)",
+    _re.IGNORECASE,
+)
+
+
+def _is_booking_confirmed(text: str) -> bool:
+    """Meeting has been explicitly locked in — exchange farewell and end."""
+    return bool(_BOOKING_CONFIRMED_PATTERNS.search(text or ""))
+
+
 async def _silence_watchdog(cc_id: str):
     """LOG-ONLY silence monitor. NEVER hangs up.
     Telnyx AI Assistant handles its own lifecycle. User transcription events
@@ -2387,23 +2431,35 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                     save_call(rec)
                     if ai_role == "user":
                         logger.info(f"AI-ASST HEARD: \"{ai_text}\"")
-                        # NOTE: Filler playback DISABLED for AI Assistant — speech-to-speech
-                        # responds instantly; overlapping Telnyx start_playback with the
-                        # Assistant's own audio causes echo/choppy audio after several turns.
-                        # If prospect says goodbye, don't cancel — let auto-hangup proceed
                         _ai_user_turn_times.setdefault(cc_id, []).append(time.time())
-                        if _is_goodbye(ai_text):
+                        # ── Hard stop from prospect → end call quickly ──
+                        if _is_hard_stop(ai_text):
+                            logger.info("HARD STOP detected from prospect — scheduling hangup in 4s")
+                            if cc_id in _auto_hangup_tasks:
+                                _auto_hangup_tasks[cc_id].cancel()
+                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
+                        elif _is_booking_confirmed(ai_text):
+                            logger.info("BOOKING confirmed by prospect — scheduling hangup in 4s")
+                            if cc_id in _auto_hangup_tasks:
+                                _auto_hangup_tasks[cc_id].cancel()
+                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
+                        elif _is_goodbye(ai_text):
                             logger.info("Prospect said goodbye — keeping auto-hangup active")
                         elif cc_id in _auto_hangup_tasks:
-                            # Prospect said something that's NOT goodbye — cancel pending hangup
+                            # Prospect said something that's NOT an end-signal — cancel pending hangup
                             _auto_hangup_tasks[cc_id].cancel()
                             _auto_hangup_tasks.pop(cc_id, None)
                     else:
                         logger.info(f"AI-ASST SAID: \"{ai_text}\"")
                         _stop_filler_if_playing(cc_id)
                         _ai_agent_turn_times.setdefault(cc_id, []).append(time.time())
-                        # Detect goodbye from AI → schedule auto-hangup
-                        if _is_goodbye(ai_text):
+                        # Detect end-of-call signals from AI → schedule auto-hangup
+                        if _is_booking_confirmed(ai_text):
+                            logger.info("BOOKING confirmed by AI — scheduling hangup in 4s")
+                            if cc_id in _auto_hangup_tasks:
+                                _auto_hangup_tasks[cc_id].cancel()
+                            _auto_hangup_tasks[cc_id] = asyncio.create_task(_auto_hangup_after_goodbye(cc_id))
+                        elif _is_goodbye(ai_text):
                             logger.info("Goodbye detected in AI response — scheduling auto-hangup in 4s")
                             if cc_id in _auto_hangup_tasks:
                                 _auto_hangup_tasks[cc_id].cancel()
