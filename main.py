@@ -2227,22 +2227,10 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
 
     tx = _get_tx()
 
-    # ── Fire recording detached — delay 6s so it doesn't overlap greeting ──
-    # NOTE: Telnyx AI Assistant has built-in recording_settings too (dual/mp3).
-    # We use dual-channel mp3 here to MATCH the assistant's settings — avoids
-    # conflicts that produced empty/unplayable recordings.
-    async def _fire_recording_detached():
-        await asyncio.sleep(6)
-        try:
-            await loop.run_in_executor(None, lambda: tx.calls.actions.start_recording(
-                call_control_id=cc_id, format="mp3", channels="dual"))
-        except Exception as e:
-            msg = str(e).lower()
-            if "already" in msg or "90061" in msg or "in progress" in msg:
-                logger.info("Recording already running (Telnyx AI Assistant started it) — OK")
-            else:
-                logger.warning("Recording start failed (non-fatal): %s", e)
-
+    # ── NO manual recording start: Telnyx AI Assistant already records via
+    # its built-in recording_settings (dual/mp3). Running a second recorder
+    # on the same call caused audio-pipeline interference (echo/choppiness
+    # from the very start of the call) and saved duplicate files. ──
     try:
         t0 = time.monotonic()
         await loop.run_in_executor(None, lambda: tx.calls.actions.start_ai_assistant(**ai_kwargs))
@@ -2250,7 +2238,6 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
         active_calls.setdefault(cc_id, {})["ai_assistant"] = True
         _ai_assistant_started.add(cc_id)
         logger.info("AI Assistant started in %.0fms — greeting: %s", latency_ms, greeting[:60])
-        asyncio.create_task(_fire_recording_detached())
     except Exception as e:
         err_str = str(e)
         # 422 "already in progress" means Telnyx already auto-started it — treat as success
@@ -2258,7 +2245,6 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
             logger.info("AI Assistant already running (auto-started by Telnyx) — continuing normally")
             active_calls.setdefault(cc_id, {})["ai_assistant"] = True
             _ai_assistant_started.add(cc_id)
-            asyncio.create_task(_fire_recording_detached())
         else:
             logger.exception("AI Assistant failed: %s — falling back to TTS", e)
             active_calls.setdefault(cc_id, {})["ai_assistant"] = False
