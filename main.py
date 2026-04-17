@@ -457,6 +457,9 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
+                    # 90s user-silence cap: Telnyx ends the AI session if the
+                    # prospect hasn't spoken for 90s — this is our voicemail
+                    # protection (voicemails never talk back).
                     "user_idle_timeout_secs": 90,
                     "max_duration_secs": 1800,
                 },
@@ -552,27 +555,18 @@ def _is_goodbye(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Monitor call silence. Only hang up if BOTH sides have been quiet for a long
-    time AND the prospect never engaged — a strong signal of voicemail / abandoned call.
-    Normal pauses in human conversation never trigger this."""
+    """LOG-ONLY silence monitor. NEVER hangs up.
+    Telnyx AI Assistant handles its own lifecycle. User transcription events
+    don't always flow to our webhook (assistant processes them internally),
+    so we cannot safely count user turns to decide a hangup here.
+    Use Telnyx's built-in user_idle_timeout_secs + voicemail_detection instead."""
     try:
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
             last = _last_speech_time.get(cc_id, 0)
             idle = (time.time() - last) if last else 0
-            user_turns = len(_ai_user_turn_times.get(cc_id) or [])
-            if idle > 120 and user_turns == 0:
-                logger.info(
-                    "SILENCE WATCHDOG: %s — %.0fs idle, prospect never spoke → hanging up",
-                    cc_id, idle,
-                )
-                try:
-                    await hangup_call(cc_id)
-                except Exception as e:
-                    logger.warning("Silence hangup failed: %s", e)
-                return
             if idle > 60:
-                logger.info("SILENCE MONITOR: %s idle %.0fs (user turns=%d) — watching", cc_id, idle, user_turns)
+                logger.info("SILENCE MONITOR: %s idle %.0fs — logging only (NOT hanging up)", cc_id, idle)
     except asyncio.CancelledError:
         pass
     finally:
@@ -608,52 +602,17 @@ async def _auto_hangup_after_goodbye(cc_id: str):
 
 
 async def _voicemail_watchdog(cc_id: str):
-    """Detect voicemail-style one-way conversation and hang up.
-    Rule: After 45s of call, if AI has spoken >=2 turns but prospect has spoken 0 turns,
-    treat as voicemail answer-machine and hang up. Protects bulk dialing from zombie calls.
-    """
-    try:
-        # Wait for initial window
-        await asyncio.sleep(45)
-        if cc_id not in active_calls:
-            return
-        if active_calls[cc_id].get("state") == "ended":
-            return
-        user_turns = len(_ai_user_turn_times.get(cc_id) or [])
-        agent_turns = len(_ai_agent_turn_times.get(cc_id) or [])
-        if user_turns == 0 and agent_turns >= 2:
-            logger.info(
-                "VOICEMAIL WATCHDOG: %s — AI spoke %d turns, prospect 0 turns after 45s — hanging up",
-                cc_id, agent_turns,
-            )
-            active_calls.setdefault(cc_id, {})["voicemail"] = True
-            update_call(cc_id, outcome="voicemail")
-            try:
-                await hangup_call(cc_id)
-            except Exception as e:
-                logger.warning("Voicemail auto-hangup failed: %s", e)
-            return
-        # Second-pass check at 90s for slower answerers
-        await asyncio.sleep(45)
-        if cc_id not in active_calls or active_calls[cc_id].get("state") == "ended":
-            return
-        user_turns = len(_ai_user_turn_times.get(cc_id) or [])
-        agent_turns = len(_ai_agent_turn_times.get(cc_id) or [])
-        if user_turns == 0 and agent_turns >= 3:
-            logger.info(
-                "VOICEMAIL WATCHDOG (90s): %s — still no user speech — hanging up",
-                cc_id,
-            )
-            active_calls.setdefault(cc_id, {})["voicemail"] = True
-            update_call(cc_id, outcome="voicemail")
-            try:
-                await hangup_call(cc_id)
-            except Exception as e:
-                logger.warning("Voicemail auto-hangup (90s) failed: %s", e)
-    except asyncio.CancelledError:
-        pass
-    finally:
-        _voicemail_watchdog_tasks.pop(cc_id, None)
+    """DISABLED at the code level — we cannot reliably detect voicemail from
+    webhooks because the Telnyx AI Assistant processes user speech internally
+    and does not always emit call.ai_assistant.transcription events to us.
+
+    Voicemail handling is delegated to Telnyx itself via:
+      - answering_machine_detection on the outbound call
+      - telephony_settings.user_idle_timeout_secs on the Assistant (90s)
+      - telephony_settings.time_limit_secs (1800s hard cap)
+
+    Kept as a stub so callers don't break."""
+    return
 
 
 async def _ai_assistant_watchdog(cc_id: str, greeting: str):
@@ -2367,10 +2326,8 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                 _silence_watchdog_tasks[cc_id].cancel()
             _silence_watchdog_tasks[cc_id] = asyncio.create_task(_silence_watchdog(cc_id))
 
-            # Start voicemail watchdog — hangs up if AI talks to a machine (no user response)
-            if cc_id in _voicemail_watchdog_tasks:
-                _voicemail_watchdog_tasks[cc_id].cancel()
-            _voicemail_watchdog_tasks[cc_id] = asyncio.create_task(_voicemail_watchdog(cc_id))
+            # Voicemail detection is delegated to Telnyx (see sync_assistant_to_script):
+            # telephony_settings.voicemail_detection.action = "hangup"
             _ai_user_turn_times[cc_id] = []
             _ai_agent_turn_times[cc_id] = []
 
