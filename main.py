@@ -2207,8 +2207,11 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
     co = s.get("company_name", "Your Company")
     greeting = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
 
-    # ── Build message_history from CACHED knowledge (no recompute) ──
-    msg_history = list(_cached_knowledge_history)  # shallow copy
+    # ── Build message_history: ONLY per-prospect briefing (not knowledge) ──
+    # Product knowledge is already in the assistant's synced `instructions` —
+    # duplicating it here bloats the API payload and LLM context, adding
+    # seconds to warmup latency. Send only prospect-specific research.
+    msg_history: list[dict] = []
     research = get_cached_research(name, company)
     if research:
         msg_history.append({"role": "user", "content": f"[BRIEFING]\n{research[:500]}"})
