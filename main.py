@@ -1701,6 +1701,87 @@ def _update_campaign(camp_id: str, updates: dict) -> dict | None:
     return None
 
 
+def _mark_campaign_prospect(camp_id: str, phone: str, **fields: Any) -> None:
+    """Update a prospect's per-call fields inside a campaign record.
+    Matches on normalized phone."""
+    target = normalize_phone(phone) or phone
+    camps = _load_campaigns()
+    changed = False
+    for c in camps:
+        if c.get("id") != camp_id:
+            continue
+        for p in c.get("prospects", []):
+            pn = normalize_phone(p.get("phone")) or p.get("phone")
+            if pn == target:
+                p.update(fields)
+                changed = True
+                break
+        break
+    if changed:
+        _save_campaigns(camps)
+
+
+# ── DNC (Do-Not-Call) persistence ──
+_DNC_FILE = Path(__file__).parent / "data" / "dnc.json"
+
+
+def _load_dnc() -> set[str]:
+    if _DNC_FILE.exists():
+        try:
+            data = json.loads(_DNC_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return {str(x) for x in data}
+        except Exception:
+            pass
+    return set()
+
+
+def _save_dnc(nums: set[str]) -> None:
+    _DNC_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _DNC_FILE.write_text(json.dumps(sorted(nums), indent=2), encoding="utf-8")
+
+
+_dnc_cache: set[str] = _load_dnc()
+
+
+def is_dnc(phone: str) -> bool:
+    n = normalize_phone(phone) or phone
+    return n in _dnc_cache
+
+
+def add_dnc(phone: str, reason: str = "") -> None:
+    n = normalize_phone(phone) or phone
+    if not n or n in _dnc_cache:
+        return
+    _dnc_cache.add(n)
+    _save_dnc(_dnc_cache)
+    logger.info("DNC ADDED: %s (reason=%s)", n, reason)
+
+
+@app.get("/api/dnc")
+async def get_dnc():
+    return {"blocked": sorted(_dnc_cache)}
+
+
+@app.post("/api/dnc/add")
+async def post_dnc_add(body: dict):
+    phone = str(body.get("phone") or "").strip()
+    if not phone:
+        raise HTTPException(400, "phone required")
+    add_dnc(phone, reason=body.get("reason") or "manual")
+    return {"status": "added", "phone": phone}
+
+
+@app.post("/api/dnc/remove")
+async def post_dnc_remove(body: dict):
+    phone = str(body.get("phone") or "").strip()
+    n = normalize_phone(phone) or phone
+    if n in _dnc_cache:
+        _dnc_cache.discard(n)
+        _save_dnc(_dnc_cache)
+    return {"status": "removed", "phone": n}
+
+
 @app.get("/api/campaigns/list")
 async def list_campaigns():
     return _load_campaigns()
@@ -1848,6 +1929,11 @@ async def _start_named_campaign_unlocked(camp_id: str) -> bool:
         phone = normalize_phone(p.get("phone"))
         if not phone:
             return None
+        # DNC check: skip prospects on the persistent do-not-call list.
+        if is_dnc(phone):
+            logger.info("DNC: skipping %s — prospect previously marked not-interested", phone)
+            _mark_campaign_prospect(camp_id, phone, status="skipped", outcome="dnc")
+            return None
         name = prospect_display_name(p)
         parts: list[str] = []
         if p.get("title"):
@@ -1865,7 +1951,16 @@ async def _start_named_campaign_unlocked(camp_id: str) -> bool:
             prospect_email=str(p.get("email") or "").strip(),
         )
         result = await place_outbound_call(req)
-        return result.get("call_control_id")
+        cc_id = result.get("call_control_id")
+        # Mark prospect status on the campaign record so the UI reflects progress.
+        _mark_campaign_prospect(
+            camp_id, phone,
+            status="dialed",
+            outcome="",
+            call_control_id=cc_id,
+            dialed_at=datetime.now().isoformat(),
+        )
+        return cc_id
 
     async def _on_done():
         """Called when campaign runner finishes — update persisted state."""
@@ -1883,7 +1978,13 @@ async def _start_named_campaign_unlocked(camp_id: str) -> bool:
         _update_campaign(camp_id, updates)
         _active_campaign_id = None
 
-    ok = start_campaign(prospects, spacing, dial_one)
+    # Resume: pick up where we left off if campaign was paused/stopped.
+    starting_index = int(c.get("current_index") or c.get("dialed") or 0)
+    if starting_index >= len(prospects):
+        starting_index = 0  # already done — allow a fresh run from the top
+    if starting_index > 0:
+        logger.info("Campaign %s: resuming from index %d/%d", camp_id, starting_index, len(prospects))
+    ok = start_campaign(prospects, spacing, dial_one, starting_index=starting_index)
     if not ok:
         _update_campaign(camp_id, {"status": "draft"})
         _active_campaign_id = None
@@ -2496,6 +2597,13 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
 
             logger.info(f"HEARD ({'final' if is_final else 'interim'}): \"{text}\"")
 
+            # Persist prospect turn to transcript (only on final to avoid dup interim noise)
+            if is_final:
+                rec = active_calls.get(cc_id)
+                if rec:
+                    rec.setdefault("transcript", []).append({"role": "prospect", "text": text})
+                    save_call(rec)
+
             if not should_emit_transcription_reply(cc_id, text, is_final):
                 return JSONResponse(content={"status": "ok"})
             if cc_id in speaking_calls:
@@ -2517,9 +2625,37 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             if cc_id:
                 logger.info("Conversation insights received for %s", cc_id)
                 rec = active_calls.get(cc_id)
+                # Backfill transcript from Telnyx payload when local transcript is empty
+                tx_src = (
+                    pl.get("transcript")
+                    or (insights_data.get("transcript") if isinstance(insights_data, dict) else None)
+                    or pl.get("conversation")
+                )
+                backfilled: list[dict] = []
+                if isinstance(tx_src, list):
+                    for t in tx_src:
+                        if not isinstance(t, dict):
+                            continue
+                        txt = (t.get("text") or t.get("content") or t.get("message") or "").strip()
+                        if not txt:
+                            continue
+                        r = (t.get("role") or t.get("speaker") or "").lower()
+                        role = "agent" if r in ("assistant", "agent", "ai", "bot") else "prospect"
+                        backfilled.append({"role": role, "text": txt})
+                elif isinstance(tx_src, str) and tx_src.strip():
+                    backfilled.append({"role": "prospect", "text": tx_src.strip()})
                 if rec:
                     rec["telnyx_insights"] = insights_data
+                    if backfilled and not (rec.get("transcript") or []):
+                        rec["transcript"] = backfilled
+                        save_call(rec)
+                        logger.info("Backfilled %d transcript turns from Telnyx insights for %s", len(backfilled), cc_id)
                 update_call(cc_id, telnyx_insights=insights_data)
+                if backfilled:
+                    # Also persist to calls.json row if rec wasn't in active_calls
+                    existing = get_call_by_control_id(cc_id) or {}
+                    if not (existing.get("transcript") or []):
+                        finalize_call_end(cc_id, transcript=backfilled)
                 # Re-run Claude insights using Telnyx summary when local transcript is empty.
                 asyncio.create_task(_generate_call_insights(cc_id))
 
@@ -2858,6 +2994,27 @@ Return this exact JSON structure:
                      cc_id[:20], insights.get("outcome"), insights.get("interest_level"))
         if isinstance(insights, dict) and insights.get("outcome") == "meeting_booked":
             _ensure_task_for_meeting(cc_id, rec if isinstance(rec, dict) else {}, insights)
+        # ── Propagate outcome back to campaign prospect + DNC ──
+        try:
+            r = rec if isinstance(rec, dict) else (active_calls.get(cc_id) or {})
+            phone = r.get("to") or ""
+            outcome = (insights or {}).get("outcome") or "unknown"
+            if phone:
+                # Update EVERY campaign that contains this phone (rare to be in
+                # multiple, but safe). Outcome flags are: meeting_booked,
+                # interested, not_interested, callback, voicemail, no_answer, unknown.
+                for camp in _load_campaigns():
+                    _mark_campaign_prospect(
+                        camp.get("id", ""), phone,
+                        outcome=outcome,
+                        status=("completed" if outcome != "unknown" else "dialed"),
+                        ended_at=datetime.now().isoformat(),
+                    )
+                # Auto-add to DNC on clear rejection signals.
+                if outcome in ("not_interested", "do_not_call"):
+                    add_dnc(phone, reason=outcome)
+        except Exception:
+            logger.exception("Failed to propagate outcome to campaign/DNC for %s", cc_id)
     except Exception as e:
         logger.exception("Failed to generate call insights for %s: %s", cc_id, e)
 

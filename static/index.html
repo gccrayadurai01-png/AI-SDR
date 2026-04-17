@@ -2933,8 +2933,8 @@ function renderContacts(contacts) {
 }
 
 function openContactSlideOver(contact) {
-  const name = ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim();
-  document.getElementById('slideOverTitle').textContent = name || 'Contact';
+  const name = (contact.name || ((contact.first_name || '') + ' ' + (contact.last_name || '')).trim()) || 'Contact';
+  document.getElementById('slideOverTitle').textContent = name;
   document.getElementById('slideOverBody').innerHTML =
     '<div class="tabs" id="slideOverTabs"><button class="tab-btn active" onclick="switchSlideOverTab(\'overview\')">Overview</button><button class="tab-btn" onclick="switchSlideOverTab(\'calls\')">Call History</button></div>' +
     '<div id="so-overview" class="tab-panel active">' +
@@ -2946,8 +2946,60 @@ function openContactSlideOver(contact) {
     '<div><label>Status</label><div>' + escHtml(contact.status || 'new') + '</div></div></div>' +
     (contact.notes ? '<div style="margin-top:16px;"><label>Notes</label><p style="font-size:13px;">' + escHtml(contact.notes) + '</p></div>' : '') +
     '</div>' +
-    '<div id="so-calls" class="tab-panel"><div class="empty-state"><p>Call history for this contact will appear here.</p></div></div>';
+    '<div id="so-calls" class="tab-panel"><div class="empty-state"><p>Loading call history...</p></div></div>';
   openSlideOver();
+  loadContactCallHistory(contact);
+}
+
+async function loadContactCallHistory(contact) {
+  const panel = document.getElementById('so-calls');
+  if (!panel) return;
+  const phone = contact.phone || '';
+  const digits = (phone.match(/\d/g) || []).join('');
+  const tail = digits.length >= 10 ? digits.slice(-10) : digits;
+  if (!tail) { panel.innerHTML = '<div class="empty-state"><p>No phone number on this contact.</p></div>'; return; }
+  try {
+    const d = await GET('/api/calls');
+    const all = (d && d.calls) || [];
+    const matches = all.filter(function(c) {
+      const t = ((c.to || '').match(/\d/g) || []).join('');
+      return t.length >= 10 && t.slice(-10) === tail;
+    });
+    if (!matches.length) {
+      panel.innerHTML = '<div class="empty-state"><p>No calls yet for this contact.</p></div>';
+      return;
+    }
+    panel.innerHTML = matches.map(function(c, idx) {
+      const when = c.started_at ? new Date(c.started_at).toLocaleString() : '-';
+      const dur = c.duration_seconds ? Math.floor(c.duration_seconds/60) + ':' + String(c.duration_seconds%60).padStart(2,'0') : '-';
+      const outcome = c.outcome || c.status || c.state || 'completed';
+      const outcomeBadge = {interested:'badge-green', not_interested:'badge-red', booked:'badge-purple', callback:'badge-amber', voicemail:'badge-blue'}[String(outcome).toLowerCase()] || 'badge-gray';
+      const summary = c.summary || c.summary_preview || (c.claude_insights && c.claude_insights.summary) || '';
+      const rec = c.recording_url ? '<audio controls style="width:100%;margin-top:8px;" src="' + escHtml(c.recording_url) + '"></audio>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">No recording available</div>';
+      const tr = Array.isArray(c.transcript) ? c.transcript : [];
+      const trHtml = tr.length
+        ? '<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">Transcript (' + tr.length + ' turns)</summary><div style="margin-top:8px;max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-subtle);">' +
+          tr.map(function(t) {
+            const role = t.role === 'agent' ? 'AI' : 'Prospect';
+            const color = t.role === 'agent' ? 'var(--primary)' : 'var(--text-primary)';
+            return '<div style="margin-bottom:6px;font-size:12px;"><strong style="color:' + color + ';">' + role + ':</strong> ' + escHtml(t.text || '') + '</div>';
+          }).join('') +
+          '</div></details>'
+        : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">No transcript captured</div>';
+      return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--bg-card);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<div style="font-weight:600;">' + escHtml(when) + '</div>' +
+          '<span class="badge ' + outcomeBadge + '">' + escHtml(String(outcome).replace(/_/g,' ')) + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Duration: ' + dur + (c.to ? ' · ' + escHtml(c.to) : '') + '</div>' +
+        (summary ? '<div style="font-size:13px;margin-bottom:6px;">' + escHtml(summary) + '</div>' : '') +
+        rec +
+        trHtml +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    panel.innerHTML = '<div class="empty-state"><p>Failed to load call history.</p></div>';
+  }
 }
 
 function switchSlideOverTab(tab) {

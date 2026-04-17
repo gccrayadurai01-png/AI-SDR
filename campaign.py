@@ -82,20 +82,24 @@ async def run_campaign(
     queue: list[dict[str, Any]],
     spacing_seconds: float,
     dial: Callable[[dict[str, Any]], Awaitable[str | None]],
+    starting_index: int = 0,
 ) -> None:
     """
     dial(prospect) -> call_control_id or None if failed.
     Waits until hangup before pacing to next.
+    Resume: pass starting_index to skip already-dialed prospects.
     """
     global state
+    start = max(0, min(starting_index, len(queue)))
     state = CampaignState(
         status="running",
-        index=0,
+        index=start,
         total=len(queue),
         spacing_seconds=spacing_seconds,
     )
 
-    for i, prospect in enumerate(queue):
+    for i in range(start, len(queue)):
+        prospect = queue[i]
         state.index = i
         if state.status == "stopped":
             logger.info("Campaign stopped by user")
@@ -151,6 +155,7 @@ def start_campaign(
     queue: list[dict[str, Any]],
     spacing_seconds: float,
     dial: Callable[[dict[str, Any]], Awaitable[str | None]],
+    starting_index: int = 0,
 ) -> bool:
     global _runner_task
     if _runner_task is not None and not _runner_task.done():
@@ -160,7 +165,7 @@ def start_campaign(
 
     async def _go() -> None:
         try:
-            await run_campaign(queue, spacing_seconds, dial)
+            await run_campaign(queue, spacing_seconds, dial, starting_index=starting_index)
         finally:
             global _runner_task
             _runner_task = None
