@@ -138,10 +138,24 @@ def mark_stale_initiated_calls(max_age_hours: float = 1.0) -> list[str]:
 
 # ─── script ─────────────────────────────────────────────────
 def load_script() -> dict[str, Any]:
-    return _load(SCRIPT_FILE, DEFAULT_SCRIPT.copy())
+    # Merge with DEFAULT_SCRIPT so newly-added fields always surface with
+    # defaults even if the on-disk file was saved before they existed.
+    saved = _load(SCRIPT_FILE, {})
+    merged = DEFAULT_SCRIPT.copy()
+    if isinstance(saved, dict):
+        merged.update(saved)
+    return merged
 
 def save_script(script: dict[str, Any]) -> None:
-    _save(SCRIPT_FILE, script)
+    # Merge with existing on-disk script so partial payloads never wipe
+    # previously-saved fields.
+    existing = _load(SCRIPT_FILE, {})
+    if not isinstance(existing, dict):
+        existing = {}
+    merged = DEFAULT_SCRIPT.copy()
+    merged.update(existing)
+    merged.update(script)
+    _save(SCRIPT_FILE, merged)
 
 
 # ─── tasks ─────────────────────────────────────────────────

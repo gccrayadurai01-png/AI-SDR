@@ -2679,13 +2679,21 @@ async function hangupCall(id) {
   setTimeout(refreshActiveCalls, 1000);
 }
 
-function dialFromContact(phone, name, company, email) {
+async function dialFromContact(phone, name, company, email) {
+  if (!phone) return toast('No phone number for this contact', 'error');
+  // Dial IMMEDIATELY — don't just open a form and make the user click again.
+  toast('Dialing ' + (name || phone) + '...', 'info');
+  const d = await POST('/call/outbound', {
+    to_number: phone,
+    prospect_name: name || '',
+    company: company || '',
+    notes: '',
+    prospect_email: email || '',
+  });
+  if (d._error) return toast('Call failed: ' + d.detail, 'error');
+  toast('Call initiated!', 'success');
   navigate('live-calls');
-  openQuickDial();
-  document.getElementById('qd-number').value = phone || '';
-  document.getElementById('qd-name').value = name || '';
-  document.getElementById('qd-company').value = company || '';
-  document.getElementById('qd-email').value = email || '';
+  setTimeout(refreshActiveCalls, 1500);
 }
 
 /* ===================================================================

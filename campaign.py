@@ -48,6 +48,13 @@ def prospect_display_name(p: dict[str, Any]) -> str:
     fn = (p.get("first_name") or "").strip()
     ln = (p.get("last_name") or "").strip()
     name = f"{fn} {ln}".strip()
+    # Fallback: many CSV/contact records only carry a single combined
+    # `name` field — use it so the AI greets with a real first name
+    # instead of defaulting to "there".
+    if not name:
+        combined = (p.get("name") or p.get("full_name") or p.get("contact_name") or "").strip()
+        if combined:
+            name = combined
     return name if name else "there"
 
 
