@@ -457,16 +457,25 @@ def sync_assistant_to_script():
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    # 90s user-silence cap: Telnyx ends the AI session if the
-                    # prospect hasn't spoken for 90s — this is our voicemail
-                    # protection (voicemails never talk back).
-                    "user_idle_timeout_secs": 90,
+                    # 300s user-silence cap: long enough that a prospect
+                    # thinking / checking a calendar / putting us briefly on
+                    # hold does NOT cause Telnyx to silently terminate the
+                    # AI session (which leaves the call alive with zero
+                    # audio — the dreaded "mid-call silence"). Voicemail
+                    # protection is still handled by answering_machine_
+                    # detection at dial time.
+                    "user_idle_timeout_secs": 300,
                     "max_duration_secs": 1800,
                 },
                 "interruption_settings": {
                     "enable": True,
                     "start_speaking_plan": {
-                        "wait_seconds": 0.5,
+                        # Require ~1.5s of continuous prospect speech before
+                        # barging in. 0.5s was too twitchy — a cough or
+                        # background noise would pause the AI mid-sentence
+                        # and the resume webhook sometimes never arrived,
+                        # leaving the AI stuck.
+                        "wait_seconds": 1.5,
                     },
                 },
             }
@@ -567,15 +576,18 @@ def _is_goodbye(text: str) -> bool:
 # of these, we should wrap up quickly — not keep probing. Tighter than
 # _GOODBYE_PATTERNS so ordinary speech never false-matches.
 _HARD_STOP_PATTERNS = _re.compile(
-    r"(?:\b(?:i'?m|we'?re|we\s+are)\s+not\s+interested\b|"
-    r"\bnot\s+interested\s+(?:at\s+all|right\s+now|today|period|thanks)\b|"
-    r"\bstop\s+calling\s+me\b|\bplease\s+stop\s+calling\b|"
-    r"\btake\s+me\s+off\b|\bremove\s+me\s+from\b|"
-    r"\bdo\s+not\s+call\s+(?:me|again|back)\b|"
-    r"\bdon'?t\s+call\s+(?:me|again|back)\b|"
+    # Keep ONLY unambiguous "never call me again" phrases. Removed soft
+    # brush-offs like "not interested right now" / "not interested at
+    # all" / "I'm not interested" — prospects use these mid-conversation
+    # ("I'm not interested in X, but tell me about Y") and a match used
+    # to schedule an auto-hangup that silenced the call.
+    r"(?:\bstop\s+calling\s+me\b|\bplease\s+stop\s+calling\b|"
+    r"\btake\s+me\s+off\s+(?:your|the)\s+list\b|"
+    r"\bremove\s+me\s+from\s+(?:your|the)\s+list\b|"
+    r"\bdo\s+not\s+call\s+(?:me\s+)?(?:again|back)\b|"
+    r"\bdon'?t\s+call\s+(?:me\s+)?(?:again|back)\b|"
     r"\bnever\s+call\s+(?:me\s+)?again\b|"
-    r"\bleave\s+me\s+alone\b|\bgo\s+away\b|"
-    r"\bhang\s+up\b)",
+    r"\bleave\s+me\s+alone\b)",
     _re.IGNORECASE,
 )
 
@@ -589,14 +601,16 @@ def _is_hard_stop(text: str) -> bool:
 # Fires on AI or prospect saying clear meeting-booked phrases. After
 # these, exchange farewell and end.
 _BOOKING_CONFIRMED_PATTERNS = _re.compile(
-    r"(?:\bcalendar\s+invite\s+(?:sent|is\s+on\s+the\s+way|coming)|"
-    r"\bi'?ll\s+send\s+(?:you\s+)?(?:the\s+|a\s+|an\s+)?(?:calendar\s+)?invite\b|"
-    r"\bmeeting\s+is\s+(?:booked|confirmed|scheduled|set)\b|"
-    r"\bwe'?re\s+(?:booked|set|confirmed)\s+for\b|"
-    r"\byou'?re\s+(?:all\s+)?set\s+for\b|"
+    # Require explicit, hard-to-false-match booking confirmation language.
+    # Removed "you're set for" and "looking forward to our/the…" — these
+    # fire on ordinary meeting discussion ("are you set for the demo?")
+    # and used to silence live calls by scheduling an auto-hangup.
+    r"(?:\bcalendar\s+invite\s+(?:sent|is\s+on\s+the\s+way|is\s+coming)|"
+    r"\bi'?ll\s+send\s+(?:you\s+)?(?:the\s+|a\s+|an\s+)?calendar\s+invite\b|"
+    r"\bmeeting\s+is\s+(?:booked|confirmed|scheduled)\b|"
+    r"\bwe'?re\s+(?:booked|confirmed)\s+for\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b|"
     r"\bsee\s+you\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b|"
-    r"\btalk\s+to\s+you\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b|"
-    r"\blooking\s+forward\s+to\s+(?:our|the|chatting|speaking|meeting)\b)",
+    r"\btalk\s+to\s+you\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week)\b)",
     _re.IGNORECASE,
 )
 
@@ -607,18 +621,40 @@ def _is_booking_confirmed(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """LOG-ONLY silence monitor. NEVER hangs up.
-    Telnyx AI Assistant handles its own lifecycle. User transcription events
-    don't always flow to our webhook (assistant processes them internally),
-    so we cannot safely count user turns to decide a hangup here.
-    Use Telnyx's built-in user_idle_timeout_secs + voicemail_detection instead."""
+    """Mid-call silence monitor + AI resurrection.
+
+    Watches for the specific failure mode: AI Assistant went silent but the
+    call is still alive (Telnyx killed the AI session on idle / interrupt /
+    transient error, and the bot never spoke again). If no AGENT turn has
+    been observed for ~25s, we attempt exactly ONE restart of the AI
+    Assistant to wake it back up. NEVER hangs up.
+    """
     try:
+        nudged_at = 0.0
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(60)
-            last = _last_speech_time.get(cc_id, 0)
-            idle = (time.time() - last) if last else 0
-            if idle > 60:
-                logger.info("SILENCE MONITOR: %s idle %.0fs — logging only (NOT hanging up)", cc_id, idle)
+            await asyncio.sleep(10)
+            rec = active_calls.get(cc_id) or {}
+            if not rec.get("ai_assistant"):
+                continue  # Already in TTS fallback — don't touch
+            agent_turns = _ai_agent_turn_times.get(cc_id) or []
+            last_agent = agent_turns[-1] if agent_turns else _ai_assistant_first_event.get(cc_id, 0)
+            if not last_agent:
+                continue
+            idle = time.time() - last_agent
+            # Only nudge once per call, only after real silence
+            if idle > 25 and (time.time() - nudged_at) > 60 and not rec.get("_ai_nudge_done"):
+                rec["_ai_nudge_done"] = True
+                nudged_at = time.time()
+                logger.warning("MID-CALL SILENCE: %s has been quiet %.0fs — restarting AI Assistant", cc_id, idle)
+                name = rec.get("prospect_name") or "there"
+                title = rec.get("prospect_title") or ""
+                company = rec.get("company") or ""
+                try:
+                    # Schedule restart in background — reuses the same fast path
+                    from fastapi import BackgroundTasks as _BT
+                    asyncio.create_task(_start_ai_assistant_fast(cc_id, name, title, company, _BT()))
+                except Exception as e:
+                    logger.warning("Silence nudge restart failed: %s", e)
     except asyncio.CancelledError:
         pass
     finally:
@@ -2616,10 +2652,26 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
         elif etype == "call.ai_assistant.error":
             logger.error("AI Assistant error: %s", pl)
             if cc_id and cc_id in active_calls:
-                active_calls[cc_id]["ai_assistant"] = False
-                logger.info("Falling back to TTS pipeline for %s", cc_id)
-                speaking_calls.add(cc_id)
-                background_tasks.add_task(_main_bg_opening, cc_id)
+                # Try to RESTART the AI Assistant rather than permanently
+                # killing it. A single transient LLM/STT hiccup used to flip
+                # ai_assistant=False forever → the call stayed alive but the
+                # bot went silent for the rest of the conversation. One
+                # automatic restart attempt recovers from ~all transient
+                # errors; if it fails again, THEN we fall back to TTS.
+                rec_active = active_calls.get(cc_id, {})
+                name = rec_active.get("prospect_name") or "there"
+                title = rec_active.get("prospect_title") or ""
+                company = rec_active.get("company") or ""
+                already_restarted = rec_active.get("_ai_restart_attempted", False)
+                if not already_restarted:
+                    rec_active["_ai_restart_attempted"] = True
+                    logger.info("Attempting one-shot AI Assistant restart for %s", cc_id)
+                    asyncio.create_task(_start_ai_assistant_fast(cc_id, name, title, company, background_tasks))
+                else:
+                    logger.warning("AI Assistant error after restart already tried — falling back to TTS for %s", cc_id)
+                    rec_active["ai_assistant"] = False
+                    speaking_calls.add(cc_id)
+                    background_tasks.add_task(_main_bg_opening, cc_id)
 
         # ── TRANSCRIPTION → prospect speaking (TTS fallback only) ──
         elif etype == "call.transcription":
