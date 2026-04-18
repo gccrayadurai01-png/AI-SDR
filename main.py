@@ -1448,6 +1448,39 @@ async def call_history():
     return {"total": len(out), "calls": out}
 
 
+@app.get("/api/recordings/{call_control_id}")
+async def proxy_recording(call_control_id: str):
+    """
+    Stream a call recording through our server so the browser can play it
+    without hitting Telnyx CORS / auth issues. Looks up recording_url on
+    the stored call and streams the audio bytes back with audio/mpeg.
+    """
+    from fastapi.responses import StreamingResponse
+
+    rec = get_call_by_control_id(call_control_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Call not found")
+    url = rec.get("recording_url")
+    if not url:
+        raise HTTPException(status_code=404, detail="No recording available yet")
+
+    headers: dict[str, str] = {}
+    # Telnyx public recording URLs are unsigned; storage URLs can need auth.
+    if "telnyx" in url and config.TELNYX_API_KEY:
+        headers["Authorization"] = f"Bearer {config.TELNYX_API_KEY}"
+
+    async def _iter() -> Any:
+        async with _httpx.AsyncClient(timeout=60.0) as ac:
+            async with ac.stream("GET", url, headers=headers, follow_redirects=True) as r:
+                r.raise_for_status()
+                async for chunk in r.aiter_bytes():
+                    if chunk:
+                        yield chunk
+
+    media = "audio/mpeg" if url.lower().endswith(".mp3") else "audio/wav" if url.lower().endswith(".wav") else "audio/mpeg"
+    return StreamingResponse(_iter(), media_type=media, headers={"Cache-Control": "public, max-age=3600"})
+
+
 @app.post("/api/calls/{call_control_id}/recompute-insights")
 async def recompute_call_insights(call_control_id: str):
     """Re-run Claude (or Telnyx fallback) on stored transcript + telnyx_insights. Use after upgrading insight logic."""

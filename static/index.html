@@ -507,19 +507,19 @@ tbody tr.clickable { cursor: pointer; }
 
         <!-- Stats Grid -->
         <div class="stats-grid">
-          <div class="stat-card">
+          <div class="stat-card clickable" onclick="navigate('call-logs')" title="View call history">
             <div class="stat-icon blue"><i data-lucide="phone-call"></i></div>
             <div class="stat-info"><div class="stat-value" id="stat-total-calls">0</div><div class="stat-label">Total Calls</div></div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable" onclick="navigate('analytics')" title="View analytics">
             <div class="stat-icon green"><i data-lucide="target"></i></div>
             <div class="stat-info"><div class="stat-value" id="stat-answer-rate">0%</div><div class="stat-label">Answer Rate</div></div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable" onclick="navigate('call-logs')" title="View call history">
             <div class="stat-icon purple"><i data-lucide="clock"></i></div>
             <div class="stat-info"><div class="stat-value" id="stat-talk-time">0m</div><div class="stat-label">Talk Time</div></div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable" onclick="navigate('calendar')" title="View meetings">
             <div class="stat-icon amber"><i data-lucide="calendar-check"></i></div>
             <div class="stat-info"><div class="stat-value" id="stat-meetings-booked">0</div><div class="stat-label">Meetings Booked</div></div>
           </div>
@@ -1616,7 +1616,8 @@ async function loadDashboard() {
       dashActivity.innerHTML = recentCalls.map(c => {
         const outcome = getOutcome(c);
         const badge = outcomeBadgeMap[outcome] || 'badge-gray';
-        return '<div class="activity-item">' +
+        const cid = c.call_control_id || '';
+        return '<div class="activity-item" style="cursor:pointer;" onclick="navigate(\'call-logs\');setTimeout(function(){openCallDetail(\'' + cid + '\');},250);">' +
           '<div class="activity-dot" style="background:' + (outcome === 'meeting_booked' ? 'var(--success)' : outcome === 'callback_scheduled' ? 'var(--warning)' : outcome === 'not_interested' ? 'var(--danger)' : 'var(--text-muted)') + ';"></div>' +
           '<div class="activity-text">' + escHtml(c.prospect_name || 'Unknown') + ' <span class="badge ' + badge + '" style="font-size:10px;">' + formatOutcome(outcome) + '</span></div>' +
           '<div class="activity-time">' + formatTime(new Date(c.started_at)) + '</div></div>';
@@ -2683,17 +2684,31 @@ async function dialFromContact(phone, name, company, email) {
   if (!phone) return toast('No phone number for this contact', 'error');
   // Dial IMMEDIATELY — don't just open a form and make the user click again.
   toast('Dialing ' + (name || phone) + '...', 'info');
-  const d = await POST('/call/outbound', {
-    to_number: phone,
-    prospect_name: name || '',
-    company: company || '',
-    notes: '',
-    prospect_email: email || '',
-  });
-  if (d._error) return toast('Call failed: ' + d.detail, 'error');
-  toast('Call initiated!', 'success');
-  navigate('live-calls');
-  setTimeout(refreshActiveCalls, 1500);
+  try {
+    const d = await POST('/call/outbound', {
+      to_number: phone,
+      prospect_name: name || '',
+      company: company || '',
+      notes: '',
+      prospect_email: email || '',
+    });
+    if (d && d._error) return toast('Call failed: ' + (d.detail || 'unknown error'), 'error');
+    toast('Call initiated!', 'success');
+    navigate('live-calls');
+    setTimeout(refreshActiveCalls, 1500);
+  } catch (e) {
+    toast('Call failed: ' + (e && e.message ? e.message : 'network error'), 'error');
+  }
+}
+
+// Safer variant: look up the contact by id from allContacts to avoid
+// escaping/quoting issues in inline onclick attributes (names/emails
+// containing apostrophes used to silently break the previous approach).
+function dialContactById(id) {
+  const c = (allContacts || []).find(function(x) { return String(x.id) === String(id); });
+  if (!c) return toast('Contact not found', 'error');
+  const name = c.name || ((c.first_name || '') + ' ' + (c.last_name || '')).trim();
+  return dialFromContact(c.phone, name, c.company || '', c.email || '');
 }
 
 /* ===================================================================
@@ -2836,7 +2851,7 @@ async function openCallDetail(callId) {
   }
   document.getElementById('callDetailContent').innerHTML =
     '<div class="form-row" style="margin-bottom:20px;"><div class="form-group"><label>Prospect</label><div style="font-weight:600;">' + escHtml(call.prospect_name || '-') + '</div></div><div class="form-group"><label>Phone</label><div>' + escHtml(call.to || '-') + '</div></div><div class="form-group"><label>Duration</label><div>' + (call.duration_seconds ? formatSeconds(call.duration_seconds) : '-') + '</div></div><div class="form-group"><label>Outcome</label><span class="badge ' + (outcomeBadgeMap[outcome] || 'badge-gray') + '">' + formatOutcome(outcome) + '</span></div></div>' +
-    (call.recording_url ? '<div style="margin-bottom:16px;"><label>Recording</label><audio controls src="' + escHtml(call.recording_url) + '" style="width:100%;"></audio></div>' : '') +
+    (call.recording_url ? '<div style="margin-bottom:16px;"><label>Recording</label><audio controls src="/api/recordings/' + encodeURIComponent(callId) + '" style="width:100%;"></audio><div style="margin-top:4px;"><a href="' + escHtml(call.recording_url) + '" target="_blank" style="font-size:11px;color:var(--text-muted);">Open source</a></div></div>' : '') +
     '<div style="margin-bottom:16px;"><label>AI Summary</label><div style="padding:12px;background:var(--border-light);border-radius:var(--radius);font-size:13px;">' + escHtml(insights.summary || 'No summary') + '</div></div>' +
     '<div style="margin-bottom:16px;"><label>Transcript</label><div style="padding:12px;background:var(--border-light);border-radius:var(--radius);max-height:400px;overflow-y:auto;">' + transcriptHtml + '</div></div>' +
     '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-sm" onclick="recomputeInsights(\'' + callId + '\')">Recompute Insights</button></div>';
@@ -2924,7 +2939,7 @@ function renderContacts(contacts) {
       '<td>' + escHtml(c.email || '-') + '</td>' +
       '<td style="font-size:12px;color:var(--text-muted);">' + (c.updated_at ? formatTime(new Date(c.updated_at)) : '-') + '</td>' +
       '<td style="white-space:nowrap;">' +
-        (c.phone ? '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();dialFromContact(\'' + escHtml(c.phone) + '\',\'' + escHtml(name) + '\',\'' + escHtml(c.company || '') + '\',\'' + escHtml(c.email || '') + '\')"><i data-lucide="phone" style="width:12px;height:12px;"></i></button> ' : '') +
+        (c.phone ? '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();dialContactById(\'' + escHtml(c.id || '') + '\')"><i data-lucide="phone" style="width:12px;height:12px;"></i></button> ' : '') +
         '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openContactModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')"><i data-lucide="edit" style="width:12px;height:12px;"></i></button> ' +
         '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteContact(\'' + c.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>' +
       '</td></tr>';
@@ -2945,6 +2960,7 @@ function openContactSlideOver(contact) {
     '<div><label>Company</label><div>' + escHtml(contact.company || '-') + '</div></div>' +
     '<div><label>Status</label><div>' + escHtml(contact.status || 'new') + '</div></div></div>' +
     (contact.notes ? '<div style="margin-top:16px;"><label>Notes</label><p style="font-size:13px;">' + escHtml(contact.notes) + '</p></div>' : '') +
+    (contact.phone ? '<div style="margin-top:20px;display:flex;gap:8px;"><button class="btn btn-primary" onclick="dialContactById(\'' + escHtml(contact.id || '') + '\')"><i data-lucide="phone" style="width:14px;height:14px;"></i> Call Now</button><button class="btn btn-secondary" onclick="openContactModal(' + JSON.stringify(contact).replace(/"/g, '&quot;') + ')"><i data-lucide="edit" style="width:14px;height:14px;"></i> Edit</button></div>' : '') +
     '</div>' +
     '<div id="so-calls" class="tab-panel"><div class="empty-state"><p>Loading call history...</p></div></div>';
   openSlideOver();
@@ -2975,7 +2991,7 @@ async function loadContactCallHistory(contact) {
       const outcome = c.outcome || c.status || c.state || 'completed';
       const outcomeBadge = {interested:'badge-green', not_interested:'badge-red', booked:'badge-purple', callback:'badge-amber', voicemail:'badge-blue'}[String(outcome).toLowerCase()] || 'badge-gray';
       const summary = c.summary || c.summary_preview || (c.claude_insights && c.claude_insights.summary) || '';
-      const rec = c.recording_url ? '<audio controls style="width:100%;margin-top:8px;" src="' + escHtml(c.recording_url) + '"></audio>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">No recording available</div>';
+      const rec = c.recording_url ? '<audio controls style="width:100%;margin-top:8px;" src="/api/recordings/' + encodeURIComponent(c.call_control_id || '') + '"></audio>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;">No recording available</div>';
       const tr = Array.isArray(c.transcript) ? c.transcript : [];
       const trHtml = tr.length
         ? '<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">Transcript (' + tr.length + ' turns)</summary><div style="margin-top:8px;max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-subtle);">' +
