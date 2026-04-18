@@ -1464,9 +1464,12 @@ async def proxy_recording(call_control_id: str):
     if not url:
         raise HTTPException(status_code=404, detail="No recording available yet")
 
+    # Telnyx recording URLs are typically pre-signed (query string carries
+    # auth) — sending a Bearer header on top can cause S3 to 403. Only add
+    # auth when the URL has NO query string AND is on api.telnyx.com.
     headers: dict[str, str] = {}
-    # Telnyx public recording URLs are unsigned; storage URLs can need auth.
-    if "telnyx" in url and config.TELNYX_API_KEY:
+    needs_auth = ("?" not in url) and ("api.telnyx.com" in url) and bool(config.TELNYX_API_KEY)
+    if needs_auth:
         headers["Authorization"] = f"Bearer {config.TELNYX_API_KEY}"
 
     async def _iter() -> Any:
