@@ -482,7 +482,13 @@ def sync_assistant_to_script():
             voice_id = config.ELEVENLABS_VOICE_ID
             api_key_ref = config.ELEVENLABS_API_KEY_REF
             if voice_id and api_key_ref:
+                # CRITICAL: `type: elevenlabs` must be present at the top of
+                # voice_settings — without it Telnyx stores the settings but
+                # does NOT route audio through ElevenLabs, so calls go silent
+                # even though `start_ai_assistant` returns 200. This was the
+                # direct cause of the "no voice on the call" incident.
                 patch_body["voice_settings"] = {
+                    "type": "elevenlabs",
                     "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
@@ -882,12 +888,17 @@ async def test_assistant():
                 headers={"Authorization": f"Bearer {api_key}"},
             )
             if r.status_code == 200:
-                data = r.json().get("data", {})
+                raw = r.json()
+                # Telnyx's /v2/ai/assistants/{id} may return the assistant at
+                # the root level OR wrapped in {"data": {...}} depending on
+                # SDK version / endpoint. Try both.
+                data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
                 results["assistant"] = {
                     "ok": True,
                     "id": data.get("id"),
                     "model": data.get("model"),
                     "voice_settings": data.get("voice_settings"),
+                    "instructions_len": len(data.get("instructions") or ""),
                 }
             else:
                 results["assistant"] = {"ok": False, "error": f"HTTP {r.status_code}: {r.text[:200]}"}
