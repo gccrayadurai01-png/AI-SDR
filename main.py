@@ -2539,6 +2539,7 @@ def _ensure_task_for_meeting(call_control_id: str, rec: dict, insights: dict) ->
             "phone": phone,
             "company": company,
             "type": "meeting",
+            "outcome": "meeting_booked",  # so Tasks page Outcome column + filter work
             "due_date": due,
             "notes": notes or "Meeting booked on call.",
             "status": "pending",

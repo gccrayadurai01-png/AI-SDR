@@ -3455,7 +3455,24 @@ function renderTasksPage() {
     const done = !_taskIsOpen(t);
     const overdue = _taskIsOverdue(t);
     const type = (t.type || 'follow_up').toLowerCase();
-    const outcome = (t.outcome || '').replace(/_/g,' ');
+    // Derive outcome from type if missing (for legacy tasks created before
+    // the outcome field existed). Canonical mapping:
+    //   meeting  -> meeting booked     callback -> callback scheduled
+    //   follow_up -> interested         (fallback -> humanized type)
+    let outcomeRaw = (t.outcome || '').toLowerCase();
+    if (!outcomeRaw) {
+      if (type === 'meeting') outcomeRaw = 'meeting_booked';
+      else if (type === 'callback') outcomeRaw = 'callback_scheduled';
+      else if (type === 'follow_up' || type === 'follow-up') outcomeRaw = 'interested';
+      else outcomeRaw = type;
+    }
+    const outcome = outcomeRaw.replace(/_/g,' ');
+    // Colorize outcome badge
+    let outcomeBadge = '<span class="badge" style="background:#E5E7EB;color:#374151;text-transform:capitalize;">' + escHtml(outcome) + '</span>';
+    if (outcomeRaw === 'meeting_booked') outcomeBadge = '<span class="badge badge-green" style="text-transform:capitalize;">' + escHtml(outcome) + '</span>';
+    else if (outcomeRaw === 'callback_scheduled') outcomeBadge = '<span class="badge badge-amber" style="text-transform:capitalize;">' + escHtml(outcome) + '</span>';
+    else if (outcomeRaw === 'interested') outcomeBadge = '<span class="badge badge-blue" style="text-transform:capitalize;">' + escHtml(outcome) + '</span>';
+    else if (outcomeRaw === 'not_interested' || outcomeRaw === 'do_not_call') outcomeBadge = '<span class="badge badge-red" style="text-transform:capitalize;">' + escHtml(outcome) + '</span>';
     let typeBadge = '<span class="badge badge-blue">' + (type.replace(/_/g,' ')) + '</span>';
     if (type === 'callback') typeBadge = '<span class="badge badge-amber">Callback</span>';
     else if (type === 'meeting') typeBadge = '<span class="badge badge-green">Meeting</span>';
