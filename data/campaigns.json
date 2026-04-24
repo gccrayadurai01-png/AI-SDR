@@ -1,5 +1,3599 @@
 [
   {
+    "id": "2eb65a21",
+    "name": "KK list",
+    "created_at": "2026-04-24T15:08:04.743226",
+    "status": "running",
+    "agent_id": "626dca69",
+    "voice_id": "49uxf7RPOcr58oowljKn",
+    "spacing_seconds": 60,
+    "auto_mode": true,
+    "prospects": [
+      {
+        "name": "Jonathan Done",
+        "phone": "'+1 844-821-8151",
+        "email": "jdone@youniqueproducts.com",
+        "company": "Younique Products",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:IHMfQSb8Dn2vnqgMMmrcASr3cXfELZKc-f6eZjQJ1odEwbxA0eN9Cg",
+        "dialed_at": "2026-04-24T15:08:41.178277"
+      },
+      {
+        "name": "Abhishek Kumar",
+        "phone": "'+1 877-744-7781",
+        "email": "abhishek.kumar@p4dx.com",
+        "company": "P4 Diagnostix",
+        "title": "Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jackson Morgan",
+        "phone": "'+1 302-225-7800",
+        "email": "jmorgan@versalign.com",
+        "company": "Versalign",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dan Staheli",
+        "phone": "'+1 360-856-4465",
+        "email": "dan.staheli@asignio.com",
+        "company": "Asignio",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Emma Hohl",
+        "phone": "'+1 800-842-1973",
+        "email": "ehohl@ntst.com",
+        "company": "Netsmart Technologies Inc.",
+        "title": "Senior Director, Enterprise IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brad Loos",
+        "phone": "",
+        "email": "bradl@ics-collection.com",
+        "company": "ILLINOIS COLLECTION SERVICE, INC. DBA ICS, INC",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David Hollidge",
+        "phone": "'+1 313-872-8100",
+        "email": "dhollid2@hap.org",
+        "company": "Health Alliance Plan",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Manuel Echeverria",
+        "phone": "'+1 305-666-3388",
+        "email": "manuel@compucaresystems.net",
+        "company": "Compucare Systems Inc",
+        "title": "Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Larry Morris",
+        "phone": "'+1 847-250-4600",
+        "email": "",
+        "company": "Diverzify",
+        "title": "Director IT Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael Ju",
+        "phone": "",
+        "email": "mju@strongpointpartners.com",
+        "company": "Strongpoint Partners",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Soham Joshi",
+        "phone": "'+1 224-521-7145",
+        "email": "sjoshi@zionclouds.com",
+        "company": "Zion Cloud Solutions",
+        "title": "Information Technology Service Delivery Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Juan Mas",
+        "phone": "'+1 603-669-4600",
+        "email": "jmas@stmarysbank.com",
+        "company": "St. Mary's Bank",
+        "title": "Associate IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eddy Alburquerque",
+        "phone": "'+1 800-767-8326",
+        "email": "ealburquerque@mrsteam.com",
+        "company": "MrSteam Feel Good Inc.",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David Sheidlower",
+        "phone": "'+1 212-229-6000",
+        "email": "dsheidlower@tcco.com",
+        "company": "Turner Construction Company",
+        "title": "Vice President, Chief Information Security & Privacy Officer",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Elli Blonde",
+        "phone": "'+1 202-993-3972",
+        "email": "eblonde@tharseoit.com",
+        "company": "Tharseo IT",
+        "title": "Director of PMO and Contracting | Health IT, GovCon",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Deborah Muro",
+        "phone": "'+1 515-241-6161",
+        "email": "",
+        "company": "UnityPoint Health",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Paul O'Dette",
+        "phone": "'+1 312-726-6200",
+        "email": "podette@easterseals.com",
+        "company": "Easterseals",
+        "title": "IT Operations Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Lauren Nodonly",
+        "phone": "'+1 518-370-1441",
+        "email": "lnodonly@hhchc.org",
+        "company": "Hometown Health Centers",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jeffery Joseph",
+        "phone": "'+1 888-720-0360",
+        "email": "jjoseph@affinityadvisorynetwork.com",
+        "company": "Affinity Advisory Network LLC",
+        "title": "Chief Information Technology Officer",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jeffrey Barnes",
+        "phone": "'+1 620-724-8291",
+        "email": "jbarnes@girardmedicalcenter.com",
+        "company": "Girard Medical Center",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dan Marschall",
+        "phone": "'+1 844-820-3360",
+        "email": "",
+        "company": "Versetal",
+        "title": "Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Nathan Cox",
+        "phone": "'+1 800-821-6710",
+        "email": "",
+        "company": "Advanced Drainage Systems, Inc.",
+        "title": "Director IT GTM Applications",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Lars Evans",
+        "phone": "'+1 651-203-8200",
+        "email": "laevans@lortondata.com",
+        "company": "Lorton Data, Inc.",
+        "title": "Cto/ciso",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael Duckett",
+        "phone": "'+1 703-467-1800",
+        "email": "michael.duckett@nrucfc.coop",
+        "company": "Cooperative Finance",
+        "title": "Director Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Matt Kaseeska",
+        "phone": "'+1 888-638-9752",
+        "email": "mkaseeska@networkscr.com",
+        "company": "Net Works Consulting Resources, Inc.",
+        "title": "CIO / Ciso",
+        "outcome": "",
+        "status": "queued"
+      }
+    ],
+    "dialed": 0,
+    "current_index": 0,
+    "outcomes": {},
+    "started_at": "2026-04-24T15:08:40.158004"
+  },
+  {
+    "id": "fdbc0121",
+    "name": "outbound list",
+    "created_at": "2026-04-24T13:41:39.957603",
+    "status": "stopped",
+    "agent_id": "626dca69",
+    "voice_id": "49uxf7RPOcr58oowljKn",
+    "spacing_seconds": 60,
+    "auto_mode": true,
+    "prospects": [
+      {
+        "name": "Fons",
+        "phone": "'+1 888-672-0610",
+        "email": "fonsvangeelen@crsoftware.com",
+        "company": "C&R Software",
+        "title": "Director Global IT and Services",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:yU50uKETg6fejgTfXsRtWhFRwdPTQ56gdr5ULkT5lVGwSxGaA3MOuw",
+        "dialed_at": "2026-04-24T13:41:44.455395",
+        "ended_at": "2026-04-24T13:42:32.164989"
+      },
+      {
+        "name": "Erik",
+        "phone": "'+1 888-321-4678",
+        "email": "eriks@inmotionhosting.com",
+        "company": "InMotion Hosting",
+        "title": "Director of Information Technology",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:-3i8S-4gZ9Gdebjv0jehHsiQiboMQyYwA-wMzqBpCvBYum3HTBDgMA",
+        "dialed_at": "2026-04-24T13:43:21.082777",
+        "ended_at": "2026-04-24T13:44:35.260849"
+      },
+      {
+        "name": "Paul",
+        "phone": "'+1 888-742-4090",
+        "email": "pemmanuel@evolverinc.com",
+        "company": "Evolver",
+        "title": "Director of Information Technology",
+        "outcome": "hung_up",
+        "status": "completed",
+        "call_control_id": "v3:7i7ZSLnE2MEn23QW8xxgIMl4FryTYRf6rqsPzK14aiLdbuomkg9j5g",
+        "dialed_at": "2026-04-24T13:45:23.161038",
+        "ended_at": "2026-04-24T13:46:23.702270"
+      },
+      {
+        "name": "Scott",
+        "phone": "'+1 401-552-3462",
+        "email": "scott@adhocteam.us",
+        "company": "Ad Hoc",
+        "title": "Director of IT and Security",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:rc4-JsPfXyBoxJdhDTsvzlI_vkf6rveurSraQzDvwt_8UnHsblOItA",
+        "dialed_at": "2026-04-24T13:47:12.013235",
+        "ended_at": "2026-04-24T13:48:35.969938"
+      },
+      {
+        "name": "Tejas",
+        "phone": "'+1 732-947-4119",
+        "email": "tejas.sanghani@rangtech.com",
+        "company": "Rang Technologies Inc",
+        "title": "Director of Information Technology",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:TYjF8l2Q-hz2ChLg7A3EAVNVPjG7qHp31gg_qQzxEPQFv0eTrWT4Zg",
+        "dialed_at": "2026-04-24T13:49:27.806366",
+        "ended_at": "2026-04-24T13:51:11.092614"
+      },
+      {
+        "name": "Christopher",
+        "phone": "'+1 206-575-9511",
+        "email": "cwilliams@compassmsp.com",
+        "company": "CompassMSP",
+        "title": "Director of Information Technology",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:Xv3vnZaSMHVn8ZEpOLJprgGoIfRvd2_b3zofTpplXKnFrS5Js8axIQ",
+        "dialed_at": "2026-04-24T13:51:59.689973",
+        "ended_at": "2026-04-24T13:54:38.830675"
+      },
+      {
+        "name": "Sivakumar",
+        "phone": "'+1 847-327-3167",
+        "email": "sivakumar.kalidoss@complianceg.com",
+        "company": "Compliance Group Inc",
+        "title": "Associate Director - IT Validation Delivery",
+        "outcome": "voicemail",
+        "status": "completed",
+        "call_control_id": "v3:qKU1WJ_cr4XrzL18RXG3G4FmvmZvLBnub8onq6C6bdikM1OsjKfgzw",
+        "dialed_at": "2026-04-24T13:57:23.429207",
+        "ended_at": "2026-04-24T14:01:57.394900"
+      },
+      {
+        "name": "Shahzad",
+        "phone": "'+1 973-457-5727",
+        "email": "shahzad.latif@ewsystemsinc.com",
+        "company": "EWS",
+        "title": "Director, IT Infrastructure & Operations",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:8XTN-StDZ85Sxgq9daNbplse5U11Cgv-ZPywO7A8pQQThUgcAyzasg",
+        "dialed_at": "2026-04-24T14:02:48.289623",
+        "ended_at": "2026-04-24T14:04:12.761210"
+      },
+      {
+        "name": "Leo",
+        "phone": "'+1 833-437-3835",
+        "email": "leo@revelsystems.com",
+        "company": "Revel Systems",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:8ZXks6IGlDizDLoGLmvLqL9eWsZVFomP7IUY5Tt5V3xJfHCRDqTaFQ",
+        "dialed_at": "2026-04-24T14:05:00.982638"
+      },
+      {
+        "name": "Dave",
+        "phone": "'+1 866-488-4849",
+        "email": "dave.rose@hometownticketing.com",
+        "company": "Hometown",
+        "title": "Director, Governance Risk and Compliance & IT Operations",
+        "outcome": "hung_up",
+        "status": "completed",
+        "call_control_id": "v3:j3mfO7ImrVgf5Yj3LlgWvSAJdI5qv7NtoYKr2_qDVksI_rw3dzTiYw",
+        "dialed_at": "2026-04-24T14:06:06.337231",
+        "ended_at": "2026-04-24T14:07:27.024360"
+      },
+      {
+        "name": "Mark",
+        "phone": "'+1 877-722-5359",
+        "email": "msmith@scalecomputing.com",
+        "company": "Scale Computing",
+        "title": "Director of IT & Compliance",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:Fso9FYgsk-mCHMvQ1uyU0St1SZdZ2O_uNbUujp9RAtJsCaxpzn4JPg",
+        "dialed_at": "2026-04-24T14:08:14.212535"
+      },
+      {
+        "name": "Ryan",
+        "phone": "'+1 800-469-9705",
+        "email": "ryan.donovan@realmone.com",
+        "company": "RealmOne",
+        "title": "Director of Information Technology",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:H7ZC63WtfVcyr21QWxvM3iS5fOoUce1k9gWBD3Lg2UI8IF0DtE8Urw",
+        "dialed_at": "2026-04-24T14:11:14.534646",
+        "ended_at": "2026-04-24T14:12:44.071229"
+      },
+      {
+        "name": "Josh",
+        "phone": "",
+        "email": "josh.mauney@gc.com",
+        "company": "GameChanger Products LLC",
+        "title": "Director of Information Security and IT Ops",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chris",
+        "phone": "",
+        "email": "cgraham@integrisgroup.com",
+        "company": "Integris Group",
+        "title": "Director- IT Client Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Clint",
+        "phone": "'+1 888-723-2222",
+        "email": "cscherbarth@constellationhb.com",
+        "company": "Constellation HomeBuilder Systems",
+        "title": "Director of Information Technology",
+        "outcome": "gatekeeper",
+        "status": "completed",
+        "call_control_id": "v3:RmwXHGSF_ycsBQ4MWIw67KgP3YMZmJHNUKF660u0os0kLuJXMk7_Tg",
+        "dialed_at": "2026-04-24T14:13:33.569406",
+        "ended_at": "2026-04-24T14:17:01.712250"
+      },
+      {
+        "name": "Allison",
+        "phone": "'+1 617-938-3801",
+        "email": "acolbath@clearcompany.com",
+        "company": "ClearCompany",
+        "title": "Director DevOps & IT",
+        "outcome": "gatekeeper",
+        "status": "completed",
+        "call_control_id": "v3:eQrf86KUfsDVSJSihQHOumUGDP0KblafT-6DQRJXilHus43BJMix4g",
+        "dialed_at": "2026-04-24T14:17:47.391413",
+        "ended_at": "2026-04-24T14:18:57.117501"
+      },
+      {
+        "name": "Halston",
+        "phone": "'+1 650-352-3738",
+        "email": "hs@backblaze.com",
+        "company": "Backblaze",
+        "title": "Head of IT, Senior Director of Information Technology",
+        "outcome": "interested",
+        "status": "completed",
+        "call_control_id": "v3:gKdOHys7NeacPG4moqA_JUK246UVCyvzxrEE5cwdu3D1VPFFwP8tew",
+        "dialed_at": "2026-04-24T14:19:44.710588",
+        "ended_at": "2026-04-24T14:23:23.155600"
+      },
+      {
+        "name": "Ty",
+        "phone": "'+1 800-655-8138",
+        "email": "ty.kelley@getbuilt.com",
+        "company": "Built",
+        "title": "Associate Director, Enterprise IT",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:xrPBrIBvK42MZMFcqG4it0Q5id4RHJrYtClKdEd9ffa6L88q5xVx4g",
+        "dialed_at": "2026-04-24T14:24:09.679962"
+      },
+      {
+        "name": "Jonathan",
+        "phone": "'+1 888-983-0496",
+        "email": "jmathew@newstore.com",
+        "company": "NewStore",
+        "title": "Director, Information Technology & Analytics",
+        "outcome": "voicemail",
+        "status": "completed",
+        "call_control_id": "v3:kaE-dU-RR5xsQU7POW1I-ebib0eKabKNJCREPNGHdR7XoOM4a6a7sw",
+        "dialed_at": "2026-04-24T14:27:45.902856",
+        "ended_at": "2026-04-24T14:38:10.066085"
+      },
+      {
+        "name": "Alan",
+        "phone": "'+1 415-956-1947",
+        "email": "alan.gutherz@algonomy.com",
+        "company": "Algonomy Software Pvt Ltd",
+        "title": "Director of Information Technology and Operations",
+        "outcome": "hung_up",
+        "status": "completed",
+        "call_control_id": "v3:7EporVj4mUUsEAG-WFeIk3E23EmA8-ns9XFnHn6CKDYKS5g8HItz8A",
+        "dialed_at": "2026-04-24T14:39:04.988048",
+        "ended_at": "2026-04-24T14:56:44.974142"
+      },
+      {
+        "name": "Brian",
+        "phone": "",
+        "email": "bquigley@grvty.com",
+        "company": "GRVTY",
+        "title": "Senior Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Matt",
+        "phone": "'+1 781-224-3640",
+        "email": "mthomas@vestmark.com",
+        "company": "Vestmark",
+        "title": "Director of Enterprise IT",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:cDwtQvxTEytAKUawz2NWiM2tDoaSxgnNaKt3hkOtuOki6HbZwKoLjA",
+        "dialed_at": "2026-04-24T14:57:39.570361"
+      },
+      {
+        "name": "Josh",
+        "phone": "'+1 800-952-5210",
+        "email": "josh@cantina.ai",
+        "company": "Cantina.ai",
+        "title": "Sr. Director of IT",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:Ol_jf_y-7uIyCzHnhHmGQI6nK9SGWuCxu7iAdmLWiAUwU6TupwfASg",
+        "dialed_at": "2026-04-24T15:02:15.781854",
+        "ended_at": "2026-04-24T15:03:32.177928"
+      },
+      {
+        "name": "Filip",
+        "phone": "'+46 704 79 51 52",
+        "email": "filip.gavefalk@planhat.com",
+        "company": "Planhat",
+        "title": "Director, Strategic Deployment - IT & Telco",
+        "outcome": "hung_up",
+        "status": "completed",
+        "call_control_id": "v3:s2nL5Xh7VSkbSW8ZTM8EFQjKYiie9EGpcJNB1zoDE2zCMX3nS2IyeA",
+        "dialed_at": "2026-04-24T15:04:20.969076",
+        "ended_at": "2026-04-24T15:06:39.989299"
+      },
+      {
+        "name": "Sunder",
+        "phone": "",
+        "email": "sunder@versales.com",
+        "company": "VSI",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alix",
+        "phone": "'+1 301-984-4004",
+        "email": "alix.ganga@lcginc.com",
+        "company": "LCG, Inc.",
+        "title": "Sr. Director, IT and Network Support",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 301-984-4004",
+        "email": "michael.foertschbeck@lcginc.com",
+        "company": "LCG, Inc.",
+        "title": "Director, Portfolio Management and IT Programs",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Johnathan",
+        "phone": "'+1 703-288-0010",
+        "email": "johnathan.nelson@ntconcepts.com",
+        "company": "NT Concepts",
+        "title": "Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Aaron",
+        "phone": "'+1 405-624-3214",
+        "email": "aaron.richardson@interworks.com",
+        "company": "InterWorks",
+        "title": "Senior Director, IT Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 410-385-2500",
+        "email": "mkerber@catalyte.io",
+        "company": "Catalyte",
+        "title": "Director of Cybersecurity and IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Robert",
+        "phone": "'+1 800-673-6155",
+        "email": "robert.t@worldlink-us.com",
+        "company": "WorldLink",
+        "title": "Information Technology Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tanay",
+        "phone": "'+1 602-288-8845",
+        "email": "tanay.karmakar@m3bi.com",
+        "company": "M3BI - A Zensar Company",
+        "title": "Director of IT Strategy and Development",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Scott",
+        "phone": "'+1 801-501-7000",
+        "email": "scott.openshaw@impartner.com",
+        "company": "Impartner Software",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kevin",
+        "phone": "'+1 972-993-0400",
+        "email": "ksmith@worksoft.com",
+        "company": "Worksoft",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brian",
+        "phone": "'+1 717-262-2080",
+        "email": "briandavis@gdcit.com",
+        "company": "GDC IT Solutions (GDC)",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Andrew",
+        "phone": "'+1 405-624-3214",
+        "email": "andrew.wooten@interworks.com",
+        "company": "InterWorks",
+        "title": "Director of Sales and Architecture, IT Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Raymond",
+        "phone": "'+1 973-402-7802",
+        "email": "rcho@cherryroad.com",
+        "company": "CherryRoad",
+        "title": "Director - IT Support & Development",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Reid",
+        "phone": "'+1 888-336-6999",
+        "email": "rburchell@edmundsgovtech.com",
+        "company": "Edmunds GovTech",
+        "title": "Director \u2013 IT Services / DevOps",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Scott",
+        "phone": "'+1 855-360-3282",
+        "email": "scott.harvey@reltio.com",
+        "company": "Reltio",
+        "title": "Sr. Director, IT Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jogen",
+        "phone": "'+1 301-973-6601",
+        "email": "jogen.shukla@esimplicity.com",
+        "company": "eSimplicity",
+        "title": "Sr. Director - IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Garion",
+        "phone": "'+1 703-813-2100",
+        "email": "garion.wheeler@altamiracorp.com",
+        "company": "Altamira Technologies Corporation",
+        "title": "Director of Information Technology and Assurance",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Lonnie",
+        "phone": "'+1 407-992-8750",
+        "email": "lonnie.pharmd@cps.com",
+        "company": "CPS",
+        "title": "Consultant / Corporate Project Director/ Pharmacy Director/ Automation and IT Specialist",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Laxma",
+        "phone": "'+1 732-412-6999",
+        "email": "laxma.kommareddy@intellectt.com",
+        "company": "Intellectt Inc",
+        "title": "Associate Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joseph",
+        "phone": "'+1 844-448-1212",
+        "email": "joseph.tse@posit.co",
+        "company": "Posit PBC",
+        "title": "Sr Director Information Technology Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sydney",
+        "phone": "'+1 925-218-0669",
+        "email": "sydney@riverstonetech.com",
+        "company": "Riverstone Infotech",
+        "title": "Director, Business Development At Riverstone Information Technology Llc",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chris",
+        "phone": "'+1 410-992-3760",
+        "email": "cbilger@dcca.com",
+        "company": "DCCA",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kevin",
+        "phone": "'+1 800-538-1579",
+        "email": "kevin.sesock@octanelending.com",
+        "company": "Octane\u00ae",
+        "title": "Director of IT & Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chris",
+        "phone": "'+1 650-549-8522",
+        "email": "chris.garner@cyara.com",
+        "company": "Cyara",
+        "title": "Sr Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "",
+        "email": "david.j@techmango.net",
+        "company": "Techmango Technology Services Private Limited",
+        "title": "Director Information Technology Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ken",
+        "phone": "",
+        "email": "kmiddlet@integrisgroup.com",
+        "company": "Integris Group",
+        "title": "Managing Director, IT Business Solution Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "'+1 212-840-8666",
+        "email": "david.arnemann@rmscorp.com",
+        "company": "RMS COMPUTER CORP",
+        "title": "CIO / IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dustin",
+        "phone": "'+1 585-427-8180",
+        "email": "dreiner@ip.com",
+        "company": "IP.com",
+        "title": "Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Udo",
+        "phone": "774-235-0516",
+        "email": "unelson@interactions.com",
+        "company": "Interactions",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Vince",
+        "phone": "'+1 717-560-9928",
+        "email": "vaukamp@cargas.com",
+        "company": "Cargas",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jorge",
+        "phone": "'+34 963 53 04 51",
+        "email": "jsanchez@avantio.com",
+        "company": "Avantio",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Yoon",
+        "phone": "",
+        "email": "yoon@haus.io",
+        "company": "Haus",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Omri",
+        "phone": "'+1 212-634-9358",
+        "email": "ogabriel@cynet.com",
+        "company": "Cynet Security",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "'+1 503-927-4953",
+        "email": "dtran@hydrolix.io",
+        "company": "Hydrolix",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Fernando",
+        "phone": "'+1 786-845-9150",
+        "email": "fgarcia@magaya.com",
+        "company": "Magaya Corporation",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Aaron",
+        "phone": "'+1 800-303-2588",
+        "email": "aaron.abraham@sabelsystems.com",
+        "company": "Sabel Systems Technology Solutions, LLC",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gordon",
+        "phone": "'+1 860-644-4000",
+        "email": "gordon.gyngell@ticketnetwork.com",
+        "company": "TicketNetwork",
+        "title": "Sr. Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Nick",
+        "phone": "'+1 877-478-8536",
+        "email": "ncasalenda@c4techservices.com",
+        "company": "C4 Technical Services",
+        "title": "IT Account Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Matt",
+        "phone": "'+1 888-256-6067",
+        "email": "matt.carson@himaxwell.com",
+        "company": "Maxwell",
+        "title": "Director, IT and Data Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Hammad",
+        "phone": "",
+        "email": "hammadc@fedtec.com",
+        "company": "FedTec",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gene",
+        "phone": "'+1 240-751-4883",
+        "email": "gene.stern@spatialfront.com",
+        "company": "Spatial Front, Inc",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Phillip",
+        "phone": "'+1 571-918-9987",
+        "email": "phillip.craig@itconcepts-inc.com",
+        "company": "IT Concepts,",
+        "title": "Director of IT Service Delivery",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Andrew",
+        "phone": "'+1 734-668-6678",
+        "email": "askene@eitccorp.com",
+        "company": "Enlighten",
+        "title": "Director of Data Engineering at Enlighten IT Consulting, MacAulay-Brown Inc.",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ray",
+        "phone": "'+1 866-888-3962",
+        "email": "rhambrick@dynatronsoftware.com",
+        "company": "Dynatron Software, Inc.",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rob",
+        "phone": "'+1 425-620-4503",
+        "email": "robert.biggs@xpanse.com",
+        "company": "Xpanse",
+        "title": "Associate Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Neelesh",
+        "phone": "'+1 214-310-1020",
+        "email": "neelesh.singh@resolvetech.com",
+        "company": "Resolve Tech Solutions",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Andrew",
+        "phone": "'+1 646-612-7694",
+        "email": "andrew.goldstein@updater.com",
+        "company": "Updater",
+        "title": "Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alex",
+        "phone": "'+1 833-660-0420",
+        "email": "acasiano@weedmaps.com",
+        "company": "Weedmaps",
+        "title": "Senior Director of Information Technology and Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Adam",
+        "phone": "'+1 888-454-7539",
+        "email": "arobinson@plex.com",
+        "company": "Plex, by Rockwell Automation",
+        "title": "Director, Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kevin",
+        "phone": "'+1 706-922-6741",
+        "email": "knetherton@taxslayer.com",
+        "company": "TaxSlayer",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Christy",
+        "phone": "'+1 901-757-8877",
+        "email": "cjohnson@cooksys.com",
+        "company": "Cook Systems",
+        "title": "Director, IT Program Delivery and Solutions",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kris",
+        "phone": "'+1 833-977-2665",
+        "email": "kfrench@wrapbook.com",
+        "company": "Wrapbook",
+        "title": "Director Security Engineering & IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kevin",
+        "phone": "'+1 480-719-1646",
+        "email": "kevin.leypoldt@parchment.com",
+        "company": "Parchment by Instructure",
+        "title": "Director Information Technology Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Josh",
+        "phone": "'+1 801-657-4657",
+        "email": "josh.mackelprang@pdq.com",
+        "company": "PDQ",
+        "title": "Sr Director IT & Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marque",
+        "phone": "'+1 855-383-8111",
+        "email": "marque.mcgee@gocrisp.com",
+        "company": "Crisp",
+        "title": "Director, IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Steven",
+        "phone": "'+1 917-765-8760",
+        "email": "steven@spotnana.com",
+        "company": "Spotnana",
+        "title": "Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Hector",
+        "phone": "'+1 866-969-3222",
+        "email": "hector.felix@reveleer.com",
+        "company": "Reveleer",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kristina",
+        "phone": "'+1 717-795-9104",
+        "email": "kristina.carlos@csaassociates.com",
+        "company": "Client Solution Architects",
+        "title": "Senior Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ozzy",
+        "phone": "'+1 855-778-7246",
+        "email": "ozzy.sezer@fastlaneus.com",
+        "company": "Fast Lane North America",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tim",
+        "phone": "'+1 312-872-0072",
+        "email": "tim.johnson@dmcinfo.com",
+        "company": "DMC",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Adam",
+        "phone": "'+1 800-659-9001",
+        "email": "adam.valvano@assetworks.com",
+        "company": "AssetWorks Inc",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Felicia",
+        "phone": "",
+        "email": "felicia.carnell@proof.com",
+        "company": "Proof",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joe",
+        "phone": "'+1 877-478-8536",
+        "email": "jconnelly@c4techservices.com",
+        "company": "C4 Technical Services",
+        "title": "Director of IT Sales",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Daniel",
+        "phone": "'+1 516-874-2258",
+        "email": "daniel@firstduesizeup.com",
+        "company": "First Due",
+        "title": "Director of Infrastructure and IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Mark",
+        "phone": "'+1 800-367-5690",
+        "email": "munrath@researchinnovations.com",
+        "company": "Research Innovations Incorporated",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sufi",
+        "phone": "",
+        "email": "sgrach@getcaret.com",
+        "company": "CARET",
+        "title": "Director of IT at AbacusNext",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alex",
+        "phone": "",
+        "email": "alex@zapsurgical.com",
+        "company": "ZAP",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 866-839-1322",
+        "email": "michael.curtis@vetsez.com",
+        "company": "VetsEZ",
+        "title": "Program Director, IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kyle",
+        "phone": "'+1 571-287-7255",
+        "email": "kyle.whiteley@darkwolfsolutions.com",
+        "company": "Dark Wolf",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Angel",
+        "phone": "'+1 917-607-4268",
+        "email": "angel.estrada@accrete.ai",
+        "company": "Accrete",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "James",
+        "phone": "'+1 301-874-8566",
+        "email": "james.stanford@edgewaterit.com",
+        "company": "Edgewater",
+        "title": "Senior Director, Client Delivery / IT Operations Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dieter",
+        "phone": "'+1 800-443-5210",
+        "email": "dieter.hamilton@followoz.com",
+        "company": "OZ",
+        "title": "Director, IT Consulting Services | Client Advisor",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rich",
+        "phone": "'+1 248-446-9800",
+        "email": "rgiesige@prattmiller.com",
+        "company": "Pratt Miller",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marc",
+        "phone": "'+1 888-974-2947",
+        "email": "marc.reinhart@healthaxis.com",
+        "company": "HealthAxis Group",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ty",
+        "phone": "'+1 913-599-6699",
+        "email": "ty.stackhouse@touchnet.com",
+        "company": "TouchNet, A Global Payments Company",
+        "title": "Director, Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Daniel",
+        "phone": "'+1 877-693-7078",
+        "email": "dkoenig@invoca.com",
+        "company": "Invoca",
+        "title": "Director, Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Bennie",
+        "phone": "'+1 281-955-2900",
+        "email": "bennie.lunsford@stress.com",
+        "company": "Stress Engineering Services, Inc.",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Devendra",
+        "phone": "'+1 703-894-4444",
+        "email": "dkumar@itcfederal.com",
+        "company": "ITC Federal",
+        "title": "Director of Oracle Technology Services - IT Coalition Inc",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Neel",
+        "phone": "'+1 732-985-5100",
+        "email": "neel@itamerica.com",
+        "company": "IT America Inc",
+        "title": "Director in Sales & Operations- US IT Staffing",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Steven",
+        "phone": "'+1 855-927-9387",
+        "email": "steven@pantheon.io",
+        "company": "Pantheon",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Fernando",
+        "phone": "",
+        "email": "fnin@suki.ai",
+        "company": "Suki AI Inc",
+        "title": "Head of Information Security | Director, IT Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Neerav",
+        "phone": "'+1 415-369-8000",
+        "email": "neerav.mistry@on24.com",
+        "company": "ON24",
+        "title": "Senior Director, Corporate IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Scott",
+        "phone": "'+1 888-494-1570",
+        "email": "smonteith@snaplogic.com",
+        "company": "SnapLogic",
+        "title": "Director, IT & Security at SnapLogic",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jose",
+        "phone": "'+1 408-733-2583",
+        "email": "jose.rivera@bluerivertech.com",
+        "company": "Blue River Technology",
+        "title": "Director of IT and Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "James",
+        "phone": "'+1 646-661-7750",
+        "email": "jkillgore@wideorbit.com",
+        "company": "WideOrbit",
+        "title": "Director, IT and Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Binoy",
+        "phone": "'+1 614-523-3070",
+        "email": "binoy.nair@g2o.com",
+        "company": "G2O",
+        "title": "IT Delivery Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ryan",
+        "phone": "'+1 508-537-4320",
+        "email": "rverity@eclinicalsol.com",
+        "company": "eClinical Solutions",
+        "title": "Director, Global IT Support",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rebecca",
+        "phone": "'+1 401-847-3399",
+        "email": "rhosch@rite-solutions.com",
+        "company": "Rite-Solutions, Inc.",
+        "title": "Director of IT Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tim",
+        "phone": "'+1 858-689-7600",
+        "email": "tim.fritcher@braincorp.com",
+        "company": "Brain",
+        "title": "Director of Information Technology and Facilities",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "John",
+        "phone": "'+1 630-652-0045",
+        "email": "j.bataille@engusa.com",
+        "company": "IndX",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chad",
+        "phone": "'+1 888-809-8880",
+        "email": "cbair@hirschsecure.com",
+        "company": "Hirsch",
+        "title": "Global Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 714-630-3700",
+        "email": "mbooth@econolite.com",
+        "company": "Econolite",
+        "title": "Director, IT Transformation",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tomasz",
+        "phone": "'+1 800-508-6695",
+        "email": "tpiwowarski@servicechannel.com",
+        "company": "ServiceChannel",
+        "title": "Director, Database Administration, IT Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rupak",
+        "phone": "'+1 855-478-8468",
+        "email": "rupak.sarkar@view.com",
+        "company": "View, Inc.",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kelly",
+        "phone": "'+1 800-236-3713",
+        "email": "kgardner@northwindstech.com",
+        "company": "NorthWinds\u00ae Technology Solutions, LLC",
+        "title": "Director, IT Service Management",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alfred",
+        "phone": "'+1 757-306-4920",
+        "email": "alfred.macaraeg@domaonline.com",
+        "company": "DOMA Technologies",
+        "title": "Director of IT Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Winston",
+        "phone": "'+1 800-952-5210",
+        "email": "winston.chou@replit.com",
+        "company": "Replit",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rob",
+        "phone": "'+1 800-211-1172",
+        "email": "rlewis@ecrs.com",
+        "company": "ECRS (ECR Software Corporation)",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Larry",
+        "phone": "'+1 916-605-7200",
+        "email": "lwynia@retailpro.com",
+        "company": "Retail Pro International, LLC",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Aric",
+        "phone": "'+1 703-520-9506",
+        "email": "avandenbranden@babelstreet.com",
+        "company": "Babel Street",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Victor",
+        "phone": "'+1 612-392-7580",
+        "email": "vajibesin@horizontal.com",
+        "company": "Horizontal",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Zachary",
+        "phone": "'+1 312-546-4500",
+        "email": "zachary.king@sai360.com",
+        "company": "SAI360",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eric",
+        "phone": "'+1 888-725-2555",
+        "email": "erobertson@velosio.com",
+        "company": "Velosio",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Adolph",
+        "phone": "'+1 714-630-3700",
+        "email": "avasquez@econolite.com",
+        "company": "Econolite",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joey",
+        "phone": "",
+        "email": "joey.shadduck@aspiraconnect.com",
+        "company": "Aspira",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ethan",
+        "phone": "",
+        "email": "ethan.grimes@cgm.com",
+        "company": "CompuGroup Medical US",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jeff",
+        "phone": "'+1 406-540-1600",
+        "email": "jeff.coghlin@onxmaps.com",
+        "company": "onXmaps, Inc.",
+        "title": "Information Technology Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Timothy",
+        "phone": "'+1 814-234-2417",
+        "email": "twlucas@coolblue.com",
+        "company": "Blue Mountain",
+        "title": "Director, IT and Cloud Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Matt",
+        "phone": "'+1 404-504-7160",
+        "email": "mdavidson@netroadshow.com",
+        "company": "NetRoadshow Inc.",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Pavel",
+        "phone": "'+1 888-552-5001",
+        "email": "pavel.filipovich@softeq.com",
+        "company": "Softeq",
+        "title": "Director of IT & Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jason",
+        "phone": "'+1 248-434-3910",
+        "email": "jason.halstead@365smartshop.com",
+        "company": "365 Retail Markets",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ryan",
+        "phone": "'+1 763-551-0559",
+        "email": "ryan.tetzlaff@osii.com",
+        "company": "AspenTech",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Julie",
+        "phone": "'+1 407-992-8750",
+        "email": "julie.barajas@cps.com",
+        "company": "CPS",
+        "title": "Director, IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Greg",
+        "phone": "'+1 215-957-5222",
+        "email": "gdanielewicz@sabresystems.com",
+        "company": "Sabre Systems, LLC",
+        "title": "Senior Executive Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chad",
+        "phone": "'+1 800-225-8979",
+        "email": "chad.orlikowski@tempustechnologies.com",
+        "company": "Tempus Technologies, Inc",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Paul",
+        "phone": "'+1 770-641-9994",
+        "email": "",
+        "company": "Kahua",
+        "title": "IT Operations Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Harold",
+        "phone": "'+1 800-603-9175",
+        "email": "harold.vickers@intellitrans.com",
+        "company": "IntelliTrans",
+        "title": "Director, IT Infrastructure and Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jatinder",
+        "phone": "'+1 408-317-9256",
+        "email": "jg@ramyinfotech.com",
+        "company": "Ramy Infotech Inc.",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jason",
+        "phone": "'+1 415-653-9414",
+        "email": "jason.miller@snappy.com",
+        "company": "Snappy",
+        "title": "Senior Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kerry",
+        "phone": "'+1 800-609-6480",
+        "email": "kerry.havens@alchemer.com",
+        "company": "Alchemer",
+        "title": "Director of IS/IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chance",
+        "phone": "'+1 435-652-1288",
+        "email": "chance.platt@vasion.com",
+        "company": "Vasion",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jeremiah",
+        "phone": "'+1 888-999-0805",
+        "email": "jeremiah.drysdale@bettercloud.com",
+        "company": "BetterCloud",
+        "title": "Senior Director of Data, Cloud Engineering and Optimization, Security, and IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chris",
+        "phone": "'+1 801-368-7730",
+        "email": "chris.adams@route.com",
+        "company": "Route",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eng",
+        "phone": "'+1 415-570-2425",
+        "email": "eng.lim@dominodatalab.com",
+        "company": "Domino Inc",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Arun",
+        "phone": "'+1 214-295-5238",
+        "email": "arun@capdigisoft.com",
+        "company": "CAP Digisoft Solutions Inc.",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chance",
+        "phone": "'+1 678-735-7363",
+        "email": "chance.clark@uptempo.io",
+        "company": "Uptempo",
+        "title": "Director, Information Security & Technology (IT)",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Timothy",
+        "phone": "'+1 281-668-4333",
+        "email": "timothy.lee@hungerrush.com",
+        "company": "HungerRush",
+        "title": "Senior Director Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marian",
+        "phone": "'+1 301-299-6271",
+        "email": "mdawoud@aretum.com",
+        "company": "Aretum",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 301-468-6674",
+        "email": "michael@moriassociates.com",
+        "company": "MORI Associates",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Shawn",
+        "phone": "'+1 855-964-6287",
+        "email": "shawn.twede@jobnimbus.com",
+        "company": "JobNimbus",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Glyn",
+        "phone": "'+1 888-244-7284",
+        "email": "glyn.johnson@pathai.com",
+        "company": "PathAI",
+        "title": "Associate Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 855-360-3282",
+        "email": "michael.natale@reltio.com",
+        "company": "Reltio",
+        "title": "Director, IT Business Systems & Applications",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joshua",
+        "phone": "'+1 360-975-7000",
+        "email": "joshua.gragg@officeally.com",
+        "company": "Office Ally",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Noah",
+        "phone": "'+1 650-691-0900",
+        "email": "noah.ismen@caspio.com",
+        "company": "Caspio",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jerry",
+        "phone": "'+1 855-478-8468",
+        "email": "jerry.achord@view.com",
+        "company": "View, Inc.",
+        "title": "Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Philip",
+        "phone": "'+1 424-261-2583",
+        "email": "philip.deul@disqo.com",
+        "company": "DISQO",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kitty",
+        "phone": "'+1 866-969-3222",
+        "email": "kitty.kang@reveleer.com",
+        "company": "Reveleer",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Scott",
+        "phone": "'+1 859-261-9024",
+        "email": "scottwiggin@asei.com",
+        "company": "American Sound",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ryan",
+        "phone": "'+1 800-874-9850",
+        "email": "ryan.denicourt@mdsiinc.com",
+        "company": "MDSi, Inc.",
+        "title": "Sales Director-Legacy and Emerging IT Solutions/Engineering Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dan",
+        "phone": "'+1 206-878-2459",
+        "email": "dan.dorgan@zonarsystems.com",
+        "company": "Zonar",
+        "title": "Director, Business Applications IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ajai",
+        "phone": "'+1 919-800-0110",
+        "email": "ajai.dsilva@leoforce.com",
+        "company": "Leoforce",
+        "title": "Associate Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Arnaldo",
+        "phone": "'+49 40 4293240",
+        "email": "arnaldo.toledo@sportalliance.com",
+        "company": "Sport Alliance",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Praveen",
+        "phone": "'+1 415-837-1400",
+        "email": "pshetty@bstonetech.com",
+        "company": "Blackstone Technology Group",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rob",
+        "phone": "'+1 248-723-5897",
+        "email": "rhillman@cogentibs.com",
+        "company": "Cogent Integrated Business Solutions Inc.",
+        "title": "Director, Enterprise IT Solutions & Delivery",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Craig",
+        "phone": "'+1 805-277-4705",
+        "email": "craig.davis@vsolvit.com",
+        "company": "VSolvit",
+        "title": "Sr. Director Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ben",
+        "phone": "'+1 248-434-3910",
+        "email": "ben.hayden@365smartshop.com",
+        "company": "365 Retail Markets",
+        "title": "Director of IT and Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sreedhar",
+        "phone": "'+1 425-242-3786",
+        "email": "sreedhars@smartek21.com",
+        "company": "SmarTek21",
+        "title": "Director - IT Services Delivery",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eric",
+        "phone": "'+44 12 7050 1212",
+        "email": "ethiessen@retireims.com",
+        "company": "IMS",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Austin",
+        "phone": "'+1 859-261-9024",
+        "email": "austinmyers@asei.com",
+        "company": "American Sound",
+        "title": "Director of Client IT Solutions",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eric",
+        "phone": "'+1 855-536-1251",
+        "email": "eric.garwood@cloud4good.com",
+        "company": "Cloud for Good",
+        "title": "Director, Information Technology & Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jack",
+        "phone": "'+1 310-924-6037",
+        "email": "jack.chen@system1.com",
+        "company": "System1",
+        "title": "Director, Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rick",
+        "phone": "'+1 888-729-0399",
+        "email": "rseifert@onecause.com",
+        "company": "OneCause, a Bonterra company",
+        "title": "Sr. Director, IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kris",
+        "phone": "'+1 678-223-2800",
+        "email": "kris.prewett@powerplan.com",
+        "company": "PowerPlan, Inc.",
+        "title": "Director Information Technology Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kimberly",
+        "phone": "'+1 248-686-1700",
+        "email": "kim.ladouceur@lakesidesoftware.com",
+        "company": "Lakeside Software",
+        "title": "Sr. Director, IT and Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marc",
+        "phone": "'+1 512-262-9834",
+        "email": "marc.james@jasper.ai",
+        "company": "Jasper",
+        "title": "Director, IT and AI Enablement",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "William",
+        "phone": "'+1 949-428-8725",
+        "email": "william@multimediallc.com",
+        "company": "Multi Media",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brandon",
+        "phone": "",
+        "email": "brandon.sherman@aris.com",
+        "company": "ARIS",
+        "title": "Key Account Director | Business & IT Transformation",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jeff",
+        "phone": "'+1 206-443-6401",
+        "email": "jeff@accretivetg.com",
+        "company": "Accretive Technology Group",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gary",
+        "phone": "'+39 0471 063063",
+        "email": "gary.sentiff@acs-inc.com",
+        "company": "ACS",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jayson",
+        "phone": "'+1 888-507-6219",
+        "email": "jayson.jackson@buspatrol.com",
+        "company": "BusPatrol",
+        "title": "Director Information Technology Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Shiv",
+        "phone": "'+1 732-947-4119",
+        "email": "shiv.shankar@rangtech.com",
+        "company": "Rang Technologies Inc",
+        "title": "Director \u2013 IT Consulting",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Mark",
+        "phone": "'+1 844-276-9371",
+        "email": "mark.boucher@cpowerenergy.com",
+        "company": "CPower Energy",
+        "title": "Director of IT and Product Management",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "'+1 610-378-1149",
+        "email": "dcarpenter@hammer.net",
+        "company": "Weidenhammer",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Neil",
+        "phone": "",
+        "email": "nhartfield@gocivix.com",
+        "company": "Civix",
+        "title": "Director Information Technology Services",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jonathon",
+        "phone": "'+1 805-277-4705",
+        "email": "jonathon.knox@vsolvit.com",
+        "company": "VSolvit",
+        "title": "Director of Cyber Security / IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tan",
+        "phone": "'+1 855-499-6643",
+        "email": "tan.ng@penroku.com",
+        "company": "CaaStle",
+        "title": "Senior Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jorge",
+        "phone": "'+1 813-400-2000",
+        "email": "jorge.maltes@madmobile.com",
+        "company": "Mad Mobile",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Patrick",
+        "phone": "",
+        "email": "patrick.brueckner@cgm.com",
+        "company": "CompuGroup Medical US",
+        "title": "Senior Director IT US & India",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Frank",
+        "phone": "",
+        "email": "frank@you.com",
+        "company": "You.com",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Nick",
+        "phone": "'+1 301-874-8566",
+        "email": "nick.krewson@edgewaterit.com",
+        "company": "Edgewater",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Matt",
+        "phone": "'+1 415-329-6515",
+        "email": "matt.roca@lucidworks.com",
+        "company": "Lucidworks Inc",
+        "title": "Director, Information Technology, CISO",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael",
+        "phone": "'+1 408-664-9329",
+        "email": "mike.jang@credosemi.com",
+        "company": "Credo",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Iuri",
+        "phone": "'+1 401-831-9327",
+        "email": "i.dasilva@northeastern.edu",
+        "company": "Khoury College of Computer Sciences",
+        "title": "Assistant Director - IT Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Peter",
+        "phone": "'+1 888-441-1278",
+        "email": "peter.ennis@rdacorp.com",
+        "company": "RDA",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gopal",
+        "phone": "'+1 732-404-1600",
+        "email": "gopal@prutech.com",
+        "company": "PruTech Solutions, Inc.",
+        "title": "Senior Director - IT Solutions",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ramkumar",
+        "phone": "",
+        "email": "ramkumar.duraiswamy@optum.com",
+        "company": "OPTUM SERVICES, INC.",
+        "title": "Director IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Canyon",
+        "phone": "'+1 650-576-9881",
+        "email": "canyon.russell@plus.ai",
+        "company": "PlusAI",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ladislau",
+        "phone": "'+40 256 270 016",
+        "email": "ladislau_varga@netex.ro",
+        "company": "Netex Group",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "'+1 863-855-2278",
+        "email": "david.lamkin@fullcast.com",
+        "company": "Fullcast",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Bobby",
+        "phone": "'+1 877-722-2101",
+        "email": "bsamanian@saba.com",
+        "company": "Saba Software",
+        "title": "Dir. of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David",
+        "phone": "'+1 213-742-1972",
+        "email": "jerrard.givens@stand8.io",
+        "company": "STAND 8 Technology Services",
+        "title": "Director Information Technology Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Arvind",
+        "phone": "'+91 99973 22233",
+        "email": "arvind@tekinspirations.com",
+        "company": "TEK Inspirations LLC",
+        "title": "Director | IT Healthcare & Informatics",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jason",
+        "phone": "'+1 703-373-3736",
+        "email": "jtremper@obxtek.com",
+        "company": "OBXtek",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Steve",
+        "phone": "",
+        "email": "steve@identity.digital",
+        "company": "Identity Digital Inc.",
+        "title": "Director of IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ben",
+        "phone": "'+1 800-288-8020",
+        "email": "ben.yancey@sirsidynix.com",
+        "company": "SirsiDynix",
+        "title": "Director of IT",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Amie",
+        "phone": "'+1 240-751-4883",
+        "email": "amie.stone@spatialfront.com",
+        "company": "Spatial Front, Inc",
+        "title": "Director, ITSM and Program Manager at GSA Pb-its - AppOps",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Arthur",
+        "phone": "'+1 318-222-9774",
+        "email": "aalmazan@apspayroll.com",
+        "company": "APS Payroll",
+        "title": "Director of Information Technology and Cybersecurity",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sam",
+        "phone": "'+1 800-244-8915",
+        "email": "swebster@stratacache.com",
+        "company": "STRATACACHE",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Anjali",
+        "phone": "'+1 425-620-4503",
+        "email": "anjali.walse@xpanse.com",
+        "company": "Xpanse",
+        "title": "Director IT QA",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Micah",
+        "phone": "'+1 720-507-3040",
+        "email": "micah.hedrick@nextw.com",
+        "company": "Nextworld\u00ae",
+        "title": "Senior Director Information Technology & Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Hugo",
+        "phone": "'+1 425-641-1408",
+        "email": "hzubieta@seagullsoftware.com",
+        "company": "Seagull",
+        "title": "Senior IT & Cybersecurity Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Derek",
+        "phone": "'+1 781-400-2035",
+        "email": "dstamm@allego.com",
+        "company": "Allego",
+        "title": "Director of IT Security Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Christopher",
+        "phone": "'+1 212-500-1883",
+        "email": "chris.decruze@muckrack.com",
+        "company": "Muck Rack",
+        "title": "Director of IT & Security",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Josef",
+        "phone": "'+1 619-241-4609",
+        "email": "josef.buford@redhorsecorp.com",
+        "company": "Redhorse Corporation",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Lucas",
+        "phone": "'+1 877-852-3500",
+        "email": "lucas.strakele@jitterbit.com",
+        "company": "Jitterbit",
+        "title": "Director of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Christopher",
+        "phone": "'+1 610-540-0202",
+        "email": "christopher.opsasnick@medecision.com",
+        "company": "Medecision",
+        "title": "Director, IT Operational Excellence",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Joshua",
+        "phone": "",
+        "email": "joshua@linktr.ee",
+        "company": "Linktree",
+        "title": "IT Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jill",
+        "phone": "'+1 800-861-4880",
+        "email": "jotrembiak@articulate.com",
+        "company": "Articulate",
+        "title": "Director, IT Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Bryan",
+        "phone": "'+1 814-867-4097",
+        "email": "bryan.oxendale@kcftech.com",
+        "company": "KCF Technologies, Inc.",
+        "title": "Sr. Director, Information Systems and Technology",
+        "outcome": "",
+        "status": "queued"
+      }
+    ],
+    "dialed": 24,
+    "current_index": 24,
+    "outcomes": {},
+    "started_at": "2026-04-24T13:41:43.249964"
+  },
+  {
+    "id": "33792cea",
+    "name": "Lead status - junk etc last activity data 6months ago",
+    "created_at": "2026-04-24T12:58:11.541125",
+    "status": "draft",
+    "agent_id": "626dca69",
+    "voice_id": "49uxf7RPOcr58oowljKn",
+    "spacing_seconds": 60,
+    "auto_mode": true,
+    "prospects": [
+      {
+        "name": "Brielle Boyd",
+        "phone": "+1 (561) 823-8005",
+        "email": "sifonosovu@info.com",
+        "company": "Chen Horne Plc",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dorothy Pugh",
+        "phone": "+1 (890) 615-6685",
+        "email": "lyly@bmail.com",
+        "company": "Doyle Jenkins Trading",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Simrat Bhandari",
+        "phone": "+1 (925)414-8450",
+        "email": "simrat.b@cywarden.com",
+        "company": "Cywarden",
+        "title": "Cybersecurity Consultant",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Anand..",
+        "phone": "+1 206-842-1100",
+        "email": "anand@datamorphosis.in",
+        "company": "Datamorphosis",
+        "title": "",
+        "outcome": "no_answer",
+        "status": "completed",
+        "ended_at": "2026-04-24T13:11:09.676819"
+      },
+      {
+        "name": "David",
+        "phone": "+1 23456794",
+        "email": "uygh5@rustyload.com",
+        "company": "Rusty Load",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "ryan bull",
+        "phone": "+1 23656891546",
+        "email": "ryan@uniquespice.io",
+        "company": "uniquespice",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David Tackett",
+        "phone": "+1 402-895-1978",
+        "email": "david@tackett.biz",
+        "company": "David Tackett",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael R R",
+        "phone": "+1 415-856-0771",
+        "email": "michael@kink.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Peter Hardebeck",
+        "phone": "+1 417-523-4900",
+        "email": "kjcockell@sps.org",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brian VanHeyst",
+        "phone": "+1 431-808-5032",
+        "email": "brian.vanheyst@microagemanitoba.com",
+        "company": "MicroAge",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Laura",
+        "phone": "+1 607 2697 300",
+        "email": "laura@visumdevelopment.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "john r r",
+        "phone": "+1 609-295-4307",
+        "email": "jrogers@giveinteractive.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Smriti K Mondal",
+        "phone": "+1 610-825-7415",
+        "email": "smriti.mondal@razor-tech.com",
+        "company": "Razor Technology",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sudheer",
+        "phone": "+1 614-729-4000",
+        "email": "sudheer.chennamsetty@epsilon.com",
+        "company": "Epsilon APAC & MEA",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Greg Scallan",
+        "phone": "+1 650-839-3834",
+        "email": "greg@flipboard.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "James Sherwood",
+        "phone": "+1 713 875 8993",
+        "email": "j.sherwood@arpa-cloud.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Craig Thompson",
+        "phone": "+1 714-480-8484",
+        "email": "craig.thompson@modeltfinance.co.uk",
+        "company": "Craig Thompson",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Giles",
+        "phone": "+1 781-577-2016",
+        "email": "giles.gascoigne-pees@adstream.com",
+        "company": "Adstream",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "brian mahoney",
+        "phone": "+1 800-342-9388",
+        "email": "brian@tangent-inc.com",
+        "company": "Dropbox to G Drive",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Guillermo Rosales",
+        "phone": "+1 844-668-6900",
+        "email": "guillermo.rosales@juul.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Aylie Burnette Burnette",
+        "phone": "+1 855-463-5490",
+        "email": "aylie.burnette@townsquareinteractive.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Josh Burland",
+        "phone": "+1 858-768-9099",
+        "email": "josh@burlandcre.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Venkat V",
+        "phone": "+1 877-536-7486",
+        "email": "venkatk@kensium.com",
+        "company": "Kensium",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Swaroop",
+        "phone": "+1 888-444-2988",
+        "email": "swkumar@yext.com",
+        "company": "Yext",
+        "title": "Business Intelligence Developer",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "J. Adil",
+        "phone": "+1 935-96 98 083",
+        "email": "jamadi1778@tsderp.com",
+        "company": "TSD",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Singh Singh",
+        "phone": "+1 973 218 5002",
+        "email": "vsingh@quessgts.com",
+        "company": "Quess GTS",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rao Rao",
+        "phone": "+1 996 382 9415",
+        "email": "rrao@support4u.in",
+        "company": "Raghu Rao",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Eden Eden IT",
+        "phone": "+1(626) 521-9477",
+        "email": "it@edenprojects.org",
+        "company": "Eden Reforestation Projects",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Nayla Calzada Calzada",
+        "phone": "+1(727) 223-1816",
+        "email": "nayla@mcarbo.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Megan Delaney",
+        "phone": "+1(773) 828-9544",
+        "email": "megan@mcenteelaw.com",
+        "company": "McEntee Law Group",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gilles Gagnon,",
+        "phone": "+1-800-743-1208",
+        "email": "ggagnon@cloudli.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alivia Medhurst",
+        "phone": "+1.551.858.0992",
+        "email": "turcotte.dawson@wintheiser.com",
+        "company": "Swift, Dicki and Murphy",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Quentin pallardy",
+        "phone": "+33 1 84 19 31 70",
+        "email": "quentin.pallardy@arpilabe.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Noel Shannon",
+        "phone": "+353 (1) 5175900",
+        "email": "nsh@obton.com",
+        "company": "",
+        "title": "Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Shina",
+        "phone": "1 470-816-6276",
+        "email": "sadio@onetrust.com",
+        "company": "OneTrust, LLC",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Veronique Blais Blais",
+        "phone": "1 800 361-7755",
+        "email": "veronique@septembre.com",
+        "company": "Septembre \u00c9diteur",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ahmed",
+        "phone": "1.12E+11",
+        "email": "lekikop732@eqvox.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jennifer Jennifer",
+        "phone": "1.13E+11",
+        "email": "jennifer@purlisse.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Robert M Haynie Jr",
+        "phone": "1.17E+11",
+        "email": "ryan@murraysindustries.net",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Curt M M",
+        "phone": "1.17E+11",
+        "email": "admin@allhandsmanyourbattlestations.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Francisco alexander benitez suriano",
+        "phone": "1.17E+11",
+        "email": "efrancisco2028@gmail.com",
+        "company": "Samsung",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Asif",
+        "phone": "1.19146E+11",
+        "email": "asif@prombs.com",
+        "company": "Prombs",
+        "title": "Account Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Anna Berrettini Berrettini",
+        "phone": "\u202d+1 (202) 997-4359\u202c",
+        "email": "annab@ibm.com",
+        "company": "",
+        "title": "Strategy Consultant",
+        "outcome": "",
+        "status": "queued"
+      }
+    ],
+    "dialed": 0,
+    "current_index": 0,
+    "outcomes": {},
+    "started_at": "2026-04-24T13:05:18.941067"
+  },
+  {
+    "id": "7a02f0dc",
+    "name": "Last acitivity date before 1 year - MQL",
+    "created_at": "2026-04-24T12:54:31.291101",
+    "status": "completed",
+    "agent_id": "626dca69",
+    "voice_id": "49uxf7RPOcr58oowljKn",
+    "spacing_seconds": 60,
+    "auto_mode": true,
+    "prospects": [
+      {
+        "name": "Stephanie Thesie",
+        "phone": "+1",
+        "email": "stephanie@wendtpartners.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Bell Russell",
+        "phone": "+1 (146) 459-1218",
+        "email": "vewij@mailinator.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Wayne Pattersonvgxf",
+        "phone": "+1 (182) 149-3934",
+        "email": "pydijof@mailinator.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dominic Meyers",
+        "phone": "+1 (222) 101-5716",
+        "email": "qicon@bussnice.com",
+        "company": "Todd and Perry Associates",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Britney Gates",
+        "phone": "+1 (531) 909-9925",
+        "email": "tiqasafywe@mailinator.com",
+        "company": "Harris and Riley LLC",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brielle Boyd",
+        "phone": "+1 (561) 823-8005",
+        "email": "sifonosovu@info.com",
+        "company": "Chen Horne Plc",
+        "title": "",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:KPhZ3NmugRa8i9y_6lVm1gixvhV3k2A2Q4fapCtMViUze-khYe2AiA",
+        "dialed_at": "2026-04-24T12:54:38.240866"
+      },
+      {
+        "name": "Allen Bird",
+        "phone": "+1 (562) 402-3133",
+        "email": "dobofase@mailinator.com",
+        "company": "Pace and Walsh Trading",
+        "title": "",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:dlSUnUr-UbDWILAquARlrKLXGNIGaO2WiMspvxTAdzoB0rVwPISJyw",
+        "dialed_at": "2026-04-24T12:55:40.560805"
+      },
+      {
+        "name": "Alexander Compton",
+        "phone": "+1 (625) 142-1969",
+        "email": "levowe@mailinator.com",
+        "company": "Mccray and Mcdaniel Co",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ruben Quispe Quispe",
+        "phone": "+1 (631) 374-8662",
+        "email": "rquispe@lincolnit.com",
+        "company": "",
+        "title": "",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:fwDXEMUiEusaQHWjrf8NPRcvm8O6pYvwO3SMzg0t9kKZDiMMXwpClQ",
+        "dialed_at": "2026-04-24T12:56:43.468440",
+        "ended_at": "2026-04-24T12:57:18.605327"
+      },
+      {
+        "name": "Amity Hinton",
+        "phone": "+1 (657) 976-5293",
+        "email": "ciqawa@mailinator.com",
+        "company": "Osborn and Branch Associates",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Marcia Gould",
+        "phone": "+1 (732) 362-8163",
+        "email": "geni@info.com",
+        "company": "England and Lowe Co",
+        "title": "",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:z4mjytSN-8ZGK_cZfcBs_6RbBwK8NnUr8sF9TG0xo56NMrj8yxUnTg",
+        "dialed_at": "2026-04-24T12:58:10.021105"
+      },
+      {
+        "name": "Renan Araujo",
+        "phone": "+1 (786) 753-6712",
+        "email": "raraujo@flectech.com",
+        "company": "Flec Tech",
+        "title": "Project & Incident Coordinator",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:Ey1Qd2kn5Aebj-dYSYtSvoVv082XIZebA00iDJWIuNVai0bx8GUO1A",
+        "dialed_at": "2026-04-24T12:59:36.043814",
+        "ended_at": "2026-04-24T13:01:08.261855"
+      },
+      {
+        "name": "Alex Kikot",
+        "phone": "+1 (832) 852 5807",
+        "email": "alex.kikot@synthesishealthinc.com",
+        "company": "Synthesis Health",
+        "title": "Enterprise IT Lead",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:eXGYJTtJZS3qkQgWwXYZmV9U05hUBBvklcPhwKjW3AWC2VzbN9RTwg",
+        "dialed_at": "2026-04-24T13:05:31.237159"
+      },
+      {
+        "name": "Carter Ortiz",
+        "phone": "+1 (834) 485-4477",
+        "email": "hemeca@mailinator.com",
+        "company": "Crawford Valdez Trading",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rohit Prasade",
+        "phone": "+1 (905) 896-3882 ext 3271",
+        "email": "rohit_prasade@woodbridgegroup.com",
+        "company": "Woodbridge Foam",
+        "title": "Senior Project Manager - IT Infrastructure",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Simrat Bhandari",
+        "phone": "+1 (925)414-8450",
+        "email": "simrat.b@cywarden.com",
+        "company": "Cywarden",
+        "title": "Cybersecurity Consultant",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:6APfmBhw2IgGtDcjFa95aF6XKspLq5ruWOwYG-5lSO37Ess14DeIkA",
+        "dialed_at": "2026-04-24T13:06:35.017003"
+      },
+      {
+        "name": "Jessamine Hawkins",
+        "phone": "+1 (942) 795-7765",
+        "email": "jygix@mailinator.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Mannix Kelly",
+        "phone": "+1 (945) 912-1045",
+        "email": "qeqycaruci@mailinator.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Kamal Radhakrishnan",
+        "phone": "+1 (973) 970-2709",
+        "email": "kamal@opendoorstc.com",
+        "company": "FIDF / Open Doors Technology, Inc.",
+        "title": "",
+        "outcome": "",
+        "status": "dialed",
+        "call_control_id": "v3:FsiDDQXTylv_J9H_E-o_pyCVvsPd0gl-1fI6XktNnUel3aMe9I9BTw",
+        "dialed_at": "2026-04-24T13:09:09.324393"
+      },
+      {
+        "name": "Anand..",
+        "phone": "+1 206-842-1100",
+        "email": "anand@datamorphosis.in",
+        "company": "Datamorphosis",
+        "title": "",
+        "outcome": "no_answer",
+        "status": "completed",
+        "call_control_id": "v3:ehqiAARTtYyCTtxA_l1p9TuWcgrH9U5oWnq9J8_-P7nod9UhNy91NA",
+        "dialed_at": "2026-04-24T13:10:13.568875",
+        "ended_at": "2026-04-24T13:11:09.680379"
+      },
+      {
+        "name": "Liam Freeman",
+        "phone": "+1 212-279-5800",
+        "email": "liam.freeman@excenta.co.uk",
+        "company": "Excenta",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Yvin Shin Shin",
+        "phone": "+1 212-854-9555",
+        "email": "yshin@hafetzlaw.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Leonardo Ferraz  Neves",
+        "phone": "+1 2363383088",
+        "email": "leonardo.neves@techbrewrobotics.com",
+        "company": "Techbrew Robotics",
+        "title": "IT Specialist",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "ryan bull",
+        "phone": "+1 23656891546",
+        "email": "ryan@uniquespice.io",
+        "company": "uniquespice",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chris Rosso",
+        "phone": "+1 251-292-1110",
+        "email": "chrisr@americanflat.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael Ryave",
+        "phone": "+1 267-481-5255",
+        "email": "michael.ryave@wework.com",
+        "company": "WeWork",
+        "title": "Software Engineering Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Christopher Memenza",
+        "phone": "+1 301-288-1332",
+        "email": "christopher@memenza.com",
+        "company": "Forbes-Tate",
+        "title": "Vice President of Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ryan Howell",
+        "phone": "+1 303-800-9120",
+        "email": "ryan@rubiconlaw.com",
+        "company": "Headroom",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Raul Morejon",
+        "phone": "+1 305-526-7402",
+        "email": "rmorejon@xtreme.aero",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "niccolo messina",
+        "phone": "+1 310 279 6354",
+        "email": "nick@vchannelsmedia.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Michael Barquero",
+        "phone": "+1 323-284-4626",
+        "email": "mike@proofpilot.com",
+        "company": "ProofPilot",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Venkat Rao Ponnam",
+        "phone": "+1 408-462-8000",
+        "email": "venkatp@rambus.com",
+        "company": "Rambus",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Stephens Stephens",
+        "phone": "+1 410-908-8876",
+        "email": "dan_stephens@discovery.com",
+        "company": "Discovery, Inc._TVN Project",
+        "title": "Manager, Help Desk",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Henry Doherty Doherty",
+        "phone": "+1 413-582-0425",
+        "email": "henry@communicatehealth.com",
+        "company": "CommunicateHealth, Inc",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Lawrence Lee",
+        "phone": "+1 415 360 8593",
+        "email": "lawrence@shiru.com",
+        "company": "",
+        "title": "CTO",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Adam DeMonaco",
+        "phone": "+1 415-517-7550",
+        "email": "ademonaco@yapstone.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Alex Geddes",
+        "phone": "+1 437-243-9985",
+        "email": "ageddes@google.com",
+        "company": "",
+        "title": "Technical Account Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Arun",
+        "phone": "+1 469-469-9530",
+        "email": "arun.rs@sprconsultech.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Justin Smith",
+        "phone": "+1 512-263-0000",
+        "email": "justin.smith@airchecklab.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sudheer",
+        "phone": "+1 614-729-4000",
+        "email": "sudheer.chennamsetty@epsilon.com",
+        "company": "Epsilon APAC & MEA",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Sumant",
+        "phone": "+1 617-297-1005",
+        "email": "sumant@spscript.onmicrosoft.com",
+        "company": "TSOAT",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Christina Walsh",
+        "phone": "+1 646-423-0252",
+        "email": "christina.walsh@sada.com",
+        "company": "SADA Systems",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Leo Brougher",
+        "phone": "+1 650 229 4279",
+        "email": "leo@inovia.vc",
+        "company": "Inovia Capital",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "anil matta",
+        "phone": "+1 650-440-0651",
+        "email": "anil@bluearcus.com",
+        "company": "Blue Arcus",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Greg Scallan",
+        "phone": "+1 650-839-3834",
+        "email": "greg@flipboard.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "IT Department Quotes",
+        "phone": "+1 716-464-5265",
+        "email": "itquotes@buffalogames.com",
+        "company": "Buffalo Games",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Thomas Lu Lu",
+        "phone": "+1 778-771-0960",
+        "email": "thomas.lu@earthdaily.com",
+        "company": "EarthDaily Analytics",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Augusto Neto",
+        "phone": "+1 7787233423",
+        "email": "augusto.neto@themrggroup.com",
+        "company": "The MRG Group",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "brian mahoney",
+        "phone": "+1 800-342-9388",
+        "email": "brian@tangent-inc.com",
+        "company": "Dropbox to G Drive",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tu Phan",
+        "phone": "+1 800-484-3232",
+        "email": "tphan@procustomgroup.com",
+        "company": "ProCustom Group",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "David DeMott",
+        "phone": "+1 800-771-2720",
+        "email": "davidd@crazyshirts.com",
+        "company": "Crazy SHirts",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rodrigo Gomez",
+        "phone": "+1 801-599-8558",
+        "email": "rodrigo.gomez@zarrabe.com",
+        "company": "Rodrigo Gomez",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Nithin John",
+        "phone": "+1 805-585-3434",
+        "email": "nithin.john@thetradedesk.com",
+        "company": "The Trade Desk",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Brett Davison",
+        "phone": "+1 8134677339",
+        "email": "bdavison@dgrsystems.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Josh Riley",
+        "phone": "+1 843-525-4000",
+        "email": "jriley@bcgov.net",
+        "company": "Beaufort County Government (South Carolina)",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Amit Kudtarkar",
+        "phone": "+1 855-937-8729",
+        "email": "akudtarkar@se-fi.com",
+        "company": "Amit Kudtarkar",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Josh Burland",
+        "phone": "+1 858-768-9099",
+        "email": "josh@burlandcre.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "tyler phelps",
+        "phone": "+1 864 380 3711",
+        "email": "tyler.phelps@mycoworks.com",
+        "company": "",
+        "title": "IT Operations Manager he/him",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Chad Seales",
+        "phone": "+1 866-917-8833",
+        "email": "chad.seales@fastslowmotion.com",
+        "company": "Fast Slow Motion",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Swaroop",
+        "phone": "+1 888-444-2988",
+        "email": "swkumar@yext.com",
+        "company": "Yext",
+        "title": "Business Intelligence Developer",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "J. Adil",
+        "phone": "+1 935-96 98 083",
+        "email": "jamadi1778@tsderp.com",
+        "company": "TSD",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Keith Goddard Goddard",
+        "phone": "+1 984-464-3714",
+        "email": "keith.goddard@agio.com",
+        "company": "Agio",
+        "title": "Systems Architect",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Rao Rao",
+        "phone": "+1 996 382 9415",
+        "email": "rrao@support4u.in",
+        "company": "Raghu Rao",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Megan Delaney",
+        "phone": "+1(773) 828-9544",
+        "email": "megan@mcenteelaw.com",
+        "company": "McEntee Law Group",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tom Keating",
+        "phone": "+1-347-703-2121.",
+        "email": "tom.keating@croud.com",
+        "company": "Croud",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "John O sullivan",
+        "phone": "+1-510-409-9466",
+        "email": "john.osullivan@accenture.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Gilles Gagnon,",
+        "phone": "+1-800-743-1208",
+        "email": "ggagnon@cloudli.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Miss Frieda Marvin III",
+        "phone": "+1-856-839-4296",
+        "email": "lframi@yahoo.com",
+        "company": "Gerhold, Mayer and Terry",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Dane Garcia",
+        "phone": "+1-877-880-6043",
+        "email": "dane@brunetco.com",
+        "company": "",
+        "title": "Remote Paralegal \u2022 Maximizing the potential productivity gains from remote work",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Aaron Barlow",
+        "phone": "+1.303.759.2100",
+        "email": "abarlow@bluemodus.com",
+        "company": "",
+        "title": "Senior System Administrator",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Mike Cessna",
+        "phone": "+1.484.534.3167",
+        "email": "mcessna@presidio.com",
+        "company": "Presidio - Mike Cessna",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Luis Medina",
+        "phone": "+1.787-662-1402",
+        "email": "luis@nic.pr",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Timoth\u00e9 CHOMINOT",
+        "phone": "+33 (0)1 84 16 09 73",
+        "email": "timothe.chominot@acitechnology.fr",
+        "company": "",
+        "title": "Ing\u00e9nieur Syst\u00e8mes & R\u00e9seaux",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Noel Shannon",
+        "phone": "+353 (1) 5175900",
+        "email": "nsh@obton.com",
+        "company": "",
+        "title": "Director",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Niall Carroll",
+        "phone": "+353 1 5175959",
+        "email": "niall@ldp.ie",
+        "company": "Loscher Design Practice",
+        "title": "Senior Technician",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Charbel Khalil",
+        "phone": "+961 1 488433 ext. 107",
+        "email": "charbel.abikhalil@code-technologies.com",
+        "company": "",
+        "title": "Professional Services Lead",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Tamir",
+        "phone": "1",
+        "email": "tamir@weareshadow.com",
+        "company": "Shadow",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Linda Zeiss",
+        "phone": "1",
+        "email": "l.zeiss@reply.it",
+        "company": "Reply - Italy",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Swarn Sandhu",
+        "phone": "1 452 230 2500",
+        "email": "swarn@dhan.com",
+        "company": "Dhan Services",
+        "title": "CA SMSF Specialist",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jason Free",
+        "phone": "1 630-499-3840",
+        "email": "jason.free@shorr.com",
+        "company": "",
+        "title": "Manager, IT Infrastructure & Operations",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Veronique Blais Blais",
+        "phone": "1 800 361-7755",
+        "email": "veronique@septembre.com",
+        "company": "Septembre \u00c9diteur",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Ron Essig Essig",
+        "phone": "1-203-957-4046",
+        "email": "ron.essig@ibm.com",
+        "company": "IBM",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "JOSE Jose Roldan",
+        "phone": "1-2396597347",
+        "email": "jose.roldan@bbgi.com",
+        "company": "Beasley Media Group",
+        "title": "VP-Information Technology",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Florian",
+        "phone": "1-954.317.3944 \u00b7",
+        "email": "info@dyncrm.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Jennifer Jennifer",
+        "phone": "1.13E+11",
+        "email": "jennifer@purlisse.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Caroline Beljan",
+        "phone": "1.13E+11",
+        "email": "caroline.beljan@alithya.com",
+        "company": "Vitalyst- Microsoft Learning Partner",
+        "title": "Partner Success Specialist",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Clifton Leonard",
+        "phone": "1.14E+11",
+        "email": "clifton.leonard@ostusa.com",
+        "company": "OST",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Venugopal",
+        "phone": "1.15E+11",
+        "email": "venugopal.botlaguduru@gmail.com",
+        "company": "",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Khosrof Ohanian",
+        "phone": "1.16E+11",
+        "email": "khosrof.ohanian@rockleyphotonics.com",
+        "company": "Rockley Photonics Inc",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Francisco alexander benitez suriano",
+        "phone": "1.17E+11",
+        "email": "efrancisco2028@gmail.com",
+        "company": "Samsung",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Asif",
+        "phone": "1.19146E+11",
+        "email": "asif@prombs.com",
+        "company": "Prombs",
+        "title": "Account Manager",
+        "outcome": "",
+        "status": "queued"
+      },
+      {
+        "name": "Austin Breedlove",
+        "phone": "1.19E+11",
+        "email": "daniellenstankwoitz1988@gmail.com",
+        "company": "Idk",
+        "title": "",
+        "outcome": "",
+        "status": "queued"
+      }
+    ],
+    "dialed": 91,
+    "current_index": 91,
+    "outcomes": {},
+    "started_at": "2026-04-24T12:54:33.590602"
+  },
+  {
     "id": "bb5e89ea",
     "name": "new",
     "created_at": "2026-04-13T14:57:48.956186",

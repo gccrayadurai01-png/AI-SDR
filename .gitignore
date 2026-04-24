@@ -8,3 +8,7 @@ venv/
 *.log
 .claude/
 ngrok
+
+# Local-only — don't push call recordings or the dev launcher
+data/recordings/
+run_server.py

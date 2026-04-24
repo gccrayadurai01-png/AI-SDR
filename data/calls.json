@@ -1,5 +1,1971 @@
 [
   {
+    "call_control_id": "v3:IHMfQSb8Dn2vnqgMMmrcASr3cXfELZKc-f6eZjQJ1odEwbxA0eN9Cg",
+    "call_leg_id": "0190ad86-4011-11f1-b588-02420aef511f",
+    "state": "answered",
+    "to": "+18448218151",
+    "prospect_name": "Jonathan Done",
+    "company": "Younique Products",
+    "notes": "Title: Director of IT | Email: jdone@youniqueproducts.com",
+    "prospect_email": "jdone@youniqueproducts.com",
+    "transcript": [],
+    "started_at": "2026-04-24T19:08:41.167026",
+    "recording_url": null
+  },
+  {
+    "call_control_id": "v3:s2nL5Xh7VSkbSW8ZTM8EFQjKYiie9EGpcJNB1zoDE2zCMX3nS2IyeA",
+    "call_leg_id": "66899a3c-4010-11f1-866a-02420a1f0a69",
+    "state": "ended",
+    "to": "+46704795152",
+    "prospect_name": "Filip",
+    "company": "Planhat",
+    "notes": "Title: Director, Strategic Deployment - IT & Telco | Email: filip.gavefalk@planhat.com",
+    "prospect_email": "filip.gavefalk@planhat.com",
+    "transcript": [],
+    "started_at": "2026-04-24T19:04:20.957711",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/66899a3c-4010-11f1-866a-02420a1f0a69-1777057465618865.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T190630Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=eb5dbe8456be19cbea6870f31d604cbf8b8ac33d9ec3fbe9a662f2173f0b5511",
+    "ended_at": "2026-04-24T19:06:27.954787",
+    "duration_seconds": 126,
+    "insights": {
+      "short_tag": "Call dropped",
+      "summary": "Anthony introduced himself and asked if it was a good time to talk after correcting a gender mix-up. The conversation ended abruptly with a long silence and no further discussion.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Attempt to reconnect with prospect",
+        "Verify correct contact information"
+      ],
+      "key_points": [
+        "Identity confusion at start of call",
+        "Call ended prematurely with silence"
+      ],
+      "objections": [],
+      "next_step": "Call back to re-establish connection",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_s2nL5Xh7VSkbSW8ZTM8EFQjKYiie9EGpcJNB1zoDE2zCMX3nS2IyeA.mp3",
+    "recording_local_url": "/api/recordings/v3:s2nL5Xh7VSkbSW8ZTM8EFQjKYiie9EGpcJNB1zoDE2zCMX3nS2IyeA/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:s2nL5Xh7VSkbSW8ZTM8EFQjKYiie9EGpcJNB1zoDE2zCMX3nS2IyeA",
+      "call_leg_id": "66899a3c-4010-11f1-866a-02420a1f0a69",
+      "call_session_id": "66837f62-4010-11f1-b82b-02420a1f0a69",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "de125ef5-2b30-4365-b677-6b1c1b1b1c99",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a user addressing someone as \"Ma'am\", but the assistant, Anthony, corrected them, indicating a potential mix-up. Anthony introduced himself and asked if it was a good time to talk. The conversation ended with a long silence, and no further discussion or decisions were made. There are no clear goals or preferences established in this conversation. The conversation appears to have been cut short."
+        }
+      ],
+      "to": "+46704795152"
+    }
+  },
+  {
+    "call_control_id": "v3:Ol_jf_y-7uIyCzHnhHmGQI6nK9SGWuCxu7iAdmLWiAUwU6TupwfASg",
+    "call_leg_id": "1be9dfd2-4010-11f1-8ec3-02420aef55a0",
+    "state": "ended",
+    "to": "+18009525210",
+    "prospect_name": "Josh",
+    "company": "Cantina.ai",
+    "notes": "Title: Sr. Director of IT | Email: josh@cantina.ai",
+    "prospect_email": "josh@cantina.ai",
+    "transcript": [],
+    "started_at": "2026-04-24T19:02:15.768112",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/1be9dfd2-4010-11f1-8ec3-02420aef55a0-1777057341210695.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T190320Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=c9b986d1132c340f03da0b0d0ea6a062031239e6d86a267a02fb28f5425bf6b9",
+    "ended_at": "2026-04-24T19:03:19.824033",
+    "duration_seconds": 64,
+    "insights": {
+      "short_tag": "Wrong number",
+      "summary": "The call was misdirected to an automated Department of Consumer Affairs IVR system instead of reaching the intended prospect Josh from Cantina.ai. The system repeatedly asked for language selection, creating a loop that prevented any meaningful conversation.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Verify correct phone number for Josh at Cantina.ai",
+        "Attempt to reach prospect using alternative contact method"
+      ],
+      "key_points": [
+        "Call was misdirected to Department of Consumer Affairs IVR",
+        "Unable to reach intended prospect Josh from Cantina.ai",
+        "No information gathered about the prospect or company"
+      ],
+      "objections": [],
+      "next_step": "Obtain correct contact information and retry outreach",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_Ol_jf_y-7uIyCzHnhHmGQI6nK9SGWuCxu7iAdmLWiAUwU6TupwfASg.mp3",
+    "recording_local_url": "/api/recordings/v3:Ol_jf_y-7uIyCzHnhHmGQI6nK9SGWuCxu7iAdmLWiAUwU6TupwfASg/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:Ol_jf_y-7uIyCzHnhHmGQI6nK9SGWuCxu7iAdmLWiAUwU6TupwfASg",
+      "call_leg_id": "1be9dfd2-4010-11f1-8ec3-02420aef55a0",
+      "call_session_id": "1be6da94-4010-11f1-87ca-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "528b95da-2256-4319-987c-8dacb56c7468",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was intended to brief on a prospect, Josh, from Cantina.ai, but it appears to have been misdirected to an automated system, likely an Interactive Voice Response (IVR) system, for the Department of Consumer Affairs. The system repeatedly asked for language selection, but the assistant, Anthony, attempted to clarify the mix-up and eventually stopped the conversation due to the loop. No information was gathered about Josh or Cantina.ai. The goal of gathering information about Cantina.ai's team and tools was not achieved."
+        }
+      ],
+      "to": "+18009525210"
+    }
+  },
+  {
+    "call_control_id": "v3:cDwtQvxTEytAKUawz2NWiM2tDoaSxgnNaKt3hkOtuOki6HbZwKoLjA",
+    "call_leg_id": "77399090-400f-11f1-b208-02420aef511f",
+    "state": "ended",
+    "to": "+17812243640",
+    "prospect_name": "Matt",
+    "company": "Vestmark",
+    "notes": "Title: Director of Enterprise IT | Email: mthomas@vestmark.com",
+    "prospect_email": "mthomas@vestmark.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:57:39.560022",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/77399090-400f-11f1-b208-02420aef511f-1777057063015014.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T190105Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=82a81305189956d1540e568d7c19383030caf4b773819e8c568aaeaf4fa4f767",
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_cDwtQvxTEytAKUawz2NWiM2tDoaSxgnNaKt3hkOtuOki6HbZwKoLjA.mp3",
+    "recording_local_url": "/api/recordings/v3:cDwtQvxTEytAKUawz2NWiM2tDoaSxgnNaKt3hkOtuOki6HbZwKoLjA/file",
+    "ended_at": "2026-04-24T19:01:14.754518",
+    "duration_seconds": 215,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:7EporVj4mUUsEAG-WFeIk3E23EmA8-ns9XFnHn6CKDYKS5g8HItz8A",
+    "call_leg_id": "dedbbc30-400c-11f1-ae98-02420aef52a0",
+    "state": "ended",
+    "to": "+14159561947",
+    "prospect_name": "Alan",
+    "company": "Algonomy Software Pvt Ltd",
+    "notes": "Title: Director of Information Technology and Operations | Email: alan.gutherz@algonomy.com",
+    "prospect_email": "alan.gutherz@algonomy.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:39:04.934110",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/dedbbc30-400c-11f1-ae98-02420aef52a0-1777055948443712.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T185641Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=34d55abbe77650c96a692ddab170b23775b920b2a55cbd79761fbbdd578682fb",
+    "insights": {
+      "short_tag": "Hung up",
+      "summary": "The conversation began with the user expressing frustration by calling the assistant an 'idiot.' The assistant responded lightheartedly, but the conversation ended abruptly with a long silence and no meaningful exchange occurred.",
+      "outcome": "hung_up",
+      "sentiment": "very_negative",
+      "interest_level": 0,
+      "action_items": [
+        "Consider if follow-up is appropriate given hostile interaction"
+      ],
+      "key_points": [
+        "User was frustrated from the start",
+        "No business discussion took place",
+        "Conversation ended abruptly"
+      ],
+      "objections": [],
+      "next_step": "Do not follow up - prospect was hostile and hung up",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:7EporVj4mUUsEAG-WFeIk3E23EmA8-ns9XFnHn6CKDYKS5g8HItz8A",
+      "call_leg_id": "dedbbc30-400c-11f1-ae98-02420aef52a0",
+      "call_session_id": "ded8497e-400c-11f1-b16d-02420aef52a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "5a5e0d7f-9e0b-425c-bb35-136c72f3078f",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with the user expressing frustration, calling the assistant an \"idiot.\" The assistant responded with a lighthearted comment, inquiring about the user's bad time. However, the conversation ended abruptly with a long silence, and no further discussion or resolution occurred. There were no specific goals, decisions, or preferences expressed during the conversation. The interaction was brief and did not lead to any meaningful exchange or outcome."
+        }
+      ],
+      "to": "+14159561947"
+    },
+    "ended_at": "2026-04-24T18:56:38.394905",
+    "duration_seconds": 1053,
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_7EporVj4mUUsEAG-WFeIk3E23EmA8-ns9XFnHn6CKDYKS5g8HItz8A.mp3",
+    "recording_local_url": "/api/recordings/v3:7EporVj4mUUsEAG-WFeIk3E23EmA8-ns9XFnHn6CKDYKS5g8HItz8A/file"
+  },
+  {
+    "call_control_id": "v3:kaE-dU-RR5xsQU7POW1I-ebib0eKabKNJCREPNGHdR7XoOM4a6a7sw",
+    "call_leg_id": "4a293302-400b-11f1-9480-02420aef54a0",
+    "state": "ended",
+    "to": "+18889830496",
+    "prospect_name": "Jonathan",
+    "company": "NewStore",
+    "notes": "Title: Director, Information Technology & Analytics | Email: jmathew@newstore.com",
+    "prospect_email": "jmathew@newstore.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:27:45.852999",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/4a293302-400b-11f1-9480-02420aef54a0-1777055271636285.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T183805Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=bb25008b9fd3929470a0483916acc27809d1eb6f8be1b6124b8e1919b8ead7db",
+    "insights": {
+      "short_tag": "Voicemail left",
+      "summary": "Anthony from CloudFuze left a voicemail for Jonathan at NewStore about AI governance reducing support ticket volume. He provided his callback number and requested to schedule a conversation to explore how CloudFuze can help.",
+      "outcome": "voicemail",
+      "sentiment": "neutral",
+      "interest_level": 50,
+      "action_items": [
+        "Wait for Jonathan's callback",
+        "Follow up if no response within reasonable timeframe"
+      ],
+      "key_points": [
+        "AI governance can help reduce support ticket volume",
+        "Anthony left callback number 415-555-0147",
+        "Goal is to schedule exploratory conversation"
+      ],
+      "objections": [],
+      "next_step": "Wait for prospect callback or follow up in a few days",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:kaE-dU-RR5xsQU7POW1I-ebib0eKabKNJCREPNGHdR7XoOM4a6a7sw",
+      "call_leg_id": "4a293302-400b-11f1-9480-02420aef54a0",
+      "call_session_id": "4a2550de-400b-11f1-bb7e-02420aef54a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "c7046de8-9072-47be-b90c-dc67acfb1eb0",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was a voice message left for Jonathan at NewStore. Anthony from CloudFuze attempted to reach Jonathan to discuss how AI governance can help reduce support ticket volume. Since Jonathan was unavailable, Anthony left a message and provided his phone number, 415-555-0147, for a callback. The goal is to schedule a conversation to explore how CloudFuze can assist Jonathan's team."
+        }
+      ],
+      "to": "+18889830496"
+    },
+    "ended_at": "2026-04-24T18:38:03.910504",
+    "duration_seconds": 618,
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_kaE-dU-RR5xsQU7POW1I-ebib0eKabKNJCREPNGHdR7XoOM4a6a7sw.mp3",
+    "recording_local_url": "/api/recordings/v3:kaE-dU-RR5xsQU7POW1I-ebib0eKabKNJCREPNGHdR7XoOM4a6a7sw/file"
+  },
+  {
+    "call_control_id": "v3:xrPBrIBvK42MZMFcqG4it0Q5id4RHJrYtClKdEd9ffa6L88q5xVx4g",
+    "call_leg_id": "c93776c8-400a-11f1-bf64-02420aef50a0",
+    "state": "ended",
+    "to": "+18006558138",
+    "prospect_name": "Ty",
+    "company": "Built",
+    "notes": "Title: Associate Director, Enterprise IT | Email: ty.kelley@getbuilt.com",
+    "prospect_email": "ty.kelley@getbuilt.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:24:09.622272",
+    "recording_url": null,
+    "ended_at": "2026-04-24T18:26:44.815881",
+    "duration_seconds": 155,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:gKdOHys7NeacPG4moqA_JUK246UVCyvzxrEE5cwdu3D1VPFFwP8tew",
+    "call_leg_id": "2b567490-400a-11f1-8946-02420aef51a0",
+    "state": "ended",
+    "to": "+16503523738",
+    "prospect_name": "Halston",
+    "company": "Backblaze",
+    "notes": "Title: Head of IT, Senior Director of Information Technology | Email: hs@backblaze.com",
+    "prospect_email": "hs@backblaze.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:19:44.657609",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/2b567490-400a-11f1-8946-02420aef51a0-1777054788125010.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T182309Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=b9c6b149a3b99a16d56cb7b057a1dad8b15b2eaaca17230b6cccfabf59452f49",
+    "ended_at": "2026-04-24T18:23:08.559102",
+    "duration_seconds": 203,
+    "insights": {
+      "short_tag": "Brief introduction",
+      "summary": "Anthony from CloudFuze had a brief, informal introductory conversation with Halston. Halston invited Anthony to visit and Anthony agreed to check out the suggestion, but no specific decisions or goals were established.",
+      "outcome": "interested",
+      "sentiment": "positive",
+      "interest_level": 65,
+      "action_items": [
+        "Follow up on Halston's invitation",
+        "Schedule a more detailed conversation",
+        "Prepare materials for the suggested visit"
+      ],
+      "key_points": [
+        "Initial introduction between Anthony and Halston",
+        "Halston extended an invitation to visit",
+        "Anthony showed willingness to engage"
+      ],
+      "objections": [],
+      "next_step": "Schedule a proper meeting to discuss CloudFuze services in detail",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": [
+        "Halston invited Anthony to visit",
+        "Positive and welcoming tone from prospect"
+      ]
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_gKdOHys7NeacPG4moqA_JUK246UVCyvzxrEE5cwdu3D1VPFFwP8tew.mp3",
+    "recording_local_url": "/api/recordings/v3:gKdOHys7NeacPG4moqA_JUK246UVCyvzxrEE5cwdu3D1VPFFwP8tew/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:gKdOHys7NeacPG4moqA_JUK246UVCyvzxrEE5cwdu3D1VPFFwP8tew",
+      "call_leg_id": "2b567490-400a-11f1-8946-02420aef51a0",
+      "call_session_id": "2b5349be-400a-11f1-9dc0-02420aef51a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "33dbb122-7eeb-4889-a629-2e70ffeeff73",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was between Anthony from CloudFuze and a user named Halston. Anthony initiated the conversation, and Halston invited him to visit. The conversation was brief and lacked specific details, but Anthony agreed to check out the user's suggestion. The call ended with a polite exchange, and no specific decisions or goals were established. The conversation appears to have been a brief and informal introduction."
+        }
+      ],
+      "to": "+16503523738"
+    }
+  },
+  {
+    "call_control_id": "v3:eQrf86KUfsDVSJSihQHOumUGDP0KblafT-6DQRJXilHus43BJMix4g",
+    "call_leg_id": "e55270ca-4009-11f1-b75d-02420aef55a0",
+    "state": "ended",
+    "to": "+16179383801",
+    "prospect_name": "Allison",
+    "company": "ClearCompany",
+    "notes": "Title: Director DevOps & IT | Email: acolbath@clearcompany.com",
+    "prospect_email": "acolbath@clearcompany.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:17:47.336875",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/e55270ca-4009-11f1-b75d-02420aef55a0-1777054671669135.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T181844Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=69e8dde20637c83295ed1f5a21b7e5c2744a0b3f589207f8305a03a576dc2454",
+    "ended_at": "2026-04-24T18:18:43.594790",
+    "duration_seconds": 56,
+    "insights": {
+      "short_tag": "Phone system",
+      "summary": "Anthony attempted to reach ClearCompany's IT or security team to discuss SaaS governance but encountered an automated phone system that repeatedly prompted for extensions or department selections. He was unable to connect with the desired team despite multiple attempts to clarify his intentions.",
+      "outcome": "gatekeeper",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Research direct contact information for ClearCompany IT/security team",
+        "Try alternative contact methods like email or LinkedIn",
+        "Call back at different time to potentially reach live person"
+      ],
+      "key_points": [
+        "ClearCompany has automated phone system with department routing",
+        "Unable to reach human contact in IT or security",
+        "Call routing system not designed for external sales inquiries"
+      ],
+      "objections": [],
+      "next_step": "Find direct contact information for ClearCompany IT or security team members through LinkedIn or company website",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_eQrf86KUfsDVSJSihQHOumUGDP0KblafT-6DQRJXilHus43BJMix4g.mp3",
+    "recording_local_url": "/api/recordings/v3:eQrf86KUfsDVSJSihQHOumUGDP0KblafT-6DQRJXilHus43BJMix4g/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:eQrf86KUfsDVSJSihQHOumUGDP0KblafT-6DQRJXilHus43BJMix4g",
+      "call_leg_id": "e55270ca-4009-11f1-b75d-02420aef55a0",
+      "call_session_id": "e54f5d2c-4009-11f1-8b8e-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "99f92987-c1f3-4594-bbb3-abb104fe7889",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is between Anthony, an SDR at CloudFuze, and a representative of ClearCompany. Anthony is trying to reach someone on the IT or security team to discuss SaaS governance, but is being repeatedly prompted to dial an extension or press a number for different departments. Despite attempting to clarify his intentions, Anthony is not being connected to the desired team and the conversation is not progressing. The goal is to establish contact with the IT or security team at ClearCompany."
+        }
+      ],
+      "to": "+16179383801"
+    }
+  },
+  {
+    "call_control_id": "v3:RmwXHGSF_ycsBQ4MWIw67KgP3YMZmJHNUKF660u0os0kLuJXMk7_Tg",
+    "call_leg_id": "4dfd2152-4009-11f1-9b8d-02420aef511f",
+    "state": "ended",
+    "to": "+18887232222",
+    "prospect_name": "Clint",
+    "company": "Constellation HomeBuilder Systems",
+    "notes": "Title: Director of Information Technology | Email: cscherbarth@constellationhb.com",
+    "prospect_email": "cscherbarth@constellationhb.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:13:33.506418",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/4dfd2152-4009-11f1-9b8d-02420aef511f-1777054417213460.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T181647Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=a23bdb240dcbe0898ae5ef83216745a4ff6845ea57ddd8046d64c0cbcd77c264",
+    "ended_at": "2026-04-24T18:16:46.089382",
+    "duration_seconds": 192,
+    "insights": {
+      "short_tag": "System loop",
+      "summary": "Anthony from CloudFuze attempted to reach IT or security at Constellation HB to discuss SaaS governance and schedule a demo. He was stuck in an automated phone system that kept presenting the same menu options without connecting him to a person.",
+      "outcome": "gatekeeper",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Find direct contact information for IT or security personnel at Constellation HB",
+        "Try alternative contact methods such as email or LinkedIn",
+        "Research company directory for direct phone numbers"
+      ],
+      "key_points": [
+        "Call was with automated system, not a person",
+        "Goal was to reach IT or security department",
+        "Purpose was to discuss SaaS governance and demo"
+      ],
+      "objections": [],
+      "next_step": "Research alternative contact methods to reach IT or security personnel directly",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_RmwXHGSF_ycsBQ4MWIw67KgP3YMZmJHNUKF660u0os0kLuJXMk7_Tg.mp3",
+    "recording_local_url": "/api/recordings/v3:RmwXHGSF_ycsBQ4MWIw67KgP3YMZmJHNUKF660u0os0kLuJXMk7_Tg/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:RmwXHGSF_ycsBQ4MWIw67KgP3YMZmJHNUKF660u0os0kLuJXMk7_Tg",
+      "call_leg_id": "4dfd2152-4009-11f1-9b8d-02420aef511f",
+      "call_session_id": "4df9da1a-4009-11f1-ab70-02420aef511f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "a297d284-2235-47a8-9a71-0826b37c518f",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was between Anthony from CloudFuze and an automated system at Constellation HB. Anthony attempted to navigate the system to reach someone in IT or security to discuss SaaS governance and a demo, but was repeatedly presented with the same menu options. He tried pressing 1 for sales and 0 for all other inquiries, but was unable to connect with a person. The goal is to reach someone in IT or security at Constellation HB to discuss a potential partnership or demo."
+        }
+      ],
+      "to": "+18887232222"
+    }
+  },
+  {
+    "call_control_id": "v3:H7ZC63WtfVcyr21QWxvM3iS5fOoUce1k9gWBD3Lg2UI8IF0DtE8Urw",
+    "call_leg_id": "fb2a914e-4008-11f1-8a2e-02420aef501f",
+    "state": "ended",
+    "to": "+18004699705",
+    "prospect_name": "Ryan",
+    "company": "RealmOne",
+    "notes": "Title: Director of Information Technology | Email: ryan.donovan@realmone.com",
+    "prospect_email": "ryan.donovan@realmone.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:11:14.484286",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/fb2a914e-4008-11f1-8a2e-02420aef501f-1777054281284457.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T181232Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=ad03fe2e2e377393e069b7330fff0160475c6baf04ea528c29e606f224508b98",
+    "insights": {
+      "short_tag": "No answer",
+      "summary": "Call attempted to Ryan at RealmOne but ended abruptly due to long silence. No meaningful conversation took place and no information was gathered.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Attempt to reach Ryan at a different time",
+        "Try alternative contact methods"
+      ],
+      "key_points": [
+        "Prospect name is Ryan from RealmOne",
+        "Call ended due to silence"
+      ],
+      "objections": [],
+      "next_step": "Schedule follow-up call attempt",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "ended_at": "2026-04-24T18:12:32.201531",
+    "duration_seconds": 77,
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_H7ZC63WtfVcyr21QWxvM3iS5fOoUce1k9gWBD3Lg2UI8IF0DtE8Urw.mp3",
+    "recording_local_url": "/api/recordings/v3:H7ZC63WtfVcyr21QWxvM3iS5fOoUce1k9gWBD3Lg2UI8IF0DtE8Urw/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:H7ZC63WtfVcyr21QWxvM3iS5fOoUce1k9gWBD3Lg2UI8IF0DtE8Urw",
+      "call_leg_id": "fb2a914e-4008-11f1-8a2e-02420aef501f",
+      "call_session_id": "fb26f016-4008-11f1-9407-02420aef501f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "10fc37dd-a12e-4707-986e-dfcac674350f",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Ryan at RealmOne. The user attempted to communicate but the conversation was cut short due to a long silence. No specific goals, decisions, or preferences were discussed. The conversation ended abruptly with the user sending a message and the assistant bidding farewell to Ryan. No further context or tasks were established."
+        }
+      ],
+      "to": "+18004699705"
+    }
+  },
+  {
+    "call_control_id": "v3:Fso9FYgsk-mCHMvQ1uyU0St1SZdZ2O_uNbUujp9RAtJsCaxpzn4JPg",
+    "call_leg_id": "8fb4e0ae-4008-11f1-94ce-02420aef521f",
+    "state": "ended",
+    "to": "+18777225359",
+    "prospect_name": "Mark",
+    "company": "Scale Computing",
+    "notes": "Title: Director of IT & Compliance | Email: msmith@scalecomputing.com",
+    "prospect_email": "msmith@scalecomputing.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:08:14.203991",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/8fb4e0ae-4008-11f1-94ce-02420aef521f-1777054097930894.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T181014Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=d100c340ecfbecc05ade5cddbe80a9fc79324c8663db34fe74b9065ebca487b1",
+    "ended_at": "2026-04-24T18:10:13.326454",
+    "duration_seconds": 119,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_Fso9FYgsk-mCHMvQ1uyU0St1SZdZ2O_uNbUujp9RAtJsCaxpzn4JPg.mp3",
+    "recording_local_url": "/api/recordings/v3:Fso9FYgsk-mCHMvQ1uyU0St1SZdZ2O_uNbUujp9RAtJsCaxpzn4JPg/file"
+  },
+  {
+    "call_control_id": "v3:j3mfO7ImrVgf5Yj3LlgWvSAJdI5qv7NtoYKr2_qDVksI_rw3dzTiYw",
+    "call_leg_id": "43805e84-4008-11f1-94ec-02420aef551f",
+    "state": "ended",
+    "to": "+18664884849",
+    "prospect_name": "Dave",
+    "company": "Hometown",
+    "notes": "Title: Director, Governance Risk and Compliance & IT Operations | Email: dave.rose@hometownticketing.com",
+    "prospect_email": "dave.rose@hometownticketing.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:06:06.272512",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/43805e84-4008-11f1-94ec-02420aef551f-1777053970650910.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T180713Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=f95eb3048e66492e805b398ec6f340f6f23b966d935f197f61d6250bf72c2d96",
+    "ended_at": "2026-04-24T18:07:12.999649",
+    "duration_seconds": 66,
+    "insights": {
+      "short_tag": "Technical failure",
+      "summary": "A simulated sales call to Hometown company where the AI assistant Anthony tried to select option 3 to learn about purchasing products. The system failed to detect the response and the call ended due to technical issues without achieving the goal of connecting with someone about operations.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Fix technical issues with response detection system",
+        "Retry call to Hometown company",
+        "Test system functionality before making sales calls"
+      ],
+      "key_points": [
+        "Call was to Hometown company",
+        "Menu options were presented",
+        "Option 3 was for purchasing products",
+        "System failed to detect responses",
+        "Call was recorded for quality and training"
+      ],
+      "objections": [],
+      "next_step": "Resolve technical issues and attempt call again",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:j3mfO7ImrVgf5Yj3LlgWvSAJdI5qv7NtoYKr2_qDVksI_rw3dzTiYw",
+      "call_leg_id": "43805e84-4008-11f1-94ec-02420aef551f",
+      "call_session_id": "437babc8-4008-11f1-9998-02420aef551f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "abf73aae-82eb-488e-b480-8f648b54a8dc",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was a simulated call to a company called Hometown, where the user presented a menu of options for assistance. The assistant, Anthony, attempted to select option 3 to learn more about purchasing products, but the system did not detect the response and ended the call. The goal was to connect with someone about the company's operations, but this was not achieved due to a technical issue. The conversation was being recorded for quality and training purposes."
+        }
+      ],
+      "to": "+18664884849"
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_j3mfO7ImrVgf5Yj3LlgWvSAJdI5qv7NtoYKr2_qDVksI_rw3dzTiYw.mp3",
+    "recording_local_url": "/api/recordings/v3:j3mfO7ImrVgf5Yj3LlgWvSAJdI5qv7NtoYKr2_qDVksI_rw3dzTiYw/file"
+  },
+  {
+    "call_control_id": "v3:8ZXks6IGlDizDLoGLmvLqL9eWsZVFomP7IUY5Tt5V3xJfHCRDqTaFQ",
+    "call_leg_id": "1c9406b8-4008-11f1-be84-02420aef521f",
+    "state": "ended",
+    "to": "+18334373835",
+    "prospect_name": "Leo",
+    "company": "Revel Systems",
+    "notes": "Title: Director of IT | Email: leo@revelsystems.com",
+    "prospect_email": "leo@revelsystems.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:05:00.929791",
+    "recording_url": null,
+    "ended_at": "2026-04-24T18:05:05.110200",
+    "duration_seconds": 4,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:8XTN-StDZ85Sxgq9daNbplse5U11Cgv-ZPywO7A8pQQThUgcAyzasg",
+    "call_leg_id": "cd5de258-4007-11f1-8798-02420aef55a0",
+    "state": "ended",
+    "to": "+19734575727",
+    "prospect_name": "Shahzad",
+    "company": "EWS",
+    "notes": "Title: Director, IT Infrastructure & Operations | Email: shahzad.latif@ewsystemsinc.com",
+    "prospect_email": "shahzad.latif@ewsystemsinc.com",
+    "transcript": [],
+    "started_at": "2026-04-24T18:02:48.221056",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/cd5de258-4007-11f1-8798-02420aef55a0-1777053773837307.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T180400Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=68d6722e217153f8d9ddbcae799c16c9447b18b42db361e9999eca4b62c250a5",
+    "ended_at": "2026-04-24T18:03:59.871083",
+    "duration_seconds": 71,
+    "insights": {
+      "short_tag": "System failure",
+      "summary": "Attempted to contact Shahzad at EWS regarding support ticket volume but was unable to connect through their automated phone system. Multiple attempts to select the operations option failed and the system requested to try again later.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Try calling EWS again later",
+        "Consider finding alternative contact method for Shahzad",
+        "Look for direct phone number or email for Shahzad"
+      ],
+      "key_points": [
+        "EWS has automated phone system",
+        "Operations option (2) was closest match for support inquiries",
+        "Phone system experienced technical issues"
+      ],
+      "objections": [],
+      "next_step": "Retry call to EWS at a later time or find alternative contact method",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_8XTN-StDZ85Sxgq9daNbplse5U11Cgv-ZPywO7A8pQQThUgcAyzasg.mp3",
+    "recording_local_url": "/api/recordings/v3:8XTN-StDZ85Sxgq9daNbplse5U11Cgv-ZPywO7A8pQQThUgcAyzasg/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:8XTN-StDZ85Sxgq9daNbplse5U11Cgv-ZPywO7A8pQQThUgcAyzasg",
+      "call_leg_id": "cd5de258-4007-11f1-8798-02420aef55a0",
+      "call_session_id": "cd5a898c-4007-11f1-8d02-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "b241dc45-c7ef-4592-bd69-079177bee447",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation involved attempting to contact Shahzad at EWS regarding support ticket volume. The user was presented with an automated phone system and chose to press 2 for operations, as it was the closest option to support. Despite multiple attempts to select the operations option, the call was unable to connect and the user was asked to try again later. The goal of reaching Shahzad about support tickets remains unfulfilled."
+        }
+      ],
+      "to": "+19734575727"
+    }
+  },
+  {
+    "call_control_id": "v3:qKU1WJ_cr4XrzL18RXG3G4FmvmZvLBnub8onq6C6bdikM1OsjKfgzw",
+    "call_leg_id": "0bc3c860-4007-11f1-bbf2-02420aef521f",
+    "state": "ended",
+    "to": "+18473273167",
+    "prospect_name": "Sivakumar",
+    "company": "Compliance Group Inc",
+    "notes": "Title: Associate Director - IT Validation Delivery | Email: sivakumar.kalidoss@complianceg.com",
+    "prospect_email": "sivakumar.kalidoss@complianceg.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:57:23.418262",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/0bc3c860-4007-11f1-bbf2-02420aef521f-1777053459931322.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T180147Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=e6fd9199fd933468a13e63f58f8b67d923dd5cfef1069b34a108a919674e5c0f",
+    "insights": {
+      "short_tag": "Voicemail failed",
+      "summary": "Call to Sivakumar at Compliance Group Inc went to voicemail. Assistant attempted to leave a message but the system indicated maximum recording time was reached. No contact was made with the prospect.",
+      "outcome": "voicemail",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Try calling Sivakumar again",
+        "Consider alternative contact methods"
+      ],
+      "key_points": [
+        "Call went directly to voicemail",
+        "Unable to leave complete message due to system limitations"
+      ],
+      "objections": [],
+      "next_step": "Attempt to contact Sivakumar again via phone or alternative method",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "ended_at": "2026-04-24T18:01:46.978377",
+    "duration_seconds": 263,
+    "telnyx_insights": {
+      "call_control_id": "v3:qKU1WJ_cr4XrzL18RXG3G4FmvmZvLBnub8onq6C6bdikM1OsjKfgzw",
+      "call_leg_id": "0bc3c860-4007-11f1-bbf2-02420aef521f",
+      "call_session_id": "0bc042f8-4007-11f1-a1cd-02420aef521f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "a2067ba7-a0f1-4e56-8c67-26f287c0eac3",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation involved an attempted call to Sivakumar at Compliance Group Inc, but the call went to voicemail. The assistant tried to leave a message, but the system indicated that the maximum recording time had been reached. The assistant ultimately hung up and plans to follow up with Sivakumar. The key goal is to successfully contact Sivakumar, and the next step will be to try reaching out again."
+        }
+      ],
+      "to": "+18473273167"
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_qKU1WJ_cr4XrzL18RXG3G4FmvmZvLBnub8onq6C6bdikM1OsjKfgzw.mp3",
+    "recording_local_url": "/api/recordings/v3:qKU1WJ_cr4XrzL18RXG3G4FmvmZvLBnub8onq6C6bdikM1OsjKfgzw/file"
+  },
+  {
+    "call_control_id": "v3:QIht9BoYqHvLx-ZUdkbBkl3D0bSoa6jJs0eKLJkOM3azWu6RWzOg1Q",
+    "call_leg_id": "8074e000-4006-11f1-9b4f-02420aef521f",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T17:53:29.677980",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/8074e000-4006-11f1-9b4f-02420aef521f-1777053217056366.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T175349Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=17a3bca63ff4ac8a95a42aed614751bbb1c40074db6429f08bf16a3cc67d78c1",
+    "ended_at": "2026-04-24T17:53:49.049133",
+    "duration_seconds": 19,
+    "insights": {
+      "short_tag": "Call declined",
+      "summary": "The conversation began with a briefing about prospect Raya, but the user expressed reluctance to proceed with the call. No meaningful discussion took place and the conversation ended quickly without establishing any goals or decisions.",
+      "outcome": "not_interested",
+      "sentiment": "negative",
+      "interest_level": 0,
+      "action_items": [
+        "Determine reason for reluctance before future outreach",
+        "Consider different approach or timing for next contact"
+      ],
+      "key_points": [
+        "Prospect name is Raya",
+        "User showed immediate reluctance to engage",
+        "No sales discussion occurred"
+      ],
+      "objections": [
+        "Reluctance to proceed with the conversation"
+      ],
+      "next_step": "Research why prospect was reluctant and consider alternative approach",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_QIht9BoYqHvLx-ZUdkbBkl3D0bSoa6jJs0eKLJkOM3azWu6RWzOg1Q.mp3",
+    "recording_local_url": "/api/recordings/v3:QIht9BoYqHvLx-ZUdkbBkl3D0bSoa6jJs0eKLJkOM3azWu6RWzOg1Q/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:QIht9BoYqHvLx-ZUdkbBkl3D0bSoa6jJs0eKLJkOM3azWu6RWzOg1Q",
+      "call_leg_id": "8074e000-4006-11f1-9b4f-02420aef521f",
+      "call_session_id": "8071f3ae-4006-11f1-a79e-02420aef521f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "99b9f309-3b92-4a73-bff2-7a432a924489",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Raya. The user then expressed reluctance to proceed. No decisions or goals were established, and the conversation ended shortly after. The assistant acknowledged the user's decision and ended the conversation. No further context or tasks were discussed."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:Xv3vnZaSMHVn8ZEpOLJprgGoIfRvd2_b3zofTpplXKnFrS5Js8axIQ",
+    "call_leg_id": "4acfbfce-4006-11f1-96b5-02420aef51a0",
+    "state": "ended",
+    "to": "+12065759511",
+    "prospect_name": "Christopher",
+    "company": "CompassMSP",
+    "notes": "Title: Director of Information Technology | Email: cwilliams@compassmsp.com",
+    "prospect_email": "cwilliams@compassmsp.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:51:59.648794",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/4acfbfce-4006-11f1-96b5-02420aef51a0-1777053123913546.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T175427Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=58dd6903cf861e64d5b90ddb70e3413a282e2d9e111a8f062b67689e4ede2ef0",
+    "insights": {
+      "short_tag": "Hold timeout",
+      "summary": "Anthony from CloudFuze attempted to reach the VP or Head of Customer Support at Compass MSP. He navigated the phone system but was redirected to IT service desk and placed on hold. The call ended while he was still waiting to be connected with a representative.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Call back at a different time",
+        "Try direct dial if available",
+        "Consider calling main line and asking for direct transfer"
+      ],
+      "key_points": [
+        "Contact was seeking VP/Head of Customer Support",
+        "Was redirected to IT service desk instead of sales",
+        "Phone system navigation led to wrong department"
+      ],
+      "objections": [],
+      "next_step": "Attempt another call using different approach or timing",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "ended_at": "2026-04-24T17:54:26.586621",
+    "duration_seconds": 146,
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_Xv3vnZaSMHVn8ZEpOLJprgGoIfRvd2_b3zofTpplXKnFrS5Js8axIQ.mp3",
+    "recording_local_url": "/api/recordings/v3:Xv3vnZaSMHVn8ZEpOLJprgGoIfRvd2_b3zofTpplXKnFrS5Js8axIQ/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:Xv3vnZaSMHVn8ZEpOLJprgGoIfRvd2_b3zofTpplXKnFrS5Js8axIQ",
+      "call_leg_id": "4acfbfce-4006-11f1-96b5-02420aef51a0",
+      "call_session_id": "4acc78d2-4006-11f1-b5fc-02420aef51a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "75378048-b15f-4fc9-bd4b-4dc6e4922f04",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "Anthony from CloudFuze called Compass MSP to speak with the VP of Customer Support or Head of Customer Support. He navigated the automated phone system, pressing 2 for sales, but was redirected to the IT service desk. Anthony was placed on hold and chose to wait for the next available representative. The call ended with Anthony still waiting to be connected with a representative."
+        }
+      ],
+      "to": "+12065759511"
+    }
+  },
+  {
+    "call_control_id": "v3:TYjF8l2Q-hz2ChLg7A3EAVNVPjG7qHp31gg_qQzxEPQFv0eTrWT4Zg",
+    "call_leg_id": "f0625556-4005-11f1-a725-02420aef55a0",
+    "state": "ended",
+    "to": "+17329474119",
+    "prospect_name": "Tejas",
+    "company": "Rang Technologies Inc",
+    "notes": "Title: Director of Information Technology | Email: tejas.sanghani@rangtech.com",
+    "prospect_email": "tejas.sanghani@rangtech.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:49:27.795050",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/f0625556-4005-11f1-a725-02420aef55a0-1777052971326421.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T175059Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=89864309831e10ed507662a04572b94d129be37de51be6be422c07e5aae4cc7e",
+    "ended_at": "2026-04-24T17:50:58.464831",
+    "duration_seconds": 90,
+    "insights": {
+      "short_tag": "No response",
+      "summary": "Anthony from CloudFuze initiated a sales call with Tejas but received no response after the greeting. The call consisted only of a greeting followed by silence with no engagement from the prospect.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with another call attempt",
+        "Consider trying alternative contact methods"
+      ],
+      "key_points": [
+        "Prospect did not engage in conversation",
+        "Call was initiated but not progressed"
+      ],
+      "objections": [],
+      "next_step": "Schedule follow-up call or try different contact approach",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_TYjF8l2Q-hz2ChLg7A3EAVNVPjG7qHp31gg_qQzxEPQFv0eTrWT4Zg.mp3",
+    "recording_local_url": "/api/recordings/v3:TYjF8l2Q-hz2ChLg7A3EAVNVPjG7qHp31gg_qQzxEPQFv0eTrWT4Zg/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:TYjF8l2Q-hz2ChLg7A3EAVNVPjG7qHp31gg_qQzxEPQFv0eTrWT4Zg",
+      "call_leg_id": "f0625556-4005-11f1-a725-02420aef55a0",
+      "call_session_id": "f05f9de8-4005-11f1-aeca-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "689892a8-5a98-4baa-a48b-527aa55e751f",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "There is no conversation to summarize as the interaction consisted of a greeting from Anthony, an assistant from CloudFuze, and a long silence with no response from Tejas. No key facts, decisions, preferences, or goals were discussed. The conversation was initiated but not progressed due to the lack of response. Further context or continuation of the conversation is not available."
+        }
+      ],
+      "to": "+17329474119"
+    }
+  },
+  {
+    "call_control_id": "v3:rc4-JsPfXyBoxJdhDTsvzlI_vkf6rveurSraQzDvwt_8UnHsblOItA",
+    "call_leg_id": "9f562ba6-4005-11f1-afe0-02420aef511f",
+    "state": "ended",
+    "to": "+14015523462",
+    "prospect_name": "Scott",
+    "company": "Ad Hoc",
+    "notes": "Title: Director of IT and Security | Email: scott@adhocteam.us",
+    "prospect_email": "scott@adhocteam.us",
+    "transcript": [],
+    "started_at": "2026-04-24T17:47:11.967792",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/9f562ba6-4005-11f1-afe0-02420aef511f-1777052838204693.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T174826Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=343e6608a123f013606247fb1b8e173eb32c0fcb793b11e49d6d0d2ace9230db",
+    "ended_at": "2026-04-24T17:48:26.254980",
+    "duration_seconds": 74,
+    "insights": {
+      "short_tag": "Brief intro",
+      "summary": "Very brief conversation that consisted only of a briefing about prospect Scott from Ad Hoc. No actual sales discussion took place and the call ended immediately after the initial briefing.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Attempt to reach Scott at Ad Hoc for actual sales conversation"
+      ],
+      "key_points": [
+        "Prospect name is Scott",
+        "Scott works at Ad Hoc"
+      ],
+      "objections": [],
+      "next_step": "Schedule and conduct proper sales call with Scott",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:rc4-JsPfXyBoxJdhDTsvzlI_vkf6rveurSraQzDvwt_8UnHsblOItA",
+      "call_leg_id": "9f562ba6-4005-11f1-afe0-02420aef511f",
+      "call_session_id": "9f5346b6-4005-11f1-9c4e-02420aef511f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "6033e35b-888f-4400-9cbd-60c7de8c2d75",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Scott who is at Ad Hoc. No decisions or goals were discussed, and the conversation ended immediately after the briefing. The key fact is that Scott is associated with Ad Hoc. There is no additional context or information to continue or complete future tasks. The conversation was very brief and did not cover any specific topics or preferences."
+        }
+      ],
+      "to": "+14015523462"
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_rc4-JsPfXyBoxJdhDTsvzlI_vkf6rveurSraQzDvwt_8UnHsblOItA.mp3",
+    "recording_local_url": "/api/recordings/v3:rc4-JsPfXyBoxJdhDTsvzlI_vkf6rveurSraQzDvwt_8UnHsblOItA/file"
+  },
+  {
+    "call_control_id": "v3:7i7ZSLnE2MEn23QW8xxgIMl4FryTYRf6rqsPzK14aiLdbuomkg9j5g",
+    "call_leg_id": "5e7de768-4005-11f1-b621-02420aef511f",
+    "state": "ended",
+    "to": "+18887424090",
+    "prospect_name": "Paul",
+    "company": "Evolver",
+    "notes": "Title: Director of Information Technology | Email: pemmanuel@evolverinc.com",
+    "prospect_email": "pemmanuel@evolverinc.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:45:23.080437",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/5e7de768-4005-11f1-b621-02420aef511f-1777052728004612.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T174611Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=b37b9df37787c82e40c13f98c417075a6707c549d55dfdc2b0efa255550ae071",
+    "ended_at": "2026-04-24T17:46:10.711632",
+    "duration_seconds": 47,
+    "insights": {
+      "short_tag": "Wrong number",
+      "summary": "Anthony from CloudFuze called but reached an automated system by mistake instead of his intended contact. The automated system prompted for survey responses and age verification, which Anthony tried to decline. The call ended with Anthony realizing the error and planning to call back the correct number.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Find correct contact number",
+        "Attempt call again to intended prospect"
+      ],
+      "key_points": [
+        "Caller reached wrong number/automated system",
+        "No actual prospect conversation occurred",
+        "Technical/dialing error prevented intended outreach"
+      ],
+      "objections": [],
+      "next_step": "Verify correct phone number and redial intended prospect",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_7i7ZSLnE2MEn23QW8xxgIMl4FryTYRf6rqsPzK14aiLdbuomkg9j5g.mp3",
+    "recording_local_url": "/api/recordings/v3:7i7ZSLnE2MEn23QW8xxgIMl4FryTYRf6rqsPzK14aiLdbuomkg9j5g/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:7i7ZSLnE2MEn23QW8xxgIMl4FryTYRf6rqsPzK14aiLdbuomkg9j5g",
+      "call_leg_id": "5e7de768-4005-11f1-b621-02420aef511f",
+      "call_session_id": "5e79d6e6-4005-11f1-9014-02420aef511f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "5a7f3d9f-ab2f-4ff5-a9fa-5b77957882f7",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was between Anthony from CloudFuze and an automated system. Anthony attempted to clarify that he was not responding to a survey, but the automated system continued to prompt for age verification. The conversation ended with Anthony realizing he had reached an automated system by mistake and deciding to try calling back. The purpose of Anthony's call was not successfully communicated due to the automated prompts. The call was not completed as intended."
+        }
+      ],
+      "to": "+18887424090"
+    }
+  },
+  {
+    "call_control_id": "v3:-3i8S-4gZ9Gdebjv0jehHsiQiboMQyYwA-wMzqBpCvBYum3HTBDgMA",
+    "call_leg_id": "15d4e2dc-4005-11f1-8d73-02420aef55a0",
+    "state": "ended",
+    "to": "+18883214678",
+    "prospect_name": "Erik",
+    "company": "InMotion Hosting",
+    "notes": "Title: Director of Information Technology | Email: eriks@inmotionhosting.com",
+    "prospect_email": "eriks@inmotionhosting.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:43:21.042524",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/15d4e2dc-4005-11f1-8d73-02420aef55a0-1777052604291719.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T174422Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=d82f0c8939fa256b8ec37ecfacdb075e7ac9e1adb7633d440cd21f911302b677",
+    "ended_at": "2026-04-24T17:44:21.899996",
+    "duration_seconds": 60,
+    "insights": {
+      "short_tag": "Automated system",
+      "summary": "Anthony from CloudFuze attempted to reach Erik to discuss reducing support ticket volume with AI solutions. The call encountered an automated phone system where Anthony pressed 1 for sales, but the call ended in silence without reaching the intended contact.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Try calling at a different time",
+        "Research direct contact information for Erik",
+        "Consider alternative outreach methods"
+      ],
+      "key_points": [
+        "Call reached automated phone system",
+        "Anthony selected sales option (pressed 1)",
+        "Call ended without human contact"
+      ],
+      "objections": [],
+      "next_step": "Attempt to reach Erik through direct line or alternative contact method",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_-3i8S-4gZ9Gdebjv0jehHsiQiboMQyYwA-wMzqBpCvBYum3HTBDgMA.mp3",
+    "recording_local_url": "/api/recordings/v3:-3i8S-4gZ9Gdebjv0jehHsiQiboMQyYwA-wMzqBpCvBYum3HTBDgMA/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:-3i8S-4gZ9Gdebjv0jehHsiQiboMQyYwA-wMzqBpCvBYum3HTBDgMA",
+      "call_leg_id": "15d4e2dc-4005-11f1-8d73-02420aef55a0",
+      "call_session_id": "15d0eb64-4005-11f1-b45b-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "370b20ac-4cfb-4c98-9ab4-1bb812b28c5c",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation was between Anthony from CloudFuze and Erik, where Anthony attempted to discuss reducing support ticket volume with AI. However, the call was met with an automated prompt, and Anthony was instructed to press a number to direct his call. He chose to press 1 for sales, but the conversation ended with a long silence. The goal of the call was to speak with Erik directly about AI support, but it was not achieved due to the automated system. The conversation was cut short without resolving the intended topic."
+        }
+      ],
+      "to": "+18883214678"
+    }
+  },
+  {
+    "call_control_id": "v3:yU50uKETg6fejgTfXsRtWhFRwdPTQ56gdr5ULkT5lVGwSxGaA3MOuw",
+    "call_leg_id": "dc0da5a2-4004-11f1-bf17-02420aef501f",
+    "state": "ended",
+    "to": "+18886720610",
+    "prospect_name": "Fons",
+    "company": "C&R Software",
+    "notes": "Title: Director Global IT and Services | Email: fonsvangeelen@crsoftware.com",
+    "prospect_email": "fonsvangeelen@crsoftware.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:41:44.441996",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/dc0da5a2-4004-11f1-bf17-02420aef501f-1777052508279580.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T174220Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=73074f6830455b6003a8da33b4e26a3ec6bbefb21131dbf61027692843accbc0",
+    "ended_at": "2026-04-24T17:42:20.100874",
+    "duration_seconds": 35,
+    "insights": {
+      "short_tag": "No answer",
+      "summary": "Anthony from CloudFuze called Fons at C&R Software and introduced himself, asking if it was a bad time. The call ended with a long silence indicating Fons did not respond.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with another call attempt",
+        "Try reaching prospect at different time"
+      ],
+      "key_points": [
+        "Prospect works at C&R Software",
+        "No engagement from prospect during call"
+      ],
+      "objections": [],
+      "next_step": "Schedule follow-up call attempt at different time",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_yU50uKETg6fejgTfXsRtWhFRwdPTQ56gdr5ULkT5lVGwSxGaA3MOuw.mp3",
+    "recording_local_url": "/api/recordings/v3:yU50uKETg6fejgTfXsRtWhFRwdPTQ56gdr5ULkT5lVGwSxGaA3MOuw/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:yU50uKETg6fejgTfXsRtWhFRwdPTQ56gdr5ULkT5lVGwSxGaA3MOuw",
+      "call_leg_id": "dc0da5a2-4004-11f1-bf17-02420aef501f",
+      "call_session_id": "dc0a5a8c-4004-11f1-8859-02420aef501f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "49710835-88fe-468a-a474-70701f678509",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect, Fons, who works at C&R Software. The assistant, Anthony from CloudFuze, initiated a call with Fons. Anthony introduced himself and asked if he had caught Fons at a bad time. The conversation ended with a long silence, indicating that Fons did not respond. No decisions, preferences, or goals were discussed during the brief conversation."
+        }
+      ],
+      "to": "+18886720610"
+    }
+  },
+  {
+    "call_control_id": "v3:ehqiAARTtYyCTtxA_l1p9TuWcgrH9U5oWnq9J8_-P7nod9UhNy91NA",
+    "call_leg_id": "750997ca-4000-11f1-9d28-02420aef551f",
+    "state": "ended",
+    "to": "+12068421100",
+    "prospect_name": "Anand..",
+    "company": "Datamorphosis",
+    "notes": "Email: anand@datamorphosis.in",
+    "prospect_email": "anand@datamorphosis.in",
+    "transcript": [],
+    "started_at": "2026-04-24T17:10:13.541356",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/750997ca-4000-11f1-9d28-02420aef551f-1777050637847239.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T171100Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=9e0f0b9917ca1c4f98d224fa74d5f67f5b7e4b316c516284509710ca68a3e4de",
+    "ended_at": "2026-04-24T17:11:00.317572",
+    "duration_seconds": 46,
+    "insights": {
+      "short_tag": "Brief intro",
+      "summary": "This was a very brief internal briefing call that only mentioned prospect information for Anand at Datamorphosis. No actual sales conversation took place and the call ended immediately after the briefing.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Conduct actual outreach to Anand at Datamorphosis",
+        "Prepare sales pitch and research company background"
+      ],
+      "key_points": [
+        "Prospect name is Anand",
+        "Company is Datamorphosis",
+        "This was only an internal briefing"
+      ],
+      "objections": [],
+      "next_step": "Make initial contact with the prospect Anand",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_ehqiAARTtYyCTtxA_l1p9TuWcgrH9U5oWnq9J8_-P7nod9UhNy91NA.mp3",
+    "recording_local_url": "/api/recordings/v3:ehqiAARTtYyCTtxA_l1p9TuWcgrH9U5oWnq9J8_-P7nod9UhNy91NA/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:ehqiAARTtYyCTtxA_l1p9TuWcgrH9U5oWnq9J8_-P7nod9UhNy91NA",
+      "call_leg_id": "750997ca-4000-11f1-9d28-02420aef551f",
+      "call_session_id": "7505fc50-4000-11f1-95b6-02420aef551f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "32a93c2e-015d-470d-b2bb-099472fa2bcf",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Anand, who is associated with Datamorphosis. No further information or actions were discussed. The conversation was brief and did not include any decisions, preferences, or goals. The prospect information is the only key fact mentioned. The conversation ended immediately after the briefing."
+        }
+      ],
+      "to": "+12068421100"
+    }
+  },
+  {
+    "call_control_id": "v3:FsiDDQXTylv_J9H_E-o_pyCVvsPd0gl-1fI6XktNnUel3aMe9I9BTw",
+    "call_leg_id": "4eb8398c-4000-11f1-9ebd-02420aef50a0",
+    "state": "ended",
+    "to": "+19739702709",
+    "prospect_name": "Kamal Radhakrishnan",
+    "company": "FIDF / Open Doors Technology, Inc.",
+    "notes": "Email: kamal@opendoorstc.com",
+    "prospect_email": "kamal@opendoorstc.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:09:09.318924",
+    "recording_url": null,
+    "ended_at": "2026-04-24T17:09:12.419652",
+    "duration_seconds": 3,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:6APfmBhw2IgGtDcjFa95aF6XKspLq5ruWOwYG-5lSO37Ess14DeIkA",
+    "call_leg_id": "f2d68fce-3fff-11f1-b31e-02420aef54a0",
+    "state": "ended",
+    "to": "+19254148450",
+    "prospect_name": "Simrat Bhandari",
+    "company": "Cywarden",
+    "notes": "Title: Cybersecurity Consultant | Email: simrat.b@cywarden.com",
+    "prospect_email": "simrat.b@cywarden.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:06:35.012897",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/f2d68fce-3fff-11f1-b31e-02420aef54a0-1777050399376701.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T170807Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=b48bddb58846ce45a1d75ad214837d493ac429f9f447b2707d35bcdf9de040ae",
+    "ended_at": "2026-04-24T17:08:06.618301",
+    "duration_seconds": 91,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_6APfmBhw2IgGtDcjFa95aF6XKspLq5ruWOwYG-5lSO37Ess14DeIkA.mp3",
+    "recording_local_url": "/api/recordings/v3:6APfmBhw2IgGtDcjFa95aF6XKspLq5ruWOwYG-5lSO37Ess14DeIkA/file"
+  },
+  {
+    "call_control_id": "v3:eXGYJTtJZS3qkQgWwXYZmV9U05hUBBvklcPhwKjW3AWC2VzbN9RTwg",
+    "call_leg_id": "ccbccc54-3fff-11f1-9275-02420aef551f",
+    "state": "ended",
+    "to": "+18328525807",
+    "prospect_name": "Alex Kikot",
+    "company": "Synthesis Health",
+    "notes": "Title: Enterprise IT Lead | Email: alex.kikot@synthesishealthinc.com",
+    "prospect_email": "alex.kikot@synthesishealthinc.com",
+    "transcript": [],
+    "started_at": "2026-04-24T17:05:31.232123",
+    "recording_url": null,
+    "ended_at": "2026-04-24T17:05:32.357483",
+    "duration_seconds": 1,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:Ey1Qd2kn5Aebj-dYSYtSvoVv082XIZebA00iDJWIuNVai0bx8GUO1A",
+    "call_leg_id": "f90953a0-3ffe-11f1-8e63-02420aef51a0",
+    "state": "ended",
+    "to": "+17867536712",
+    "prospect_name": "Renan Araujo",
+    "company": "Flec Tech",
+    "notes": "Title: Project & Incident Coordinator | Email: raraujo@flectech.com",
+    "prospect_email": "raraujo@flectech.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:59:36.041916",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/f90953a0-3ffe-11f1-8e63-02420aef51a0-1777049981403504.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T170057Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=644eeafc06741560940d68391af74a4cb9bfb76abcc39e4cb50dfeb3e517e0a3",
+    "insights": {
+      "short_tag": "No response",
+      "summary": "Sarah from SupportIcon called Renan Araujo from Flec Tech for what appears to be an introductory or support-related call. Renan did not respond when asked if it was a bad time to talk, resulting in a long silence and the call ending without any interaction.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with Renan at a different time",
+        "Consider trying alternative contact methods"
+      ],
+      "key_points": [
+        "Contact was made with Renan Araujo from Flec Tech",
+        "No verbal response was received"
+      ],
+      "objections": [],
+      "next_step": "Schedule a follow-up call attempt at a different time",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "ended_at": "2026-04-24T17:00:57.111892",
+    "duration_seconds": 81,
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_Ey1Qd2kn5Aebj-dYSYtSvoVv082XIZebA00iDJWIuNVai0bx8GUO1A.mp3",
+    "recording_local_url": "/api/recordings/v3:Ey1Qd2kn5Aebj-dYSYtSvoVv082XIZebA00iDJWIuNVai0bx8GUO1A/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:Ey1Qd2kn5Aebj-dYSYtSvoVv082XIZebA00iDJWIuNVai0bx8GUO1A",
+      "call_leg_id": "f90953a0-3ffe-11f1-8e63-02420aef51a0",
+      "call_session_id": "f90614ba-3ffe-11f1-8a28-02420aef51a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "b4bf720e-2799-416e-b558-700a27b2f79e",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about Renan Araujo from Flec Tech. The assistant, Sarah from SupportIcon, initiated a call with Renan, inquiring if it was a bad time to talk. There was no response from Renan, resulting in a long silence. The conversation ended without any further interaction or resolution. The goal of the call is unclear, but it appears to be an introductory or support-related call."
+        }
+      ],
+      "to": "+17867536712"
+    }
+  },
+  {
+    "call_control_id": "v3:z4mjytSN-8ZGK_cZfcBs_6RbBwK8NnUr8sF9TG0xo56NMrj8yxUnTg",
+    "call_leg_id": "c5cffc50-3ffe-11f1-9059-02420aef52a0",
+    "state": "ended",
+    "to": "+17323628163",
+    "prospect_name": "Marcia Gould",
+    "company": "England and Lowe Co",
+    "notes": "Email: geni@info.com",
+    "prospect_email": "geni@info.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:58:09.990330",
+    "recording_url": null,
+    "ended_at": "2026-04-24T16:58:34.872722",
+    "duration_seconds": 24,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:fwDXEMUiEusaQHWjrf8NPRcvm8O6pYvwO3SMzg0t9kKZDiMMXwpClQ",
+    "call_leg_id": "922ec58e-3ffe-11f1-99cd-02420aef51a0",
+    "state": "ended",
+    "to": "+16313748662",
+    "prospect_name": "Ruben Quispe Quispe",
+    "company": "",
+    "notes": "Email: rquispe@lincolnit.com",
+    "prospect_email": "rquispe@lincolnit.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:56:43.429657",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/922ec58e-3ffe-11f1-99cd-02420aef51a0-1777049807791736.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T165708Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=50840243fcdf581b0e289a5ba596be0a2432ccca9df26cefeb4fbaf18542d773",
+    "ended_at": "2026-04-24T16:57:07.209108",
+    "duration_seconds": 23,
+    "insights": {
+      "short_tag": "No response",
+      "summary": "The assistant Sarah from SupportIcon introduced herself to Ruben Quispe Quispe but received no response. The call consisted only of a greeting followed by prolonged silence and was terminated due to inactivity.",
+      "outcome": "no_answer",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Attempt callback at different time",
+        "Try alternative contact methods"
+      ],
+      "key_points": [
+        "Contact attempted with Ruben Quispe Quispe",
+        "No engagement achieved"
+      ],
+      "objections": [],
+      "next_step": "Schedule callback attempt for different time of day",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_fwDXEMUiEusaQHWjrf8NPRcvm8O6pYvwO3SMzg0t9kKZDiMMXwpClQ.mp3",
+    "recording_local_url": "/api/recordings/v3:fwDXEMUiEusaQHWjrf8NPRcvm8O6pYvwO3SMzg0t9kKZDiMMXwpClQ/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:fwDXEMUiEusaQHWjrf8NPRcvm8O6pYvwO3SMzg0t9kKZDiMMXwpClQ",
+      "call_leg_id": "922ec58e-3ffe-11f1-99cd-02420aef51a0",
+      "call_session_id": "922ba85e-3ffe-11f1-90b1-02420aef51a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "017c7551-1672-4750-8702-c19492c0a523",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "There is no conversation to summarize as the interaction consisted of a greeting from the assistant and a long silence from the user, Ruben Quispe Quispe. No key facts, decisions, preferences, or goals were discussed. The conversation started and ended without any meaningful exchange. The assistant introduced herself as Sarah from SupportIcon, but received no response. The conversation was terminated due to inactivity."
+        }
+      ],
+      "to": "+16313748662"
+    }
+  },
+  {
+    "call_control_id": "v3:dlSUnUr-UbDWILAquARlrKLXGNIGaO2WiMspvxTAdzoB0rVwPISJyw",
+    "call_leg_id": "6cc88032-3ffe-11f1-83df-02420aef52a0",
+    "state": "ended",
+    "to": "+15624023133",
+    "prospect_name": "Allen Bird",
+    "company": "Pace and Walsh Trading",
+    "notes": "Email: dobofase@mailinator.com",
+    "prospect_email": "dobofase@mailinator.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:55:40.556574",
+    "recording_url": null,
+    "ended_at": "2026-04-24T16:55:41.800080",
+    "duration_seconds": 1,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:KPhZ3NmugRa8i9y_6lVm1gixvhV3k2A2Q4fapCtMViUze-khYe2AiA",
+    "call_leg_id": "477371c0-3ffe-11f1-86b5-02420aef501f",
+    "state": "ended",
+    "to": "+15618238005",
+    "prospect_name": "Brielle Boyd",
+    "company": "Chen Horne Plc",
+    "notes": "Email: sifonosovu@info.com",
+    "prospect_email": "sifonosovu@info.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:54:38.237243",
+    "recording_url": null,
+    "ended_at": "2026-04-24T16:54:39.530442",
+    "duration_seconds": 1,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:gX8FmWAFCXoAoftsW3mIiA6sKJRbSPqXpyuy3erzXUU5TPJHNeW4zQ",
+    "call_leg_id": "0e516f78-3ffe-11f1-ba4d-02420aef52a0",
+    "state": "ended",
+    "to": "+15618238005",
+    "prospect_name": "Brielle Boyd",
+    "company": "Chen Horne Plc",
+    "notes": "Email: sifonosovu@info.com",
+    "prospect_email": "sifonosovu@info.com",
+    "transcript": [],
+    "started_at": "2026-04-24T16:53:02.248516",
+    "recording_url": null,
+    "ended_at": "2026-04-24T16:53:09.240284",
+    "duration_seconds": 6,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:lHyfcz2f1ItFG7uvOAjtw3phcK4xePRvpFAHm2aFzKoMUe5nM7gMLA",
+    "call_leg_id": "efd60992-3ffc-11f1-ab92-02420aef511f",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:45:01.525127",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/efd60992-3ffc-11f1-ab92-02420aef511f-1777049106741325.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T164534Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=14418f7ff96e041cc080b2fc0a79ebcc464c33607b91da8fda4c179444eb2c41",
+    "ended_at": "2026-04-24T16:45:34.298214",
+    "duration_seconds": 32,
+    "insights": {
+      "short_tag": "Brief discovery",
+      "summary": "Anthony from CloudFuze spoke with Raya who agreed to answer questions about AI assistant implementation in her organization. The conversation was brief and ended mid-discussion without reaching a conclusion.",
+      "outcome": "interested",
+      "sentiment": "neutral",
+      "interest_level": 60,
+      "action_items": [
+        "Follow up to complete the conversation",
+        "Continue discussion about AI assistant rollout",
+        "Schedule proper discovery call"
+      ],
+      "key_points": [
+        "Raya was receptive to speaking",
+        "Discussion focused on AI assistants like Copilot or Gemini",
+        "Conversation cut short before completion"
+      ],
+      "objections": [],
+      "next_step": "Follow up to complete the interrupted conversation about AI assistant implementation",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": [
+        "Agreed to answer questions",
+        "Confirmed it was a good time to talk",
+        "Engaged in discussion about AI implementation"
+      ]
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_lHyfcz2f1ItFG7uvOAjtw3phcK4xePRvpFAHm2aFzKoMUe5nM7gMLA.mp3",
+    "recording_local_url": "/api/recordings/v3:lHyfcz2f1ItFG7uvOAjtw3phcK4xePRvpFAHm2aFzKoMUe5nM7gMLA/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:lHyfcz2f1ItFG7uvOAjtw3phcK4xePRvpFAHm2aFzKoMUe5nM7gMLA",
+      "call_leg_id": "efd60992-3ffc-11f1-ab92-02420aef511f",
+      "call_session_id": "efd26274-3ffc-11f1-9f38-02420aef511f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "f253f485-a7b9-4123-a576-0d8533a84f31",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya, and Anthony from CloudFuze initiated contact. Raya indicated it was a good time to talk and agreed to answer a few questions. The goal of the conversation appears to be discussing the implementation of AI assistants, such as Copilot or Gemini, within Raya's organization. The conversation was brief and did not reach a conclusion, ending with a question about the rollout of AI assistants."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:k4RHHjihLA1TN-Jo_PJUPhAxKFBio7rNFwen0-6RAWvmlmR9lu1BFw",
+    "call_leg_id": "c57cf71e-3ffc-11f1-a783-02420aef55a0",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:43:50.561419",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/c57cf71e-3ffc-11f1-a783-02420aef55a0-1777049036315184.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T164431Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=8d0bba77409a188e41f237ce3ceac04602883a224cb63aa9f0f942f571a3abad",
+    "ended_at": "2026-04-24T16:44:30.861704",
+    "duration_seconds": 40,
+    "insights": {
+      "short_tag": "Long silence",
+      "summary": "Anthony from CloudFuze called prospect Raya and asked if it was a bad time to talk. The conversation ended abruptly due to a long silence from Raya with no response or engagement.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with Raya at a different time",
+        "Try alternative contact method"
+      ],
+      "key_points": [
+        "Prospect did not respond during call",
+        "Call ended due to silence"
+      ],
+      "objections": [],
+      "next_step": "Schedule callback for different time",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_k4RHHjihLA1TN-Jo_PJUPhAxKFBio7rNFwen0-6RAWvmlmR9lu1BFw.mp3",
+    "recording_local_url": "/api/recordings/v3:k4RHHjihLA1TN-Jo_PJUPhAxKFBio7rNFwen0-6RAWvmlmR9lu1BFw/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:k4RHHjihLA1TN-Jo_PJUPhAxKFBio7rNFwen0-6RAWvmlmR9lu1BFw",
+      "call_leg_id": "c57cf71e-3ffc-11f1-a783-02420aef55a0",
+      "call_session_id": "c5792b0c-3ffc-11f1-8a21-02420aef55a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "9d2dcc6e-0ae9-4169-b9fe-1602c78575b9",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Raya. The assistant, Anthony from CloudFuze, initiated a call with Raya, inquiring if it was a bad time to talk. However, the conversation was cut short due to a long silence from Raya, with no further discussion or outcome. The goal of the call was not achieved, and no decisions or preferences were expressed. The conversation ended abruptly without any resolution."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:JlTZW80RODOgPkyH0xWi5fkG30a7CD5uFPUEtVpAdFWIMobeo-0nUA",
+    "call_leg_id": "a6e336de-3ffb-11f1-aad5-02420aef51a0",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:35:49.598867",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/a6e336de-3ffb-11f1-aad5-02420aef51a0-1777048555879596.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T163614Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=d73ee43412a149b5afabbb6a85b7b2f67c2d0258b56f6e839966d1671277fab8",
+    "ended_at": "2026-04-24T16:36:13.373105",
+    "duration_seconds": 23,
+    "insights": {
+      "short_tag": "Long silence",
+      "summary": "Anthony from CloudFuze called Raya and asked if it was a bad time to talk. The conversation was cut short due to a long silence from Raya with no response. The call ended abruptly without achieving the intended goal.",
+      "outcome": "hung_up",
+      "sentiment": "negative",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with Raya at a different time",
+        "Consider sending an email before the next call",
+        "Verify contact information is correct"
+      ],
+      "key_points": [
+        "Prospect did not engage in conversation",
+        "Call timing may have been inappropriate",
+        "No opportunity to present CloudFuze services"
+      ],
+      "objections": [],
+      "next_step": "Schedule follow-up call at a different time or send introductory email",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "recording_local_path": "C:\\Users\\Rayadurai\\Desktop\\Knight agent\\AI-SDR\\data\\recordings\\v3_JlTZW80RODOgPkyH0xWi5fkG30a7CD5uFPUEtVpAdFWIMobeo-0nUA.mp3",
+    "recording_local_url": "/api/recordings/v3:JlTZW80RODOgPkyH0xWi5fkG30a7CD5uFPUEtVpAdFWIMobeo-0nUA/file",
+    "telnyx_insights": {
+      "call_control_id": "v3:JlTZW80RODOgPkyH0xWi5fkG30a7CD5uFPUEtVpAdFWIMobeo-0nUA",
+      "call_leg_id": "a6e336de-3ffb-11f1-aad5-02420aef51a0",
+      "call_session_id": "a6dfe556-3ffb-11f1-aed6-02420aef51a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "aab385e5-3071-4be6-b496-b527c4a0a61b",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Raya. The assistant, Anthony from CloudFuze, initiated a call with Raya, inquiring if it was a bad time to talk. However, the conversation was cut short due to a long silence from Raya, with no further discussion or outcome. The goal of the call was not achieved, and no decisions or preferences were expressed. The conversation ended abruptly without any resolution."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:QZV2WGN0hN1ng6f33EA6T2JjdYy5GnGF7Pl48nWlBbVxKRmqWS29vQ",
+    "call_leg_id": "fedfc976-3ff9-11f1-80ae-02420aef54a0",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:23:58.320191",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/fedfc976-3ff9-11f1-80ae-02420aef54a0-1777047844315178.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T162431Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=f4a7946d039096039ca2605a26ade50ecadaa0901b63165b35c3d96c395c79de",
+    "ended_at": "2026-04-24T16:24:31.207328",
+    "duration_seconds": 32,
+    "insights": {
+      "short_tag": "Call dropped",
+      "summary": "Anthony from CloudFuze initiated a call with prospect Raya, asking if it was a bad time to talk. The conversation was cut short due to a long silence and ended abruptly without any meaningful discussion.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 0,
+      "action_items": [
+        "Follow up with another call attempt",
+        "Consider trying different contact method or time"
+      ],
+      "key_points": [
+        "Contact was made with Raya",
+        "Call ended due to long silence"
+      ],
+      "objections": [],
+      "next_step": "Attempt to reconnect via phone or email at a different time",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:QZV2WGN0hN1ng6f33EA6T2JjdYy5GnGF7Pl48nWlBbVxKRmqWS29vQ",
+      "call_leg_id": "fedfc976-3ff9-11f1-80ae-02420aef54a0",
+      "call_session_id": "fedccfbe-3ff9-11f1-951a-02420aef54a0",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "0908db7d-49b4-4024-8e82-0bb535c86601",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Raya. The assistant, Anthony from CloudFuze, initiated a call with Raya, inquiring if it was a bad time to talk. However, the conversation was cut short due to a long silence. No key decisions, preferences, or goals were discussed. The conversation ended abruptly without any resolution or next steps."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:EeOYnpawLeg2VmSZepvFQ6xmQCjSdzvt5CL_XcB3BCTsFeIGtDT-dg",
+    "call_leg_id": "e8e19042-3ff8-11f1-8d98-02420aef521f",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:16:12.038596",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/e8e19042-3ff8-11f1-8d98-02420aef521f-1777047378102759.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T161640Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=a38539f21436d2e463bbc6d275e09522a487876def01e1fe2f3bd61f607397c1",
+    "ended_at": "2026-04-24T16:16:40.887214",
+    "duration_seconds": 28,
+    "insights": {
+      "short_tag": "Call interrupted",
+      "summary": "Anthony from CloudFuze contacted Raya to discuss potential migration from Box or Dropbox to Google Workspace. Raya was open to the conversation but the call ended abruptly before any substantive discussion could take place.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 30,
+      "action_items": [
+        "Follow up with Raya to continue the interrupted conversation",
+        "Reschedule call to discuss migration needs"
+      ],
+      "key_points": [
+        "Raya was open to discussing the topic",
+        "Call was about migration from Box/Dropbox to Google Workspace",
+        "No substantial information was gathered"
+      ],
+      "objections": [],
+      "next_step": "Call back to continue the conversation that was cut short",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": [
+        "Raya was open to discussing the topic",
+        "Agreed to hear Anthony's question"
+      ]
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:EeOYnpawLeg2VmSZepvFQ6xmQCjSdzvt5CL_XcB3BCTsFeIGtDT-dg",
+      "call_leg_id": "e8e19042-3ff8-11f1-8d98-02420aef521f",
+      "call_session_id": "e8de5eae-3ff8-11f1-9a60-02420aef521f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "22b22660-b1f5-485e-ad9b-ebd5c2aae0cd",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation is with Raya, who was contacted by Anthony from CloudFuze. Raya was open to discussing a topic and Anthony asked if they were planning a migration from Box or Dropbox to Google Workspace. The conversation was brief and ended with Raya's agreement to hear Anthony's question. No decisions or preferences were expressed, and the goal of the conversation appears to be exploratory. The conversation ended before any further discussion or resolution."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:Uy_edmgPNIzv8ZOl0ygcbKx9zxgwPQGCKgwYlpDSLW-bqcB7ItNfDQ",
+    "call_leg_id": "43bc558a-3ff7-11f1-ab1c-02420aef551f",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T16:04:25.269612",
+    "recording_url": "https://s3.amazonaws.com/telephony-recorder-prod/309c7c36-948d-4c04-8622-d9b5e943b928/2026-04-24/43bc558a-3ff7-11f1-ab1c-02420aef551f-1777046671828639.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASDC5E2MJDPKMH7UW%2F20260424%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260424T160454Z&X-Amz-Expires=600&X-Amz-SignedHeaders=host&X-Amz-Signature=f4f2614f8a80d0a61a6f4ecc84711c8a4cc60004dfa4112207d3bd94c2555b02",
+    "ended_at": "2026-04-24T16:04:52.068500",
+    "duration_seconds": 26,
+    "insights": {
+      "short_tag": "Call dropped",
+      "summary": "Anthony from CloudFuze initiated a call with prospect Raya to discuss IT cleanup solutions. The conversation started with basic pleasantries and Anthony began explaining CloudFuze's services, but the call was cut short and ended abruptly without any meaningful discussion.",
+      "outcome": "hung_up",
+      "sentiment": "neutral",
+      "interest_level": 20,
+      "action_items": [
+        "Follow up with Raya to reschedule the conversation",
+        "Send introductory email about CloudFuze services",
+        "Attempt to reconnect at a better time"
+      ],
+      "key_points": [
+        "CloudFuze helps IT teams with cleanup tasks",
+        "Call was interrupted/cut short",
+        "No substantial conversation took place"
+      ],
+      "objections": [],
+      "next_step": "Send follow-up email and attempt to reschedule the call",
+      "meeting_time_utc": "",
+      "prospect_pain_points": [],
+      "buying_signals": []
+    },
+    "telnyx_insights": {
+      "call_control_id": "v3:Uy_edmgPNIzv8ZOl0ygcbKx9zxgwPQGCKgwYlpDSLW-bqcB7ItNfDQ",
+      "call_leg_id": "43bc558a-3ff7-11f1-ab1c-02420aef551f",
+      "call_session_id": "43b8c58c-3ff7-11f1-b5c9-02420aef551f",
+      "client_state": null,
+      "connection_id": "2923551480235426985",
+      "conversation_id": "9ef2a50b-f20e-4420-97d8-935f4514bacb",
+      "from": "+19706334607",
+      "insight_group_id": "06470874-a13e-4433-a607-6795e6880d28",
+      "results": [
+        {
+          "insight_id": "cfcc865c-d3d4-4823-8a4b-f0df57d9f56f",
+          "result": "The conversation started with a briefing about a prospect named Raya. Anthony from CloudFuze initiated a call with Raya, inquiring if it was a bad time to talk. Raya asked about the purpose of the call, and Anthony began to explain that CloudFuze helps IT teams with cleanup tasks, but the conversation was cut short. The call was answered, and Anthony thanked Raya for picking up, but no further discussion occurred. The conversation ended abruptly without reaching a conclusion or setting any specific goals."
+        }
+      ],
+      "to": "+12524015699"
+    }
+  },
+  {
+    "call_control_id": "v3:r8Dce2aEfpYrWnJuvXnTj7sUmOv7l6p-sfYGo2OCe2WO1jnOj_8D5w",
+    "call_leg_id": "8ba166fe-3ff4-11f1-ae5f-02420aef501f",
+    "state": "ended",
+    "to": "+12524015699",
+    "prospect_name": "raya",
+    "company": "",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T15:44:57.506234",
+    "recording_url": null,
+    "ended_at": "2026-04-24T15:45:19.621127",
+    "duration_seconds": 22,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:CQtTT145oNeG0XZzf_BbyFA1rwMyAAIctQ0Qc4YNt2iagDqMHRgU9g",
+    "state": "ended",
+    "transcript": [],
+    "direction": "inbound",
+    "started_at": "2026-04-24T14:25:59.140596",
+    "ended_at": "2026-04-24T15:43:56.168238",
+    "duration_seconds": 4677,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:sXM1NRkiKeq6S18A7s61FsBeOY8m_bKrJaLe4CkPYxO-FbjxEoiAaA",
+    "state": "ended",
+    "transcript": [],
+    "direction": "inbound",
+    "started_at": "2026-04-24T14:25:58.142634",
+    "ended_at": "2026-04-24T15:43:55.845797",
+    "duration_seconds": 4677,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:BoVMb56Foq9XIu1XhbN5PnZpWAKBEVgoW1bj-pOFasied51ZxZDbzg",
+    "call_leg_id": "8168c4a8-3fe9-11f1-b334-02420aef8c1f",
+    "state": "ended",
+    "to": "+19706334607",
+    "prospect_name": "Test",
+    "company": "CloudFuze",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T14:25:55.922393",
+    "recording_url": null,
+    "ended_at": "2026-04-24T15:43:55.739172",
+    "duration_seconds": 4679,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:Fe6s9Nps9nkpbaXCO5oKFeKbp3m4cpnNz-l6jd8ucLXLc4Fw1iQJZA",
+    "call_leg_id": "0832644a-3fe9-11f1-92cf-02420aef52a0",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T14:22:32.665215",
+    "recording_url": null,
+    "ended_at": "2026-04-24T14:23:02.922302",
+    "duration_seconds": 30,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:dHXm-mtnRxTPjtQrirjmQk3k5Ipkqivh6XXQNz4BE0-X5yt9smtCug",
+    "call_leg_id": "c5f3d0e6-3fe8-11f1-9c49-02420aef8b1f",
+    "state": "ended",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T14:20:41.391890",
+    "recording_url": null,
+    "ended_at": "2026-04-24T14:21:11.912930",
+    "duration_seconds": 30,
+    "insights": {
+      "summary": "No conversation text captured yet. If you use Telnyx AI Assistant, insights appear when Telnyx sends conversation insights.",
+      "short_tag": "No transcript",
+      "outcome": "no_conversation",
+      "sentiment": "neutral",
+      "action_items": [],
+      "key_points": [],
+      "objections": [],
+      "next_step": "Check webhook / transcript settings",
+      "interest_level": 0
+    }
+  },
+  {
+    "call_control_id": "v3:OJoysWG38lm4a4JpRDFK3hMP9-6yBtW-9eLAuK9x4LxRUJvivz0EjQ",
+    "call_leg_id": "45617fca-3fe6-11f1-b995-02420aef551f",
+    "state": "initiated",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T14:02:46.540681",
+    "recording_url": null
+  },
+  {
+    "call_control_id": "v3:vKoEtk1XwZ2EWweajD9WGRRwVn9KyQgl7QCbbv4hpumBEAunUZd62A",
+    "call_leg_id": "438a4628-3fe6-11f1-898e-02420aef8a1f",
+    "state": "initiated",
+    "to": "+918220593392",
+    "prospect_name": "raya",
+    "company": "revoyant Inc",
+    "notes": "",
+    "prospect_email": "",
+    "transcript": [],
+    "started_at": "2026-04-24T14:02:43.394511",
+    "recording_url": null
+  },
+  {
     "call_control_id": "v3:ZoH2n_EqY-EmZbWLB5I91CNcA53OuriyAEbQ5oItZAHoN8_W7YGVmg",
     "call_leg_id": "09c2bda8-376c-11f1-9712-02420aef50a1",
     "state": "ended",

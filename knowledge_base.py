@@ -1,5 +1,5 @@
 """
-Knight AI SDR — Dynamic knowledge base.
+CloudFuze AI SDR — Dynamic knowledge base.
 Product knowledge is loaded from agent scripts and uploaded documents.
 Uploaded docs are persisted to disk so they survive Railway restarts.
 """
@@ -40,7 +40,7 @@ from the active agent's script to conduct natural conversations.
 RESEARCH_KB_TOPICS: list[tuple[str, str]] = [
     (
         "Sandler Selling Methodology",
-        """The Knight AI SDR uses the Sandler selling methodology:
+        """The CloudFuze AI SDR uses the Sandler selling methodology:
 1. BONDING & RAPPORT: Build trust with a casual, low-pressure opener.
 2. UP-FRONT CONTRACT: Set expectations for the call — "I'll ask a couple questions, if it doesn't fit, totally cool."
 3. PAIN: Discover real pain points — ask about their world, what's broken, what costs them.
