@@ -1519,16 +1519,73 @@ async def proxy_recording(call_control_id: str):
     if needs_auth:
         headers["Authorization"] = f"Bearer {config.TELNYX_API_KEY}"
 
+    # Pre-flight HEAD so we can surface 403 (expired S3 URL) as a clean 410
+    # rather than a silently-broken <audio> element. S3 pre-signed URLs for
+    # Telnyx recordings expire after ~24h — once expired the proxy needs to
+    # re-fetch a fresh URL from the Telnyx recordings API.
+    try:
+        async with _httpx.AsyncClient(timeout=10.0) as probe:
+            h = await probe.head(url, headers=headers, follow_redirects=True)
+            if h.status_code == 403 or h.status_code == 404:
+                # Try to refresh from Telnyx recordings list endpoint
+                fresh = await _refresh_telnyx_recording_url(call_control_id)
+                if fresh:
+                    url = fresh
+                    rec["recording_url"] = url
+                    update_call(call_control_id, recording_url=url)
+                else:
+                    logger.warning("Recording URL expired for %s (HEAD %s)", call_control_id[:20], h.status_code)
+                    raise HTTPException(status_code=410, detail="Recording URL expired — try refreshing")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # HEAD failure shouldn't kill playback — fall through to GET stream.
+        logger.debug("Recording HEAD probe failed (%s) — attempting direct GET", e)
+
     async def _iter() -> Any:
         async with _httpx.AsyncClient(timeout=60.0) as ac:
             async with ac.stream("GET", url, headers=headers, follow_redirects=True) as r:
                 r.raise_for_status()
+                total = 0
                 async for chunk in r.aiter_bytes():
                     if chunk:
+                        total += len(chunk)
                         yield chunk
+                logger.info("Recording streamed: %s bytes for %s", total, call_control_id[:20])
 
     media = "audio/mpeg" if url.lower().endswith(".mp3") else "audio/wav" if url.lower().endswith(".wav") else "audio/mpeg"
-    return StreamingResponse(_iter(), media_type=media, headers={"Cache-Control": "public, max-age=3600"})
+    return StreamingResponse(
+        _iter(),
+        media_type=media,
+        headers={"Cache-Control": "private, max-age=300", "Accept-Ranges": "bytes"},
+    )
+
+
+async def _refresh_telnyx_recording_url(call_control_id: str) -> str | None:
+    """When an S3 pre-signed recording URL has expired, fetch a fresh one from Telnyx."""
+    import httpx
+    api_key = config.TELNYX_API_KEY
+    if not api_key:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as ac:
+            r = await ac.get(
+                "https://api.telnyx.com/v2/recordings",
+                headers={"Authorization": f"Bearer {api_key}"},
+                params={"filter[call_control_id]": call_control_id},
+            )
+            if r.status_code >= 300:
+                return None
+            recs = (r.json() or {}).get("data") or []
+            for item in recs:
+                urls = (item.get("recording_urls") or {}) | (item.get("public_recording_urls") or {})
+                fresh = urls.get("mp3") or urls.get("wav") or item.get("download_url")
+                if fresh:
+                    logger.info("Refreshed Telnyx recording URL for %s", call_control_id[:20])
+                    return fresh
+    except Exception as e:
+        logger.warning("Recording URL refresh failed for %s: %s", call_control_id[:20], e)
+    return None
 
 
 @app.post("/api/calls/{call_control_id}/recompute-insights")
@@ -2712,6 +2769,24 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             asyncio.create_task(_main_bg_transcription_reply(cc_id, text))
             return JSONResponse(content={"status": "ok"})
 
+        # ── CONVERSATION CREATED → remember conversation_id so we can
+        #    pull the full transcript from Telnyx at hangup. Telnyx does
+        #    NOT always fire call.ai_assistant.transcription webhooks to
+        #    us (seen in prod: assistant speaks, prospect replies, call
+        #    ends with transcript_len=0). Polling the conversation API at
+        #    hangup gives us a reliable transcript regardless. ──
+        elif etype == "call.conversation.created":
+            conv_id = (
+                pl.get("conversation_id")
+                or pl.get("id")
+                or (pl.get("conversation") or {}).get("id")
+            )
+            if cc_id and conv_id:
+                if cc_id in active_calls:
+                    active_calls[cc_id]["conversation_id"] = conv_id
+                update_call(cc_id, conversation_id=conv_id)
+                logger.info("Captured conversation_id=%s for %s", conv_id, cc_id[:20])
+
         # ── CONVERSATION ENDED → generate insights; Telnyx handles hangup ──
         elif etype == "call.conversation.ended":
             if cc_id:
@@ -2833,7 +2908,23 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                 )
             if rec and (rec.get("prospect_email") or "").strip():
                 update_call(hang_cc, prospect_email=(rec.get("prospect_email") or "").strip())
-            asyncio.create_task(_generate_call_insights(hang_cc))
+
+            # ── Backfill transcript from Telnyx (if webhooks were skipped) THEN run insights ──
+            async def _backfill_then_insights(cc: str) -> None:
+                try:
+                    existing = (active_calls.get(cc) or get_call_by_control_id(cc) or {}).get("transcript") or []
+                    if len(existing) < 2:
+                        turns = await _fetch_telnyx_conversation_transcript(cc)
+                        if turns:
+                            r2 = active_calls.get(cc) or {}
+                            r2["transcript"] = turns
+                            active_calls[cc] = r2
+                            finalize_call_end(cc, transcript=turns)
+                except Exception:
+                    logger.exception("Backfill Telnyx transcript failed for %s", cc)
+                await _generate_call_insights(cc)
+
+            asyncio.create_task(_backfill_then_insights(hang_cc))
             asyncio.create_task(_remove_ended_call_after(hang_cc))
             conversations.pop(hang_cc, None)
             _ai_assistant_first_event.pop(hang_cc, None)
@@ -2992,6 +3083,110 @@ async def _remove_ended_call_after(cc_id: str, delay: float = 180.0) -> None:
         logger.exception("_remove_ended_call_after failed cc_id=%s", cc_id)
 
 
+async def _fetch_telnyx_conversation_transcript(cc_id: str) -> list[dict]:
+    """
+    Pull the full AI-Assistant conversation from Telnyx after hangup.
+
+    Telnyx sometimes fails to deliver `call.ai_assistant.transcription`
+    webhooks in real time (observed in prod — calls end with empty
+    transcripts even though the audio clearly had a conversation). As a
+    safety net we fetch the conversation via REST when the call ends,
+    so the dashboard always shows the dialogue.
+
+    Tries two endpoint shapes that Telnyx has used historically:
+      1. GET /v2/ai/assistants/{id}/conversations/{conv}
+      2. GET /v2/ai/conversations/{conv}
+
+    Returns: list of {"role": "agent"|"prospect", "text": str}
+    """
+    import httpx
+
+    rec = active_calls.get(cc_id) or get_call_by_control_id(cc_id) or {}
+    conv_id = rec.get("conversation_id") if isinstance(rec, dict) else None
+    if not conv_id:
+        logger.info("No conversation_id stored for %s — skipping Telnyx transcript fetch", cc_id[:20])
+        return []
+    api_key = config.TELNYX_API_KEY
+    if not api_key:
+        return []
+    headers = {"Authorization": f"Bearer {api_key}"}
+    candidate_urls = [
+        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}/conversations/{conv_id}",
+        f"https://api.telnyx.com/v2/ai/conversations/{conv_id}",
+        f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}/conversations/{conv_id}/messages",
+        f"https://api.telnyx.com/v2/ai/conversations/{conv_id}/messages",
+    ]
+    async with httpx.AsyncClient(timeout=15.0) as ac:
+        for url in candidate_urls:
+            try:
+                r = await ac.get(url, headers=headers)
+                if r.status_code >= 300:
+                    continue
+                data = r.json()
+                # Telnyx wraps in {"data": ...} usually
+                body = data.get("data") if isinstance(data.get("data"), (dict, list)) else data
+                msgs = []
+                if isinstance(body, dict):
+                    msgs = (
+                        body.get("messages")
+                        or body.get("turns")
+                        or body.get("conversation")
+                        or body.get("transcript")
+                        or []
+                    )
+                elif isinstance(body, list):
+                    msgs = body
+                turns: list[dict] = []
+                for m in msgs or []:
+                    if not isinstance(m, dict):
+                        continue
+                    txt = (m.get("content") or m.get("text") or m.get("message") or "").strip()
+                    if not txt:
+                        continue
+                    role_raw = (m.get("role") or m.get("speaker") or m.get("sender") or "").lower()
+                    role = "agent" if role_raw in ("assistant", "agent", "ai", "bot", "system") else "prospect"
+                    turns.append({"role": role, "text": txt})
+                if turns:
+                    logger.info(
+                        "Fetched %d transcript turns from Telnyx conversation API for %s (url=%s)",
+                        len(turns), cc_id[:20], url.split("/v2/")[-1][:60],
+                    )
+                    return turns
+            except Exception as e:
+                logger.debug("Telnyx conv fetch attempt failed (%s): %s", url, e)
+                continue
+    logger.info("Telnyx conversation API returned no transcript for %s", cc_id[:20])
+    return []
+
+
+# Canonical outcome vocabulary — keep in sync with Tasks filter chips & Campaign filters.
+CANONICAL_OUTCOMES = {
+    "meeting_booked", "callback_scheduled", "interested",
+    "not_interested", "no_answer", "voicemail",
+    "gatekeeper", "hung_up", "do_not_call", "unknown", "no_conversation",
+}
+
+
+def _normalize_outcome(raw: Any) -> str:
+    """Map free-form model outputs to the canonical outcome set."""
+    if not raw:
+        return "unknown"
+    s = str(raw).strip().lower().replace("-", "_").replace(" ", "_")
+    if s in CANONICAL_OUTCOMES:
+        return s
+    # Fuzzy aliases
+    aliases = {
+        "booked": "meeting_booked", "meeting": "meeting_booked", "demo_booked": "meeting_booked",
+        "call_back": "callback_scheduled", "callback": "callback_scheduled", "call_later": "callback_scheduled",
+        "positive": "interested", "qualified": "interested",
+        "rejected": "not_interested", "declined": "not_interested", "dnc": "do_not_call",
+        "vm": "voicemail", "machine": "voicemail",
+        "no_one": "no_answer", "no_pickup": "no_answer", "missed": "no_answer",
+        "hang_up": "hung_up", "hangup": "hung_up",
+    }
+    return aliases.get(s, "unknown")
+
+
 async def _generate_call_insights(cc_id: str) -> None:
     """After call ends, use Claude to analyze transcript (or Telnyx conversation summary) and generate insights."""
     try:
@@ -3086,9 +3281,16 @@ Return this exact JSON structure:
             # Normalize missing fields for UI and downstream logic.
             insights.setdefault("short_tag", "")
             insights.setdefault("meeting_time_utc", "")
-        update_call(cc_id, insights=insights)
+            # Force outcome into the canonical vocabulary so filters & tasks match.
+            insights["outcome"] = _normalize_outcome(insights.get("outcome"))
+        # Persist normalized outcome at BOTH insights.outcome AND the top-level
+        # `outcome` column so call-logs filters, Tasks grouping, and campaign
+        # propagation all agree on a single value.
+        top_outcome = insights.get("outcome") if isinstance(insights, dict) else "unknown"
+        update_call(cc_id, insights=insights, outcome=top_outcome)
         if cc_id in active_calls:
             active_calls[cc_id]["insights"] = insights
+            active_calls[cc_id]["outcome"] = top_outcome
         logger.info("Call insights generated for %s: outcome=%s, interest=%s%%",
                      cc_id[:20], insights.get("outcome"), insights.get("interest_level"))
         if isinstance(insights, dict) and insights.get("outcome") == "meeting_booked":
@@ -3097,7 +3299,7 @@ Return this exact JSON structure:
         try:
             r = rec if isinstance(rec, dict) else (active_calls.get(cc_id) or {})
             phone = r.get("to") or ""
-            outcome = (insights or {}).get("outcome") or "unknown"
+            outcome = _normalize_outcome((insights or {}).get("outcome"))
             if phone:
                 # Update EVERY campaign that contains this phone (rare to be in
                 # multiple, but safe). Outcome flags are: meeting_booked,
