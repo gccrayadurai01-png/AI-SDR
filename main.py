@@ -1481,6 +1481,30 @@ Return ONLY valid JSON, no markdown fences, no explanation."""
 # ════════════════════════════════════════════════════════════
 #  API — CALL HISTORY
 # ════════════════════════════════════════════════════════════
+def _strip_briefing_from_transcript(turns: Any) -> list[dict]:
+    """
+    Defensive filter: remove internal [BRIEFING] + synthetic acknowledgements
+    from stored transcripts so the UI never shows priming junk. Works on
+    transcripts saved before the backend filter was added.
+    """
+    if not isinstance(turns, list):
+        return []
+    cleaned: list[dict] = []
+    for t in turns:
+        if not isinstance(t, dict):
+            continue
+        txt = (t.get("text") or "").strip()
+        if not txt:
+            continue
+        upper = txt.upper()
+        if "[BRIEFING]" in upper or upper.startswith("PROSPECT INFO") or upper.startswith("RESEARCH SUMMARY"):
+            continue
+        if txt.lower() in ("got it.", "got it", "okay.", "okay", "understood.", "understood"):
+            continue
+        cleaned.append(t)
+    return cleaned
+
+
 @app.get("/api/calls/history")
 async def call_history():
     calls = load_calls()
@@ -1488,6 +1512,10 @@ async def call_history():
     for c in calls:
         if isinstance(c, dict):
             row = dict(c)
+            # Strip briefing junk from stored transcripts (backward-compat fix
+            # for rows saved before the fetcher was filtered).
+            if row.get("transcript"):
+                row["transcript"] = _strip_briefing_from_transcript(row.get("transcript"))
             row["summary_preview"] = _summary_preview_for_history(row)
             out.append(row)
         else:
@@ -1495,18 +1523,80 @@ async def call_history():
     return {"total": len(out), "calls": out}
 
 
+@app.post("/api/calls/{call_control_id}/refresh-recording")
+async def refresh_recording_endpoint(call_control_id: str):
+    """
+    Manual refresh: re-fetch a fresh Telnyx recording URL and persist to disk.
+    Use from UI when a call's recording shows as broken.
+    """
+    rec = get_call_by_control_id(call_control_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Call not found")
+    fresh = await _refresh_telnyx_recording_url(call_control_id, rec)
+    if not fresh:
+        raise HTTPException(status_code=404, detail="No Telnyx recording found for this call")
+    await _persist_recording_to_disk(call_control_id, fresh)
+    update_call(call_control_id, recording_url=fresh)
+    return {"ok": True, "recording_url": fresh}
+
+
+# ── Recording disk cache ─────────────────────────────────────
+# Local persistent store for MP3 audio so playback never breaks when Telnyx
+# pre-signed S3 URLs expire (~10 min). Files keyed by sanitized cc_id.
+_RECORDINGS_DIR = Path(__file__).parent / "data" / "recordings"
+_RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _recording_disk_path(call_control_id: str) -> Path:
+    # cc_ids contain ':' and '/' — sanitize for FS safety
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in call_control_id)
+    return _RECORDINGS_DIR / f"{safe}.mp3"
+
+
+async def _persist_recording_to_disk(call_control_id: str, url: str) -> None:
+    """Fire-and-forget: download recording bytes to data/recordings/{cc}.mp3."""
+    import httpx
+    dest = _recording_disk_path(call_control_id)
+    if dest.exists() and dest.stat().st_size > 0:
+        return  # already saved
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as ac:
+            r = await ac.get(url)
+            r.raise_for_status()
+            dest.write_bytes(r.content)
+            logger.info("Persisted recording to disk (%s bytes) for %s", len(r.content), call_control_id[:20])
+            # Mark in DB so future proxy calls know to serve from disk
+            update_call(call_control_id, recording_local=True)
+            if call_control_id in active_calls:
+                active_calls[call_control_id]["recording_local"] = True
+    except Exception as e:
+        logger.warning("Failed to persist recording for %s: %s", call_control_id[:20], e)
+
+
 @app.get("/api/recordings/{call_control_id}")
 async def proxy_recording(call_control_id: str):
     """
-    Stream a call recording through our server so the browser can play it
-    without hitting Telnyx CORS / auth issues. Looks up recording_url on
-    the stored call and streams the audio bytes back with audio/mpeg.
+    Stream a call recording. Priority:
+    1. Serve from local disk if we've cached it (permanent)
+    2. Otherwise stream from Telnyx pre-signed URL (expires in ~10 min)
+    3. If expired, try to refresh; if that fails, try to download it now
+       and serve the fresh copy.
     """
-    from fastapi.responses import StreamingResponse
+    from fastapi.responses import StreamingResponse, FileResponse
 
     rec = get_call_by_control_id(call_control_id)
     if not rec:
         raise HTTPException(status_code=404, detail="Call not found")
+
+    # 1) Disk cache wins — serve directly from file.
+    disk = _recording_disk_path(call_control_id)
+    if disk.exists() and disk.stat().st_size > 0:
+        return FileResponse(
+            disk,
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "public, max-age=86400", "Accept-Ranges": "bytes"},
+        )
+
     url = rec.get("recording_url")
     if not url:
         raise HTTPException(status_code=404, detail="No recording available yet")
@@ -1519,29 +1609,41 @@ async def proxy_recording(call_control_id: str):
     if needs_auth:
         headers["Authorization"] = f"Bearer {config.TELNYX_API_KEY}"
 
-    # Pre-flight HEAD so we can surface 403 (expired S3 URL) as a clean 410
-    # rather than a silently-broken <audio> element. S3 pre-signed URLs for
-    # Telnyx recordings expire after ~24h — once expired the proxy needs to
-    # re-fetch a fresh URL from the Telnyx recordings API.
+    # 2) Pre-flight HEAD — if URL expired, refresh from Telnyx recordings API.
     try:
         async with _httpx.AsyncClient(timeout=10.0) as probe:
             h = await probe.head(url, headers=headers, follow_redirects=True)
-            if h.status_code == 403 or h.status_code == 404:
-                # Try to refresh from Telnyx recordings list endpoint
-                fresh = await _refresh_telnyx_recording_url(call_control_id)
+            if h.status_code in (401, 403, 404, 410):
+                logger.info("Recording URL expired for %s (HEAD %s) — refreshing from Telnyx", call_control_id[:20], h.status_code)
+                fresh = await _refresh_telnyx_recording_url(call_control_id, rec)
                 if fresh:
                     url = fresh
                     rec["recording_url"] = url
                     update_call(call_control_id, recording_url=url)
                 else:
-                    logger.warning("Recording URL expired for %s (HEAD %s)", call_control_id[:20], h.status_code)
-                    raise HTTPException(status_code=410, detail="Recording URL expired — try refreshing")
+                    raise HTTPException(status_code=410, detail="Recording URL expired and could not be refreshed")
     except HTTPException:
         raise
     except Exception as e:
-        # HEAD failure shouldn't kill playback — fall through to GET stream.
         logger.debug("Recording HEAD probe failed (%s) — attempting direct GET", e)
 
+    # 3) Download to disk FIRST (so future plays are instant), then stream it back.
+    try:
+        async with _httpx.AsyncClient(timeout=60.0, follow_redirects=True) as ac:
+            r = await ac.get(url, headers=headers)
+            r.raise_for_status()
+            disk.write_bytes(r.content)
+            update_call(call_control_id, recording_local=True)
+            logger.info("Cached recording to disk on first play (%s bytes) for %s", len(r.content), call_control_id[:20])
+        return FileResponse(
+            disk,
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "public, max-age=86400", "Accept-Ranges": "bytes"},
+        )
+    except Exception as e:
+        logger.warning("Direct download failed for %s: %s — falling back to streaming proxy", call_control_id[:20], e)
+
+    # Streaming fallback (if disk write failed for some reason)
     async def _iter() -> Any:
         async with _httpx.AsyncClient(timeout=60.0) as ac:
             async with ac.stream("GET", url, headers=headers, follow_redirects=True) as r:
@@ -1561,28 +1663,57 @@ async def proxy_recording(call_control_id: str):
     )
 
 
-async def _refresh_telnyx_recording_url(call_control_id: str) -> str | None:
-    """When an S3 pre-signed recording URL has expired, fetch a fresh one from Telnyx."""
+async def _refresh_telnyx_recording_url(call_control_id: str, rec: dict | None = None) -> str | None:
+    """
+    When an S3 pre-signed recording URL has expired, fetch a fresh one from
+    Telnyx. Tries multiple filter shapes — Telnyx's recordings endpoint
+    historically accepts call_leg_id, call_session_id, and (sometimes)
+    call_control_id. We also fall back to page-scan when no filter matches.
+    """
     import httpx
     api_key = config.TELNYX_API_KEY
     if not api_key:
         return None
+    rec = rec or get_call_by_control_id(call_control_id) or {}
+    call_leg_id = rec.get("call_leg_id") if isinstance(rec, dict) else None
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    attempts: list[dict] = []
+    if call_leg_id:
+        attempts.append({"filter[call_leg_id]": call_leg_id})
+    attempts.append({"filter[call_control_id]": call_control_id})
+    # Last-resort: scan first page and match on call_control_id / call_leg_id
+    attempts.append({"page[size]": "50"})
+
     try:
         async with httpx.AsyncClient(timeout=15.0) as ac:
-            r = await ac.get(
-                "https://api.telnyx.com/v2/recordings",
-                headers={"Authorization": f"Bearer {api_key}"},
-                params={"filter[call_control_id]": call_control_id},
-            )
-            if r.status_code >= 300:
-                return None
-            recs = (r.json() or {}).get("data") or []
-            for item in recs:
-                urls = (item.get("recording_urls") or {}) | (item.get("public_recording_urls") or {})
-                fresh = urls.get("mp3") or urls.get("wav") or item.get("download_url")
-                if fresh:
-                    logger.info("Refreshed Telnyx recording URL for %s", call_control_id[:20])
-                    return fresh
+            for params in attempts:
+                try:
+                    r = await ac.get(
+                        "https://api.telnyx.com/v2/recordings",
+                        headers=headers,
+                        params=params,
+                    )
+                    if r.status_code >= 300:
+                        continue
+                    recs = (r.json() or {}).get("data") or []
+                    for item in recs:
+                        if "page[size]" in params:
+                            # Manual match — only accept items whose cc_id / leg_id agrees
+                            if (item.get("call_control_id") != call_control_id and
+                                (not call_leg_id or item.get("call_leg_id") != call_leg_id)):
+                                continue
+                        urls = {**(item.get("recording_urls") or {}), **(item.get("public_recording_urls") or {})}
+                        fresh = urls.get("mp3") or urls.get("wav") or item.get("download_url")
+                        if fresh:
+                            logger.info(
+                                "Refreshed Telnyx recording URL for %s (filter=%s)",
+                                call_control_id[:20], list(params.keys())[0],
+                            )
+                            return fresh
+                except Exception as e:
+                    logger.debug("Refresh attempt %s failed: %s", params, e)
+                    continue
     except Exception as e:
         logger.warning("Recording URL refresh failed for %s: %s", call_control_id[:20], e)
     return None
@@ -2901,6 +3032,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                 if cc_id in active_calls:
                     active_calls[cc_id]["recording_url"] = url
                 update_call(cc_id, recording_url=url)
+                # Download & persist to disk IMMEDIATELY — the S3 pre-signed URL
+                # expires in ~10 minutes so by the time the user clicks play
+                # in the UI it would be dead. Saving bytes locally means the
+                # recording stays playable forever.
+                asyncio.create_task(_persist_recording_to_disk(cc_id, url))
             else:
                 logger.warning("call.recording.saved had no URL — payload keys: %s", list(raw.keys())[:10])
 
@@ -3196,8 +3332,19 @@ async def _fetch_telnyx_conversation_transcript(cc_id: str) -> list[dict]:
                     txt = (m.get("content") or m.get("text") or m.get("message") or "").strip()
                     if not txt:
                         continue
+                    # Skip internal priming messages used to brief the AI:
+                    #  1. Our [BRIEFING] user-turn that seeds prospect context
+                    #  2. The synthetic "Got it." acknowledgement we pair with it
+                    #  3. Any system/tool/function message Telnyx echoes back
                     role_raw = (m.get("role") or m.get("speaker") or m.get("sender") or "").lower()
-                    role = "agent" if role_raw in ("assistant", "agent", "ai", "bot", "system") else "prospect"
+                    if role_raw in ("system", "tool", "function"):
+                        continue
+                    upper = txt.upper()
+                    if "[BRIEFING]" in upper or upper.startswith("PROSPECT INFO") or upper.startswith("RESEARCH SUMMARY"):
+                        continue
+                    if txt.strip().lower() in ("got it.", "got it", "okay.", "okay", "understood.", "understood"):
+                        continue
+                    role = "agent" if role_raw in ("assistant", "agent", "ai", "bot") else "prospect"
                     turns.append({"role": role, "text": txt})
                 if turns:
                     logger.info(
