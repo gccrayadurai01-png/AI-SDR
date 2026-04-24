@@ -1523,6 +1523,66 @@ async def call_history():
     return {"total": len(out), "calls": out}
 
 
+@app.post("/api/admin/restore-recordings")
+async def restore_all_recordings(request: Request):
+    """
+    Walk all historical calls and attempt to re-fetch + persist each
+    recording from Telnyx. Recordings Telnyx still holds server-side
+    (within the retention window) will be downloaded to local disk so
+    the UI can play them forever after. Returns per-call status.
+
+    Body: optional {\"limit\": N} to cap (default 500).
+    """
+    try:
+        body = await request.json() if (await request.body()) else {}
+    except Exception:
+        body = {}
+    limit = int((body or {}).get("limit", 500))
+
+    calls = load_calls() or []
+    results = {"total": 0, "already_local": 0, "restored": 0, "not_found_in_telnyx": 0, "failed": 0}
+    details: list[dict] = []
+
+    # Process newest-first (most likely to still be in retention)
+    calls_sorted = sorted(
+        calls,
+        key=lambda c: (c.get("started_at") or "") if isinstance(c, dict) else "",
+        reverse=True,
+    )[:limit]
+
+    for c in calls_sorted:
+        if not isinstance(c, dict):
+            continue
+        cc = c.get("call_control_id")
+        if not cc:
+            continue
+        results["total"] += 1
+        disk = _recording_disk_path(cc)
+        if disk.exists() and disk.stat().st_size > 0:
+            results["already_local"] += 1
+            continue
+        try:
+            fresh = await _refresh_telnyx_recording_url(cc, c)
+            if not fresh:
+                results["not_found_in_telnyx"] += 1
+                details.append({"cc_id": cc[:30], "status": "not_in_telnyx"})
+                continue
+            await _persist_recording_to_disk(cc, fresh)
+            if disk.exists() and disk.stat().st_size > 0:
+                update_call(cc, recording_url=fresh, recording_local=True)
+                results["restored"] += 1
+                details.append({"cc_id": cc[:30], "status": "restored", "bytes": disk.stat().st_size})
+            else:
+                results["failed"] += 1
+                details.append({"cc_id": cc[:30], "status": "download_failed"})
+        except Exception as e:
+            results["failed"] += 1
+            details.append({"cc_id": cc[:30], "status": "error", "error": str(e)[:120]})
+
+    logger.info("Recording restore complete: %s", results)
+    return {"summary": results, "details": details[:100]}
+
+
 @app.post("/api/calls/{call_control_id}/refresh-recording")
 async def refresh_recording_endpoint(call_control_id: str):
     """

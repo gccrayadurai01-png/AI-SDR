@@ -1275,6 +1275,12 @@ tbody tr.clickable { cursor: pointer; }
             </div>
           </div>
 
+          <div class="card">
+            <div class="card-title">Recording Maintenance</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Re-download all past call recordings from Telnyx and save them permanently to this server's disk. Useful if old recordings fail to play (Telnyx's S3 links expire in ~10 minutes).</p>
+            <button class="btn btn-primary" onclick="restoreAllRecordings()"><i data-lucide="download-cloud"></i> Restore All Recordings</button>
+          </div>
+
           <div class="card" style="border:1px solid var(--danger); border-radius:var(--radius-lg);">
             <div class="card-title" style="color:var(--danger);">Danger Zone</div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Clear all calls, contacts, tasks, and campaign history. The agent script will be reset to defaults. This cannot be undone.</p>
@@ -2904,7 +2910,7 @@ async function openCallDetail(callId) {
   }
   document.getElementById('callDetailContent').innerHTML =
     '<div class="form-row" style="margin-bottom:20px;"><div class="form-group"><label>Prospect</label><div style="font-weight:600;">' + escHtml(call.prospect_name || '-') + '</div></div><div class="form-group"><label>Phone</label><div>' + escHtml(call.to || '-') + '</div></div><div class="form-group"><label>Duration</label><div>' + (call.duration_seconds ? formatSeconds(call.duration_seconds) : '-') + '</div></div><div class="form-group"><label>Outcome</label><span class="badge ' + (outcomeBadgeMap[outcome] || 'badge-gray') + '">' + formatOutcome(outcome) + '</span></div></div>' +
-    (call.recording_url ? '<div style="margin-bottom:16px;"><label>Recording</label><audio controls style="width:100%;" onerror="this.src=\'' + escHtml(call.recording_url) + '\'" src="/api/recordings/' + encodeURIComponent(callId) + '"></audio><div style="margin-top:4px;"><a href="' + escHtml(call.recording_url) + '" target="_blank" style="font-size:11px;color:var(--text-muted);">Open recording directly</a></div></div>' : '') +
+    (call.recording_url ? '<div style="margin-bottom:16px;"><label>Recording</label><audio id="audio-' + callId + '" controls style="width:100%;" onerror="handleRecordingError(\'' + callId + '\')" src="/api/recordings/' + encodeURIComponent(callId) + '"></audio><div style="margin-top:4px;display:flex;gap:8px;align-items:center;"><button class="btn btn-secondary btn-sm" onclick="refreshRecording(\'' + callId + '\')"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Refresh</button><a href="/api/recordings/' + encodeURIComponent(callId) + '" download="call-' + callId.slice(0,8) + '.mp3" style="font-size:11px;color:var(--text-muted);">Download</a></div></div>' : '') +
     '<div style="margin-bottom:16px;"><label>AI Summary</label><div style="padding:12px;background:var(--border-light);border-radius:var(--radius);font-size:13px;">' + escHtml(insights.summary || 'No summary') + '</div></div>' +
     '<div style="margin-bottom:16px;"><label>Transcript</label><div style="padding:12px;background:var(--border-light);border-radius:var(--radius);max-height:400px;overflow-y:auto;">' + transcriptHtml + '</div></div>' +
     '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-sm" onclick="recomputeInsights(\'' + callId + '\')">Recompute Insights</button></div>';
@@ -3480,6 +3486,39 @@ function renderTasksPage() {
 
   container.innerHTML = html;
   if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function refreshRecording(callId) {
+  toast('Refreshing recording from Telnyx…', 'info');
+  const d = await POST('/api/calls/' + encodeURIComponent(callId) + '/refresh-recording', {});
+  if (d._error) {
+    toast('Refresh failed: ' + (d.detail || 'recording may no longer be available on Telnyx'), 'error');
+    return;
+  }
+  const audio = document.getElementById('audio-' + callId);
+  if (audio) {
+    // Bust browser cache so fresh disk copy is fetched
+    audio.src = '/api/recordings/' + encodeURIComponent(callId) + '?t=' + Date.now();
+    audio.load();
+    toast('Recording refreshed', 'success');
+  }
+}
+
+function handleRecordingError(callId) {
+  // Auto-try the manual refresh once on first error
+  const audio = document.getElementById('audio-' + callId);
+  if (!audio || audio.dataset.retried === '1') return;
+  audio.dataset.retried = '1';
+  refreshRecording(callId);
+}
+
+async function restoreAllRecordings() {
+  if (!confirm('This will scan all past calls and try to re-download any recordings Telnyx still holds. May take a minute. Continue?')) return;
+  toast('Restoring recordings — this may take a while…', 'info');
+  const d = await POST('/api/admin/restore-recordings', { limit: 500 });
+  if (d._error) return toast('Restore failed: ' + d.detail, 'error');
+  const s = d.summary || {};
+  toast('Restored ' + (s.restored||0) + ' / ' + (s.total||0) + ' recordings (already local: ' + (s.already_local||0) + ', not found on Telnyx: ' + (s.not_found_in_telnyx||0) + ')', 'success');
 }
 
 function dialFromTask(t) {
