@@ -2274,6 +2274,59 @@ def check_callback_request(
                 return
 
 
+def _ensure_task_for_outcome(call_control_id: str, rec: dict, insights: dict) -> None:
+    """
+    Create an appropriate follow-up task based on call outcome.
+    Called after insights are generated. Idempotent — won't duplicate
+    if a task already exists for this call_control_id.
+    """
+    try:
+        outcome = _normalize_outcome(insights.get("outcome"))
+        # Skip these — nothing to follow up on
+        if outcome in ("no_answer", "voicemail", "not_interested", "do_not_call", "hung_up", "gatekeeper", "unknown", "no_conversation"):
+            return
+        # meeting_booked is handled by _ensure_task_for_meeting separately
+        if outcome == "meeting_booked":
+            return
+
+        # Check for duplicate
+        existing = load_tasks() or []
+        for t in existing:
+            if t.get("call_control_id") == call_control_id and t.get("type") in ("callback", "follow_up", "interested"):
+                return
+
+        task_type = "callback" if outcome == "callback_scheduled" else "follow_up"
+        due = ""
+        # Default due date: callback tomorrow, follow_up in 2 days
+        from datetime import timedelta
+        if outcome == "callback_scheduled":
+            due = (datetime.utcnow() + timedelta(days=1)).date().isoformat()
+        else:
+            due = (datetime.utcnow() + timedelta(days=2)).date().isoformat()
+
+        next_step = (insights.get("next_step") or "").strip()
+        summary = (insights.get("summary") or "").strip()
+        notes = next_step or f"Follow up on: {summary[:160]}" if summary else f"Follow up — outcome: {outcome.replace('_',' ')}"
+
+        task = {
+            "id": str(uuid.uuid4())[:8],
+            "prospect_name": rec.get("prospect_name", ""),
+            "phone": rec.get("to", ""),
+            "company": rec.get("company", ""),
+            "type": task_type,
+            "outcome": outcome,  # carry outcome forward so Tasks page can filter by it
+            "due_date": due,
+            "notes": notes,
+            "status": "pending",
+            "call_control_id": call_control_id,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        save_task(task)
+        logger.info("Auto-task (%s) created from outcome=%s for %s", task_type, outcome, rec.get("prospect_name", "?"))
+    except Exception:
+        logger.exception("_ensure_task_for_outcome failed for %s", call_control_id[:20])
+
+
 def _ensure_task_for_meeting(call_control_id: str, rec: dict, insights: dict) -> None:
     """Create a single meeting task for this call if not present."""
     try:
@@ -3295,6 +3348,9 @@ Return this exact JSON structure:
                      cc_id[:20], insights.get("outcome"), insights.get("interest_level"))
         if isinstance(insights, dict) and insights.get("outcome") == "meeting_booked":
             _ensure_task_for_meeting(cc_id, rec if isinstance(rec, dict) else {}, insights)
+        # ── Auto-create task based on outcome for the new Tasks sidebar ──
+        if isinstance(insights, dict):
+            _ensure_task_for_outcome(cc_id, rec if isinstance(rec, dict) else {}, insights)
         # ── Propagate outcome back to campaign prospect + DNC ──
         try:
             r = rec if isinstance(rec, dict) else (active_calls.get(cc_id) or {})

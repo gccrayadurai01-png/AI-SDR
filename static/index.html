@@ -349,6 +349,17 @@ tbody tr.clickable { cursor: pointer; }
 .task-row-green { border-left: 3px solid var(--success); }
 .task-row-amber { border-left: 3px solid var(--warning); }
 .task-row-red { border-left: 3px solid var(--danger); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  border: 1px solid var(--border); font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.chip:hover { background: var(--bg-hover); color: var(--text-primary); }
+.chip.chip-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.chip-count { background: rgba(255,255,255,0.25); padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.chip:not(.chip-active) .chip-count { background: var(--bg-hover); color: var(--text-secondary); }
 
 /* ===== INTEGRATION CARD ===== */
 .integration-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 12px; }
@@ -440,6 +451,10 @@ tbody tr.clickable { cursor: pointer; }
       </div>
       <div class="nav-item" data-page="call-logs" onclick="navigate('call-logs')">
         <i data-lucide="history"></i> <span>Call Logs</span>
+      </div>
+      <div class="nav-item" data-page="tasks" onclick="navigate('tasks')">
+        <i data-lucide="check-square"></i> <span>Tasks</span>
+        <span id="tasksBadge" style="display:none;margin-left:auto;background:#EF4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;">0</span>
       </div>
       <div class="nav-separator"></div>
       <div class="nav-item" data-page="calendar" onclick="navigate('calendar')">
@@ -1048,6 +1063,43 @@ tbody tr.clickable { cursor: pointer; }
         </div>
       </div>
 
+      <!-- ===================== TASKS ===================== -->
+      <div class="page" id="page-tasks">
+        <div class="page-header">
+          <div>
+            <h2>Tasks</h2>
+            <p>Follow-ups auto-created from call outcomes. Filter by type to focus your day.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" onclick="openTaskModal()"><i data-lucide="plus"></i> New Task</button>
+          </div>
+        </div>
+
+        <!-- Summary pills -->
+        <div id="tasksSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">
+          <div class="stat-card" style="padding:12px 14px;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Open</div><div id="tsTotal" style="font-size:24px;font-weight:700;color:var(--text-primary);">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid var(--danger);"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Overdue</div><div id="tsOverdue" style="font-size:24px;font-weight:700;color:var(--danger);">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid var(--warning);"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Callbacks</div><div id="tsCallback" style="font-size:24px;font-weight:700;">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid var(--success);"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Meetings</div><div id="tsMeeting" style="font-size:24px;font-weight:700;">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid #3B82F6;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Interested</div><div id="tsInterested" style="font-size:24px;font-weight:700;">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid #6B7280;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Follow-ups</div><div id="tsFollow" style="font-size:24px;font-weight:700;">0</div></div>
+        </div>
+
+        <!-- Filter chips -->
+        <div id="tasksChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+          <button class="chip chip-active" data-filter="all" onclick="setTaskFilter('all')">All</button>
+          <button class="chip" data-filter="overdue" onclick="setTaskFilter('overdue')">Overdue</button>
+          <button class="chip" data-filter="today" onclick="setTaskFilter('today')">Due Today</button>
+          <button class="chip" data-filter="callback" onclick="setTaskFilter('callback')">Callbacks</button>
+          <button class="chip" data-filter="meeting" onclick="setTaskFilter('meeting')">Meetings</button>
+          <button class="chip" data-filter="interested" onclick="setTaskFilter('interested')">Interested</button>
+          <button class="chip" data-filter="follow_up" onclick="setTaskFilter('follow_up')">Follow-ups</button>
+          <button class="chip" data-filter="done" onclick="setTaskFilter('done')">Completed</button>
+        </div>
+
+        <div id="tasksPageContainer"></div>
+      </div>
+
       <!-- ===================== CALENDAR ===================== -->
       <div class="page" id="page-calendar">
         <div class="page-header">
@@ -1465,7 +1517,7 @@ function openSlideOver() { document.getElementById('contactSlideOver').classList
 const pageTitles = {
   dashboard: 'Dashboard', campaigns: 'Campaigns', contacts: 'Contacts',
   bella: 'Bella AI', 'ai-agents': 'AI Agent', 'live-calls': 'Live Calls',
-  'call-logs': 'Call History', calendar: 'Calendar',
+  'call-logs': 'Call History', tasks: 'Tasks', calendar: 'Calendar',
   analytics: 'Analytics', settings: 'Settings'
 };
 
@@ -1490,6 +1542,7 @@ function navigate(page) {
   else if (page === 'ai-agents') loadAgentsPage();
   else if (page === 'live-calls') { refreshActiveCalls(); loadRecentCalls(); }
   else if (page === 'call-logs') loadCallHistory();
+  else if (page === 'tasks') loadTasksPage();
   else if (page === 'calendar') loadCalendarPage();
   else if (page === 'analytics') loadAnalytics();
   else if (page === 'settings') loadSettings();
@@ -3296,8 +3349,170 @@ async function saveTask() {
   loadTasks();
 }
 
-async function toggleTask(id, completed) { await POST('/api/tasks/' + id, { completed: completed }); loadTasks(); }
-async function deleteTask(id) { if (!confirm('Delete?')) return; await DELETE('/api/tasks/' + id); toast('Deleted', 'info'); loadTasks(); }
+async function toggleTask(id, completed) { await POST('/api/tasks/' + id, { completed: completed }); loadTasks(); loadTasksPage(); }
+async function deleteTask(id) { if (!confirm('Delete?')) return; await DELETE('/api/tasks/' + id); toast('Deleted', 'info'); loadTasks(); loadTasksPage(); }
+
+/* ===================================================================
+   TASKS PAGE (sidebar) — filters + summary + grouped rendering
+   =================================================================== */
+let _tasksFilter = 'all';
+
+function setTaskFilter(f) {
+  _tasksFilter = f;
+  document.querySelectorAll('#tasksChips .chip').forEach(function(c) {
+    c.classList.toggle('chip-active', c.getAttribute('data-filter') === f);
+  });
+  renderTasksPage();
+}
+
+async function loadTasksPage() {
+  const d = await GET('/api/tasks');
+  if (d._error) return toast('Failed to load tasks', 'error');
+  allTasks = Array.isArray(d) ? d : (d.tasks || []);
+  renderTasksPage();
+}
+
+function _taskIsOpen(t) { return !t.completed && t.status !== 'done'; }
+function _taskIsOverdue(t) {
+  if (!_taskIsOpen(t) || !t.due_date) return false;
+  const d = new Date(t.due_date);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return d < today;
+}
+function _taskIsToday(t) {
+  if (!t.due_date) return false;
+  const d = new Date(t.due_date).toDateString();
+  return d === new Date().toDateString();
+}
+
+function renderTasksPage() {
+  const tasks = (allTasks || []);
+  // Update summary pills
+  const open = tasks.filter(_taskIsOpen);
+  const byType = function(type) {
+    return open.filter(function(t){ return (t.type || '').toLowerCase() === type; }).length;
+  };
+  const byOutcome = function(oc) {
+    return open.filter(function(t){ return (t.outcome || '').toLowerCase() === oc; }).length;
+  };
+  document.getElementById('tsTotal').textContent = open.length;
+  document.getElementById('tsOverdue').textContent = open.filter(_taskIsOverdue).length;
+  document.getElementById('tsCallback').textContent = byType('callback');
+  document.getElementById('tsMeeting').textContent = byType('meeting');
+  document.getElementById('tsInterested').textContent = byOutcome('interested');
+  document.getElementById('tsFollow').textContent = byType('follow_up') + byType('follow-up');
+
+  // Sidebar badge — count overdue + due-today
+  const urgent = open.filter(function(t){ return _taskIsOverdue(t) || _taskIsToday(t); }).length;
+  const badge = document.getElementById('tasksBadge');
+  if (badge) {
+    if (urgent > 0) { badge.style.display = 'inline-block'; badge.textContent = urgent; }
+    else badge.style.display = 'none';
+  }
+
+  // Apply filter
+  let filtered = tasks.slice();
+  switch (_tasksFilter) {
+    case 'done': filtered = tasks.filter(function(t){ return !_taskIsOpen(t); }); break;
+    case 'overdue': filtered = tasks.filter(_taskIsOverdue); break;
+    case 'today': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && _taskIsToday(t); }); break;
+    case 'callback': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && (t.type||'').toLowerCase() === 'callback'; }); break;
+    case 'meeting': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && (t.type||'').toLowerCase() === 'meeting'; }); break;
+    case 'interested': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && (t.outcome||'').toLowerCase() === 'interested'; }); break;
+    case 'follow_up': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && ((t.type||'').toLowerCase() === 'follow_up' || (t.type||'').toLowerCase() === 'follow-up'); }); break;
+    case 'all':
+    default: filtered = tasks.filter(_taskIsOpen);
+  }
+
+  const container = document.getElementById('tasksPageContainer');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:40px 20px;"><i data-lucide="check-circle" style="width:48px;height:48px;color:var(--success);"></i><h4 style="margin-top:12px;">All caught up</h4><p>No tasks match this filter.</p></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  // Sort: overdue first, then by due date, then by created_at
+  filtered.sort(function(a, b) {
+    const aOver = _taskIsOverdue(a) ? 0 : 1;
+    const bOver = _taskIsOverdue(b) ? 0 : 1;
+    if (aOver !== bOver) return aOver - bOver;
+    const da = new Date(a.due_date || '9999').getTime();
+    const db = new Date(b.due_date || '9999').getTime();
+    return da - db;
+  });
+
+  let html = '<div class="table-wrap"><table><thead><tr>' +
+    '<th style="width:36px;"></th>' +
+    '<th>Prospect</th><th>Type</th><th>Outcome</th><th>Due</th><th>Notes</th><th style="text-align:right;">Actions</th>' +
+    '</tr></thead><tbody>';
+  html += filtered.map(function(t) {
+    const done = !_taskIsOpen(t);
+    const overdue = _taskIsOverdue(t);
+    const type = (t.type || 'follow_up').toLowerCase();
+    const outcome = (t.outcome || '').replace(/_/g,' ');
+    let typeBadge = '<span class="badge badge-blue">' + (type.replace(/_/g,' ')) + '</span>';
+    if (type === 'callback') typeBadge = '<span class="badge badge-amber">Callback</span>';
+    else if (type === 'meeting') typeBadge = '<span class="badge badge-green">Meeting</span>';
+
+    let dueCell = t.due_date ? escHtml(t.due_date) : '<span style="color:var(--text-muted);">—</span>';
+    if (overdue) dueCell = '<span style="color:var(--danger);font-weight:600;">' + escHtml(t.due_date) + ' (overdue)</span>';
+    else if (_taskIsToday(t)) dueCell = '<span style="color:var(--warning);font-weight:600;">Today</span>';
+
+    const cc = t.call_control_id || '';
+    const callBtn = cc ? '<button class="btn btn-secondary btn-sm" title="Open call" onclick="navigate(\'call-logs\');setTimeout(function(){openCallDetail(\'' + cc + '\');},250);"><i data-lucide="phone" style="width:12px;height:12px;"></i></button>' : '';
+    const dialBtn = t.phone ? '<button class="btn btn-primary btn-sm" title="Call now" onclick="dialFromTask(' + JSON.stringify(t).replace(/"/g,'&quot;') + ')"><i data-lucide="phone-outgoing" style="width:12px;height:12px;"></i></button>' : '';
+
+    return '<tr style="' + (done ? 'opacity:0.45;' : '') + (overdue ? 'background:rgba(239,68,68,0.04);' : '') + '">' +
+      '<td><input type="checkbox" ' + (done ? 'checked' : '') + ' onchange="toggleTask(\'' + t.id + '\',this.checked)" style="width:16px;height:16px;"/></td>' +
+      '<td><div style="font-weight:600;">' + escHtml(t.prospect_name || '—') + '</div>' +
+        (t.company ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(t.company) + '</div>' : '') + '</td>' +
+      '<td>' + typeBadge + '</td>' +
+      '<td>' + (outcome ? '<span style="font-size:12px;color:var(--text-secondary);text-transform:capitalize;">' + escHtml(outcome) + '</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
+      '<td>' + dueCell + '</td>' +
+      '<td style="max-width:320px;"><div style="font-size:12px;color:var(--text-secondary);white-space:normal;">' + escHtml((t.notes || '').slice(0,180)) + '</div></td>' +
+      '<td style="text-align:right;white-space:nowrap;">' + dialBtn + ' ' + callBtn + ' ' +
+        '<button class="btn btn-secondary btn-sm" onclick=\'openTaskModal(' + JSON.stringify(t).replace(/'/g,"\\'") + ')\'>Edit</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteTask(\'' + t.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+  html += '</tbody></table></div>';
+
+  container.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function dialFromTask(t) {
+  if (!t.phone) return toast('No phone on this task', 'error');
+  POST('/call/outbound', {
+    to: t.phone,
+    prospect_name: t.prospect_name || '',
+    company: t.company || '',
+    notes: t.notes || '',
+  }).then(function(d) {
+    if (d._error) return toast('Call failed: ' + (d.detail || 'unknown'), 'error');
+    toast('Dialing ' + (t.prospect_name || t.phone) + '…', 'success');
+  });
+}
+
+// Refresh the sidebar badge on dashboard load too
+async function refreshTasksBadge() {
+  try {
+    const d = await GET('/api/tasks');
+    if (d._error) return;
+    const tasks = Array.isArray(d) ? d : (d.tasks || []);
+    const open = tasks.filter(_taskIsOpen);
+    const urgent = open.filter(function(t){ return _taskIsOverdue(t) || _taskIsToday(t); }).length;
+    const badge = document.getElementById('tasksBadge');
+    if (!badge) return;
+    if (urgent > 0) { badge.style.display = 'inline-block'; badge.textContent = urgent; }
+    else badge.style.display = 'none';
+  } catch (e) {}
+}
+// Refresh badge every 60s regardless of page
+setInterval(refreshTasksBadge, 60000);
+// Initial badge load
+setTimeout(refreshTasksBadge, 1500);
 
 /* ===================================================================
    ANALYTICS
