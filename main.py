@@ -2115,13 +2115,15 @@ async def post_dnc_remove(body: dict):
 
 @app.get("/api/campaigns/list")
 async def list_campaigns():
-    return _load_campaigns()
+    camps = _load_campaigns()
+    return [_recompute_campaign_outcomes(c) for c in camps if isinstance(c, dict)]
 
 
 @app.get("/api/campaigns/history")
 async def get_campaigns_history():
     """Backwards compat — returns same as list."""
-    return _load_campaigns()
+    camps = _load_campaigns()
+    return [_recompute_campaign_outcomes(c) for c in camps if isinstance(c, dict)]
 
 
 @app.post("/api/campaigns/create")
@@ -2159,6 +2161,25 @@ async def create_campaign(request: Request):
     return camp
 
 
+def _recompute_campaign_outcomes(c: dict) -> dict:
+    """Aggregate per-prospect outcomes into the campaign's outcomes dict for UI stats."""
+    from collections import Counter
+    counts: Counter = Counter()
+    dialed = 0
+    for p in (c.get("prospects") or []):
+        if not isinstance(p, dict):
+            continue
+        if (p.get("status") or "").lower() in ("dialed", "completed"):
+            dialed += 1
+        oc = _normalize_outcome(p.get("outcome"))
+        if oc and oc != "unknown":
+            counts[oc] += 1
+    c["outcomes"] = dict(counts)
+    if c.get("status") not in ("running", "paused"):
+        c["dialed"] = dialed
+    return c
+
+
 @app.get("/api/campaigns/{campaign_id}")
 async def get_campaign(campaign_id: str):
     # If this is the active running campaign, enrich with live state
@@ -2169,6 +2190,7 @@ async def get_campaign(campaign_id: str):
         c["status"] = campaign_lib.state.status
         c["dialed"] = campaign_lib.state.index
         c["current_index"] = campaign_lib.state.index
+    _recompute_campaign_outcomes(c)
     return c
 
 
@@ -2465,6 +2487,18 @@ def check_callback_request(
                 return
 
 
+def _find_campaign_for_call(rec: dict) -> tuple[str, str]:
+    """Return (campaign_id, campaign_name) for a call record, or ('','') if none."""
+    phone = (rec.get("to") or rec.get("phone") or "").strip()
+    if not phone:
+        return "", ""
+    for camp in _load_campaigns():
+        for p in (camp.get("prospects") or []):
+            if isinstance(p, dict) and (p.get("phone") or "").strip() == phone:
+                return camp.get("id", ""), camp.get("name", "")
+    return "", ""
+
+
 def _ensure_task_for_outcome(call_control_id: str, rec: dict, insights: dict) -> None:
     """
     Create an appropriate follow-up task based on call outcome.
@@ -2499,6 +2533,7 @@ def _ensure_task_for_outcome(call_control_id: str, rec: dict, insights: dict) ->
         summary = (insights.get("summary") or "").strip()
         notes = next_step or f"Follow up on: {summary[:160]}" if summary else f"Follow up — outcome: {outcome.replace('_',' ')}"
 
+        camp_id, camp_name = _find_campaign_for_call(rec)
         task = {
             "id": str(uuid.uuid4())[:8],
             "prospect_name": rec.get("prospect_name", ""),
@@ -2506,6 +2541,8 @@ def _ensure_task_for_outcome(call_control_id: str, rec: dict, insights: dict) ->
             "company": rec.get("company", ""),
             "type": task_type,
             "outcome": outcome,  # carry outcome forward so Tasks page can filter by it
+            "campaign_id": camp_id,
+            "campaign_name": camp_name,
             "due_date": due,
             "notes": notes,
             "status": "pending",
@@ -2533,6 +2570,7 @@ def _ensure_task_for_meeting(call_control_id: str, rec: dict, insights: dict) ->
         summ = (insights.get("summary") or "").strip()
         if summ:
             notes = (notes + " — " if notes else "") + summ
+        camp_id, camp_name = _find_campaign_for_call(rec)
         task = {
             "id": str(uuid.uuid4())[:8],
             "prospect_name": prospect_name,
@@ -2540,6 +2578,8 @@ def _ensure_task_for_meeting(call_control_id: str, rec: dict, insights: dict) ->
             "company": company,
             "type": "meeting",
             "outcome": "meeting_booked",  # so Tasks page Outcome column + filter work
+            "campaign_id": camp_id,
+            "campaign_name": camp_name,
             "due_date": due,
             "notes": notes or "Meeting booked on call.",
             "status": "pending",

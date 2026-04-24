@@ -1097,6 +1097,14 @@ tbody tr.clickable { cursor: pointer; }
           <button class="chip" data-filter="done" onclick="setTaskFilter('done')">Completed</button>
         </div>
 
+        <!-- Campaign filter -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+          <label style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Campaign:</label>
+          <select id="tasksCampaignFilter" onchange="setTaskCampaignFilter(this.value)" style="padding:6px 10px;border-radius:6px;background:var(--bg-2);color:var(--text);border:1px solid var(--border);">
+            <option value="all">All campaigns</option>
+          </select>
+        </div>
+
         <div id="tasksPageContainer"></div>
       </div>
 
@@ -3362,12 +3370,18 @@ async function deleteTask(id) { if (!confirm('Delete?')) return; await DELETE('/
    TASKS PAGE (sidebar) — filters + summary + grouped rendering
    =================================================================== */
 let _tasksFilter = 'all';
+let _tasksCampaignFilter = 'all';
 
 function setTaskFilter(f) {
   _tasksFilter = f;
   document.querySelectorAll('#tasksChips .chip').forEach(function(c) {
     c.classList.toggle('chip-active', c.getAttribute('data-filter') === f);
   });
+  renderTasksPage();
+}
+
+function setTaskCampaignFilter(v) {
+  _tasksCampaignFilter = v || 'all';
   renderTasksPage();
 }
 
@@ -3393,6 +3407,27 @@ function _taskIsToday(t) {
 
 function renderTasksPage() {
   const tasks = (allTasks || []);
+
+  // Populate campaign dropdown from unique campaign_name values on tasks
+  const campSel = document.getElementById('tasksCampaignFilter');
+  if (campSel) {
+    const seen = {};
+    const camps = [];
+    tasks.forEach(function(t) {
+      const nm = (t.campaign_name || '').trim();
+      if (nm && !seen[nm]) { seen[nm] = 1; camps.push(nm); }
+    });
+    camps.sort();
+    const current = _tasksCampaignFilter;
+    let opts = '<option value="all">All campaigns</option>';
+    opts += '<option value="__none__">No campaign</option>';
+    camps.forEach(function(n) {
+      opts += '<option value="' + escHtml(n) + '"' + (n === current ? ' selected' : '') + '>' + escHtml(n) + '</option>';
+    });
+    campSel.innerHTML = opts;
+    if (current !== 'all') campSel.value = current;
+  }
+
   // Update summary pills
   const open = tasks.filter(_taskIsOpen);
   const byType = function(type) {
@@ -3430,6 +3465,15 @@ function renderTasksPage() {
     default: filtered = tasks.filter(_taskIsOpen);
   }
 
+  // Apply campaign filter
+  if (_tasksCampaignFilter && _tasksCampaignFilter !== 'all') {
+    if (_tasksCampaignFilter === '__none__') {
+      filtered = filtered.filter(function(t){ return !(t.campaign_name || '').trim(); });
+    } else {
+      filtered = filtered.filter(function(t){ return (t.campaign_name || '') === _tasksCampaignFilter; });
+    }
+  }
+
   const container = document.getElementById('tasksPageContainer');
   if (!filtered.length) {
     container.innerHTML = '<div class="empty-state" style="padding:40px 20px;"><i data-lucide="check-circle" style="width:48px;height:48px;color:var(--success);"></i><h4 style="margin-top:12px;">All caught up</h4><p>No tasks match this filter.</p></div>';
@@ -3449,7 +3493,7 @@ function renderTasksPage() {
 
   let html = '<div class="table-wrap"><table><thead><tr>' +
     '<th style="width:36px;"></th>' +
-    '<th>Prospect</th><th>Type</th><th>Outcome</th><th>Due</th><th>Notes</th><th style="text-align:right;">Actions</th>' +
+    '<th>Prospect</th><th>Campaign</th><th>Type</th><th>Outcome</th><th>Due</th><th>Notes</th><th style="text-align:right;">Actions</th>' +
     '</tr></thead><tbody>';
   html += filtered.map(function(t) {
     const done = !_taskIsOpen(t);
@@ -3489,6 +3533,7 @@ function renderTasksPage() {
       '<td><input type="checkbox" ' + (done ? 'checked' : '') + ' onchange="toggleTask(\'' + t.id + '\',this.checked)" style="width:16px;height:16px;"/></td>' +
       '<td><div style="font-weight:600;">' + escHtml(t.prospect_name || '—') + '</div>' +
         (t.company ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(t.company) + '</div>' : '') + '</td>' +
+      '<td>' + (t.campaign_name ? '<span class="badge" style="background:#EEF2FF;color:#4338CA;">' + escHtml(t.campaign_name) + '</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
       '<td>' + typeBadge + '</td>' +
       '<td>' + (outcome ? '<span style="font-size:12px;color:var(--text-secondary);text-transform:capitalize;">' + escHtml(outcome) + '</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
       '<td>' + dueCell + '</td>' +
