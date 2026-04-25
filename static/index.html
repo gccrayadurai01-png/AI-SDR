@@ -1191,6 +1191,31 @@ tbody tr.clickable { cursor: pointer; }
             </div>
           </div>
         </div>
+
+        <!-- Edit User Modal (password reset / role change / move tenant) -->
+        <div id="editUserModal" class="modal" style="display:none;">
+          <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+              <h3>Edit User · <span id="euUsername" style="color:var(--text-muted);"></span></h3>
+              <button class="modal-close" onclick="closeEditUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group"><label>New Password (leave blank to keep)</label><input id="euPassword" type="password" placeholder="••••••••" autocomplete="new-password"/></div>
+              <div class="form-group"><label>Role</label>
+                <select id="euRole">
+                  <option value="tenant_admin">Tenant Admin</option>
+                  <option value="tenant_user">Tenant User</option>
+                  <option value="owner">Owner (super-user)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Tenant</label><select id="euTenant"></select></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeEditUserModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveEditUser()">Save Changes</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ===================== AI AGENT (Single Agent Setup) ===================== -->
@@ -3221,7 +3246,8 @@ async function loadAdminUsersPage() {
       const tname = uu.tenant_id ? (tenantNames[uu.tenant_id]||uu.tenant_id) : '— (owner)';
       return '<tr><td><b>'+escHtml(uu.username)+'</b></td><td>'+escHtml(uu.role||'')+'</td><td>'+escHtml(tname)+'</td>' +
         '<td style="font-size:11px;color:var(--text-muted);">'+escHtml((uu.created_at||'').slice(0,16))+'</td>' +
-        '<td>'+(uu.username==='admin'?'':'<button class="btn btn-secondary btn-sm" onclick="deleteUser(\''+uu.username+'\')"><i data-lucide="trash-2"></i></button>')+'</td></tr>';
+        '<td><button class="btn btn-secondary btn-sm" onclick="openEditUser(\''+uu.username+'\',\''+(uu.role||'')+'\',\''+(uu.tenant_id||'')+'\')"><i data-lucide="key"></i> Edit</button> '+
+          (uu.username==='owner'?'':'<button class="btn btn-secondary btn-sm" onclick="deleteUser(\''+uu.username+'\')"><i data-lucide="trash-2"></i></button>')+'</td></tr>';
     }).join('') + '</tbody></table></div>';
   if (window.lucide) lucide.createIcons();
 }
@@ -3250,6 +3276,59 @@ async function deleteUser(uname) {
   if (r._error) return toast('Delete failed: '+r.detail,'error');
   toast('User deleted','success');
   loadAdminUsersPage();
+}
+
+let _editingUser = '';
+async function openEditUser(uname, role, tid) {
+  _editingUser = uname;
+  document.getElementById('euUsername').textContent = uname;
+  document.getElementById('euPassword').value = '';
+  document.getElementById('euRole').value = role || 'tenant_admin';
+  // populate tenant dropdown
+  const t = await GET('/api/admin/tenants');
+  const sel = document.getElementById('euTenant');
+  let opts = '<option value="">— None (owner only) —</option>';
+  if (t.tenants) {
+    opts += t.tenants.map(function(x){
+      return '<option value="'+x.id+'"'+(x.id===tid?' selected':'')+'>'+escHtml(x.name)+'</option>';
+    }).join('');
+  }
+  sel.innerHTML = opts;
+  document.getElementById('editUserModal').style.display = 'flex';
+}
+function closeEditUserModal() { document.getElementById('editUserModal').style.display = 'none'; }
+
+async function saveEditUser() {
+  const payload = {};
+  const pw = document.getElementById('euPassword').value;
+  if (pw) payload.password = pw;
+  payload.role = document.getElementById('euRole').value;
+  payload.tenant_id = document.getElementById('euTenant').value;
+  const r = await api('PATCH', '/api/admin/users/'+encodeURIComponent(_editingUser), payload);
+  if (r._error) return toast('Update failed: '+r.detail, 'error');
+  toast('User updated'+(pw?' (password reset)':''), 'success');
+  closeEditUserModal();
+  loadAdminUsersPage();
+}
+
+async function ownerImportData(destTid) {
+  // Build a list of source tenants (everything except dest)
+  const t = await GET('/api/admin/tenants');
+  if (t._error || !t.tenants) return toast('Could not load tenants','error');
+  const sources = t.tenants.filter(function(x){ return x.id !== destTid; });
+  if (!sources.length) return toast('No other tenant to import from','info');
+  const list = sources.map(function(s,i){ return (i+1)+') '+s.name+'  ['+s.id+']'; }).join('\n');
+  const idx = prompt('Import data from which tenant?\n\n'+list+'\n\nEnter number (1-'+sources.length+'):');
+  const n = parseInt(idx, 10);
+  if (!n || n < 1 || n > sources.length) return;
+  const src = sources[n-1];
+  if (!confirm('Move ALL data files (calls, contacts, agents, recordings, etc.) from\n\n  '+src.name+'  →  '+destTid+'\n\nThis is destructive — the source tenant will be empty after this. Continue?')) return;
+  const r = await POST('/api/admin/tenants/'+encodeURIComponent(destTid)+'/move-data-from', { from: src.id });
+  if (r._error) return toast('Migration failed: '+r.detail, 'error');
+  toast('Moved '+r.moved_count+' items from '+src.name, 'success');
+  // refresh drill-in
+  ownerDrillIn(destTid);
+  loadOwnerDashboard();
 }
 
 /* Reveal owner-only nav, hide tenant nav for owner */
@@ -3333,7 +3412,8 @@ async function ownerDrillIn(tid) {
     return;
   }
   const t = d.tenant || {}, s = d.stats || {};
-  document.getElementById('otdTitle').textContent = 'Tenant · '+(t.name||tid);
+  document.getElementById('otdTitle').innerHTML = 'Tenant · '+escHtml(t.name||tid) +
+    ' <button class="btn btn-secondary btn-sm" style="margin-left:10px;" onclick="ownerImportData(\''+tid+'\')"><i data-lucide="download-cloud"></i> Import data from another tenant</button>';
   const calls = (d.recent_calls || []).map(function(c){
     const out = (c.outcome||'').replace(/_/g,' ');
     const when = c.started_at ? new Date(c.started_at.replace(/Z?$/,'Z')).toLocaleString() : '—';

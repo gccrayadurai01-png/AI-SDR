@@ -2723,6 +2723,81 @@ async def admin_delete_user(username: str, request: Request):
     return {"ok": True}
 
 
+@app.patch("/api/admin/users/{username}")
+async def admin_update_user(username: str, request: Request):
+    """Owner can reset password, change role, or reassign tenant."""
+    _require_owner(request)
+    body = await request.json() or {}
+    users = _load_users()
+    if username not in users:
+        raise HTTPException(404, "User not found")
+    u = users[username]
+    if body.get("password"):
+        h, salt = _hash_pw(body["password"])
+        u["pw_hash"] = h
+        u["salt"]    = salt
+    if "role" in body and body["role"]:
+        # safety: cannot demote the owner account
+        if username == "owner" and body["role"] != "owner":
+            raise HTTPException(400, "Cannot demote the owner account")
+        u["role"] = body["role"]
+    if "tenant_id" in body:
+        new_tid = body["tenant_id"] or None
+        if new_tid and not any(t.get("id") == new_tid for t in _load_tenants()):
+            raise HTTPException(404, "Target tenant not found")
+        u["tenant_id"] = new_tid
+    u["updated_at"] = datetime.utcnow().isoformat()
+    _save_users(users)
+    return {k: v for k, v in u.items() if k not in ("pw_hash", "salt")}
+
+
+@app.post("/api/admin/tenants/{tenant_id}/move-data-from")
+async def admin_move_tenant_data(tenant_id: str, request: Request):
+    """Owner-only: relocate all data files from one tenant folder to another.
+    Body: {"from": "tenant_default"}.
+    Moves *.json files and recursively moves subfolders (e.g. recordings/)."""
+    _require_owner(request)
+    body = await request.json() or {}
+    src = (body.get("from") or "").strip()
+    if not src:
+        raise HTTPException(400, "Provide 'from' tenant_id in body")
+    if src == tenant_id:
+        raise HTTPException(400, "Source and destination tenants are identical")
+    if not any(t.get("id") == tenant_id for t in _load_tenants()):
+        raise HTTPException(404, "Destination tenant not found")
+    src_dir = TENANTS_DIR / src
+    if not src_dir.exists():
+        raise HTTPException(404, f"Source folder not found: {src_dir}")
+    dst_dir = _tenant_dir(tenant_id)
+
+    moved: list[str] = []
+
+    def _move_tree(src_path: Path, dst_path: Path):
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        if src_path.is_file():
+            try:
+                dst_path.write_bytes(src_path.read_bytes())
+                src_path.unlink()
+                moved.append(str(src_path.relative_to(src_dir)))
+            except Exception:
+                logger.exception("Move file %s failed", src_path)
+        elif src_path.is_dir():
+            dst_path.mkdir(parents=True, exist_ok=True)
+            for child in list(src_path.iterdir()):
+                _move_tree(child, dst_path / child.name)
+            try:
+                src_path.rmdir()
+            except Exception:
+                pass
+
+    for item in list(src_dir.iterdir()):
+        _move_tree(item, dst_dir / item.name)
+
+    logger.info("Moved %d items from %s -> %s", len(moved), src, tenant_id)
+    return {"ok": True, "moved_count": len(moved), "moved": moved[:50],
+            "from": src, "to": tenant_id}
+
+
 # ── Owner oversight: aggregated stats ──────────────────────────
 def _tenant_calls_path(tenant_id: str) -> Path:
     return _tenant_dir(tenant_id) / "calls.json"
