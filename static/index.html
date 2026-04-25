@@ -583,10 +583,16 @@ tbody tr.clickable { cursor: pointer; }
 
         <!-- ── CREATE CAMPAIGN FORM (hidden by default) ── -->
         <div id="createCampaignForm" style="display:none;">
+          <!-- ── Sticky top action bar ── -->
+          <div style="position:sticky;top:0;z-index:50;background:var(--bg);padding:8px 0 12px 0;display:flex;gap:10px;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);">
+            <button class="btn btn-success" onclick="createAndStartCampaign()" style="flex:1;padding:12px;font-size:14px;font-weight:600;"><i data-lucide="play"></i> Create &amp; Start Campaign</button>
+            <button class="btn btn-secondary" onclick="saveCampaignDraft()" style="padding:12px;font-size:14px;"><i data-lucide="save"></i> Save Draft</button>
+            <button class="btn btn-secondary" onclick="hideCreateCampaign()" style="padding:12px;"><i data-lucide="x"></i> Cancel</button>
+          </div>
+
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <div class="card-title" style="margin-bottom:0;">Create New Campaign</div>
-              <button class="btn btn-secondary btn-sm" onclick="hideCreateCampaign()"><i data-lucide="x"></i> Cancel</button>
             </div>
             <div class="form-grid">
               <div class="form-group">
@@ -618,14 +624,17 @@ tbody tr.clickable { cursor: pointer; }
           </div>
 
           <!-- ── Schedule (Phase 3) ── -->
-          <div class="card">
+          <div class="card" style="border-left:4px solid #8B5CF6;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-              <div class="card-title" style="margin-bottom:0;">Dial Schedule</div>
-              <label class="checkbox-label" style="margin:0;font-size:13px;">
+              <div>
+                <div class="card-title" style="margin-bottom:2px;">📅 Dial Schedule &amp; Call Limits</div>
+                <div style="font-size:12px;color:var(--text-muted);">Pick timezone, days, and time windows with per-window dial caps. Leave disabled to dial immediately.</div>
+              </div>
+              <label class="checkbox-label" style="margin:0;font-size:13px;font-weight:600;color:#8B5CF6;">
                 <input type="checkbox" id="schedEnabled" onchange="toggleScheduleEditor()"/> Enable scheduled dialing
               </label>
             </div>
-            <div id="scheduleEditor" style="display:none;">
+            <div id="scheduleEditor" style="display:block;opacity:0.5;pointer-events:none;">
               <div class="form-grid">
                 <div class="form-group">
                   <label>Timezone</label>
@@ -1835,6 +1844,9 @@ function showCreateCampaign() {
   renderQueue();
   document.getElementById('newCampName').value = '';
   document.getElementById('newCampName').focus();
+  // Phase 3: prime schedule editor so users see TZ + windows immediately.
+  if (typeof _primeScheduleEditor === 'function') _primeScheduleEditor();
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function hideCreateCampaign() {
@@ -1952,13 +1964,23 @@ async function loadTimezonesIntoSelect() {
 
 function toggleScheduleEditor() {
   const on = document.getElementById('schedEnabled').checked;
-  document.getElementById('scheduleEditor').style.display = on ? 'block' : 'none';
-  if (on) {
-    loadTimezonesIntoSelect();
-    if (!document.querySelectorAll('#schedWindowsList .sched-window').length) {
-      addScheduleWindow('09:00', '10:00', 25);
-      addScheduleWindow('13:00', '14:00', 25);
-    }
+  const ed = document.getElementById('scheduleEditor');
+  ed.style.opacity = on ? '1' : '0.5';
+  ed.style.pointerEvents = on ? 'auto' : 'none';
+  loadTimezonesIntoSelect();
+  if (on && !document.querySelectorAll('#schedWindowsList .sched-window').length) {
+    addScheduleWindow('09:00', '10:00', 25);
+    addScheduleWindow('13:00', '14:00', 25);
+  }
+}
+
+// Pre-populate the editor with sensible defaults the moment the form opens
+// so users always see the controls (greyed out until they tick Enable).
+function _primeScheduleEditor() {
+  loadTimezonesIntoSelect();
+  if (!document.querySelectorAll('#schedWindowsList .sched-window').length) {
+    addScheduleWindow('09:00', '10:00', 25);
+    addScheduleWindow('13:00', '14:00', 25);
   }
 }
 
