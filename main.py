@@ -1,5 +1,5 @@
 """
-Knight AI SDR — FastAPI server
+CloudFuze AI SDR — FastAPI server
 Uses Telnyx server-side transcription (no WebSocket audio streaming).
 Flow: call.answered → speak → start_transcription → call.transcription → Claude → speak → loop
 """
@@ -118,7 +118,7 @@ async def _app_lifespan(app: FastAPI):
 
 
 # ─── app ────────────────────────────────────────────────────
-app = FastAPI(title="Knight AI SDR", version="3.0.0", lifespan=_app_lifespan)
+app = FastAPI(title="CloudFuze AI SDR", version="3.0.0", lifespan=_app_lifespan)
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -397,7 +397,7 @@ def _get_compact_knowledge() -> str:
     advantage = s.get("competitive_advantage", "")
     website = s.get("company_website", "")
     kb_notes = s.get("knowledge_base_notes", "")
-    co = s.get("company_name", "Knight")
+    co = s.get("company_name", "CloudFuze")
 
     if vp:
         parts.append(f"VALUE PROPOSITION: {vp}")
@@ -454,28 +454,18 @@ def sync_assistant_to_script():
             patch_body: dict[str, Any] = {
                 "instructions": instructions,
                 "model": "anthropic/claude-haiku-4-5",
+                "llm_api_key_ref": "anthropic_key",
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    # 300s user-silence cap: long enough that a prospect
-                    # thinking / checking a calendar / putting us briefly on
-                    # hold does NOT cause Telnyx to silently terminate the
-                    # AI session (which leaves the call alive with zero
-                    # audio — the dreaded "mid-call silence"). Voicemail
-                    # protection is still handled by answering_machine_
-                    # detection at dial time.
-                    "user_idle_timeout_secs": 300,
-                    "max_duration_secs": 1800,
+                    # 120s (2 min) silence cap — hang up if prospect goes silent.
+                    "user_idle_timeout_secs": 120,
+                    "max_duration_secs": 900,
                 },
                 "interruption_settings": {
                     "enable": True,
                     "start_speaking_plan": {
-                        # Require ~1.5s of continuous prospect speech before
-                        # barging in. 0.5s was too twitchy — a cough or
-                        # background noise would pause the AI mid-sentence
-                        # and the resume webhook sometimes never arrived,
-                        # leaving the AI stuck.
-                        "wait_seconds": 1.5,
+                        "wait_seconds": 0.5,
                     },
                 },
             }
@@ -489,7 +479,7 @@ def sync_assistant_to_script():
                 # direct cause of the "no voice on the call" incident.
                 patch_body["voice_settings"] = {
                     "type": "elevenlabs",
-                    "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
+                    "voice": f"ElevenLabs.eleven_turbo_v2_5.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
                     # ── Stable voice profile — reduces artifacts/choppiness ──
@@ -825,7 +815,7 @@ async def serve_dashboard():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return JSONResponse({"status": "Knight AI SDR running - dashboard not found"})
+    return JSONResponse({"status": "CloudFuze AI SDR running - dashboard not found"})
 
 
 # ════════════════════════════════════════════════════════════
@@ -1415,7 +1405,7 @@ async def build_agent_from_website(request: Request):
     import httpx as _httpx
     try:
         async with _httpx.AsyncClient(follow_redirects=True, timeout=15) as http:
-            resp = await http.get(url, headers={"User-Agent": "Mozilla/5.0 Knight-AI-SDR/1.0"})
+            resp = await http.get(url, headers={"User-Agent": "Mozilla/5.0 CloudFuze-AI-SDR/1.0"})
             resp.raise_for_status()
             html_content = resp.text[:30000]  # Limit to 30k chars
     except Exception as e:
@@ -2362,9 +2352,9 @@ async def _start_named_campaign_unlocked(camp_id: str) -> bool:
 # ════════════════════════════════════════════════════════════
 #  AUTH
 # ════════════════════════════════════════════════════════════
-KNIGHT_USERS = {
-    "admin": "Knight2024!",
-    "roy": "knight123",
+CLOUDFUZE_USERS = {
+    "admin": "CloudFuze2024!",
+    "roy": "cloudfuze123",
 }
 
 @app.post("/api/auth/login")
@@ -2372,8 +2362,8 @@ async def login(request: Request):
     body = await request.json()
     username = body.get("username", "").strip().lower()
     password = body.get("password", "")
-    if KNIGHT_USERS.get(username) == password:
-        return {"ok": True, "username": username, "token": f"knight-{username}-session"}
+    if CLOUDFUZE_USERS.get(username) == password:
+        return {"ok": True, "username": username, "token": f"cloudfuze-{username}-session"}
     raise HTTPException(status_code=401, detail="Invalid username or password")
 
 
@@ -5086,7 +5076,7 @@ async def bella_search(request: Request):
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": query})
 
-    bella_system = """You are Bella, an AI sales research assistant for Knight. You help find ideal prospects.
+    bella_system = """You are Bella, an AI sales research assistant for CloudFuze. You help find ideal prospects.
 
 When the user describes their ideal customer, extract search criteria and respond in TWO parts:
 1. A friendly conversational response acknowledging what they want
@@ -5388,7 +5378,7 @@ async def dashboard_stats():
 # ════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Knight AI SDR starting on port {config.PORT}")
+    logger.info(f"CloudFuze AI SDR starting on port {config.PORT}")
     logger.info(f"Dashboard: http://localhost:{config.PORT}")
     # Pass the app object directly to avoid accidental module-resolution collisions.
     # (When passing an app object, uvicorn can't use reload reliably.)

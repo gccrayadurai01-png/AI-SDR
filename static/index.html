@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Knight - AI Sales Development</title>
+  <title>CloudFuze - AI Sales Development</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -424,7 +424,7 @@ tbody tr.clickable { cursor: pointer; }
     <div class="sidebar-brand">
       <h1>
         <span class="brand-icon"><i data-lucide="shield" style="width:18px;height:18px;color:#fff;"></i></span>
-        Knight
+        CloudFuze
       </h1>
       <p>AI Sales Development</p>
     </div>
@@ -1086,7 +1086,7 @@ tbody tr.clickable { cursor: pointer; }
             <div class="card-title">Agent Configuration</div>
             <div class="form-grid" style="grid-template-columns:1fr 1fr;">
               <div class="form-group"><label>SDR Name</label><input id="script-sdr_name" placeholder="Alex"/></div>
-              <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="Knight"/></div>
+              <div class="form-group"><label>Company Name</label><input id="script-company" placeholder="CloudFuze"/></div>
               <div class="form-group full"><label>Company Website</label><input id="script-company_website" placeholder="https://www.yourcompany.com"/></div>
               <div class="form-group full"><label>Call Objective</label><input id="script-objective" placeholder="Book a 15-minute discovery call"/></div>
               <div class="form-group full"><label>End Goal</label><input id="script-end_goal" placeholder="Schedule a demo to explore if there's a fit"/></div>
@@ -4477,7 +4477,7 @@ async function clearKnowledgeBase() {
    =================================================================== */
 /* ── Login Guard ── */
 function checkAuth() {
-  if (!sessionStorage.getItem('knight_user')) {
+  if (!sessionStorage.getItem('cloudfuze_user')) {
     window.location.href = '/login';
     return false;
   }
@@ -4485,8 +4485,8 @@ function checkAuth() {
 }
 
 function logout() {
-  sessionStorage.removeItem('knight_user');
-  sessionStorage.removeItem('knight_token');
+  sessionStorage.removeItem('cloudfuze_user');
+  sessionStorage.removeItem('cloudfuze_token');
   window.location.href = '/login';
 }
 
@@ -4540,7 +4540,7 @@ function init() {
   else navigate('dashboard');
 
   // Show logged-in user
-  const user = sessionStorage.getItem('knight_user');
+  const user = sessionStorage.getItem('cloudfuze_user');
   const userEl = document.getElementById('loggedInUser');
   if (userEl && user) userEl.textContent = user;
 

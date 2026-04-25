@@ -104,7 +104,7 @@ TRANSCRIPTION_REPLY_ON_INTERIM = _env_bool("TRANSCRIPTION_REPLY_ON_INTERIM", Tru
 PHONE_THINK_FILLER = _env_bool("PHONE_THINK_FILLER", False)
 
 # SDR persona
-COMPANY_NAME         = os.getenv("COMPANY_NAME", "Your Company")
+COMPANY_NAME         = os.getenv("COMPANY_NAME", "CloudFuze")
 SDR_NAME             = os.getenv("SDR_NAME", "Alex")
 
 # Call-learned Q/A KB (persists Q/A from calls)
@@ -318,7 +318,7 @@ def reload_secrets() -> None:
         _bu2 = _env_str("APP_BASE_URL") or "http://localhost:8000"
         APP_BASE_URL = _bu2.strip().rstrip("/")
     PORT = int(os.getenv("PORT", "8000"))
-    COMPANY_NAME         = os.getenv("COMPANY_NAME", "Your Company")
+    COMPANY_NAME         = os.getenv("COMPANY_NAME", "CloudFuze")
     SDR_NAME             = os.getenv("SDR_NAME", "Alex")
     _ep2 = (_env_str("EMAIL_PROVIDER") or "smtp").strip().lower()
     EMAIL_PROVIDER = (
