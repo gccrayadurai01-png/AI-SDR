@@ -2640,16 +2640,63 @@ async def list_timezones():
 # ──────────────────────────────────────────────────────────────
 # Email (SMTP) — used for meeting invites + SDR notifications
 # ──────────────────────────────────────────────────────────────
+SMTP_CONFIG_FILE = Path(__file__).parent / "data" / "smtp_config.json"
+
+
+def _load_smtp_json() -> dict:
+    """User-saved SMTP config (overrides env when present)."""
+    try:
+        if SMTP_CONFIG_FILE.exists():
+            d = json.loads(SMTP_CONFIG_FILE.read_text(encoding="utf-8"))
+            if isinstance(d, dict):
+                return d
+    except Exception:
+        pass
+    return {}
+
+
+def _save_smtp_json(d: dict) -> dict:
+    keep = {k: (d.get(k) or "") for k in (
+        "host", "port", "user", "pass", "from", "sdr_notify", "use_tls"
+    )}
+    keep["port"] = int(str(keep["port"]).strip() or 587) if str(keep["port"]).strip() else 587
+    keep["use_tls"] = bool(d.get("use_tls", True))
+    SMTP_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SMTP_CONFIG_FILE.write_text(json.dumps(keep, indent=2), encoding="utf-8")
+    return keep
+
+
 def _smtp_config() -> dict:
+    """JSON store wins over env vars — lets users configure from the UI."""
+    j = _load_smtp_json()
+    def pick(k_json, env_keys, default=""):
+        v = (j.get(k_json) or "").strip() if isinstance(j.get(k_json), str) else j.get(k_json)
+        if v not in (None, ""):
+            return v
+        for ek in env_keys:
+            ev = os.environ.get(ek, "").strip()
+            if ev:
+                return ev
+        return default
+    host = pick("host", ["SMTP_HOST"])
+    port_raw = j.get("port") if j.get("port") not in (None, "") else os.environ.get("SMTP_PORT", "587") or "587"
+    try:
+        port = int(port_raw)
+    except Exception:
+        port = 587
+    use_tls_val = j.get("use_tls")
+    if use_tls_val is None:
+        use_tls = (os.environ.get("SMTP_USE_TLS", "1").strip() != "0")
+    else:
+        use_tls = bool(use_tls_val)
     return {
-        "host": os.environ.get("SMTP_HOST", "").strip(),
-        "port": int(os.environ.get("SMTP_PORT", "587") or 587),
-        "user": os.environ.get("SMTP_USER", "").strip(),
-        "pass": os.environ.get("SMTP_PASS", "").strip(),
-        "from": os.environ.get("EMAIL_FROM", "").strip()
-                or os.environ.get("SMTP_FROM", "").strip(),
-        "sdr_notify": os.environ.get("SDR_NOTIFY_EMAIL", "").strip(),
-        "use_tls": (os.environ.get("SMTP_USE_TLS", "1").strip() != "0"),
+        "host": host,
+        "port": port,
+        "user": pick("user", ["SMTP_USER"]),
+        "pass": pick("pass", ["SMTP_PASS"]),
+        "from": pick("from", ["EMAIL_FROM", "SMTP_FROM"]),
+        "sdr_notify": pick("sdr_notify", ["SDR_NOTIFY_EMAIL"]),
+        "use_tls": use_tls,
     }
 
 
@@ -3322,6 +3369,69 @@ async def email_status():
         "from_addr": cfg["from"],
         "sdr_notify": cfg["sdr_notify"],
     }
+
+
+@app.get("/api/smtp/config")
+async def get_smtp_config():
+    """Return the current SMTP config — masks the password but tells you if it's set."""
+    cfg = _smtp_config()
+    j = _load_smtp_json()
+    return {
+        "host":       cfg["host"],
+        "port":       cfg["port"],
+        "user":       cfg["user"],
+        "from":       cfg["from"],
+        "sdr_notify": cfg["sdr_notify"],
+        "use_tls":    cfg["use_tls"],
+        "has_password": bool(cfg["pass"]),
+        "source":     "json" if j.get("host") else ("env" if cfg["host"] else "none"),
+    }
+
+
+@app.post("/api/smtp/config")
+async def save_smtp_config(request: Request):
+    """Save user-supplied SMTP credentials. Pass empty 'pass' to keep existing one."""
+    body = await request.json() or {}
+    existing = _load_smtp_json()
+    new_pass = (body.get("pass") or "").strip()
+    if not new_pass and existing.get("pass"):
+        new_pass = existing["pass"]
+    saved = _save_smtp_json({
+        "host":       (body.get("host") or "").strip(),
+        "port":       body.get("port") or 587,
+        "user":       (body.get("user") or "").strip(),
+        "pass":       new_pass,
+        "from":       (body.get("from") or "").strip(),
+        "sdr_notify": (body.get("sdr_notify") or "").strip(),
+        "use_tls":    bool(body.get("use_tls", True)),
+    })
+    cfg = _smtp_config()
+    return {
+        "ok": True,
+        "configured": bool(cfg["host"] and cfg["from"]),
+        "host": saved["host"], "port": saved["port"], "from": saved["from"],
+        "user": saved["user"], "sdr_notify": saved["sdr_notify"], "use_tls": saved["use_tls"],
+        "has_password": bool(saved["pass"]),
+    }
+
+
+@app.post("/api/smtp/test")
+async def smtp_test(request: Request):
+    """Save (if body has creds) then send a one-line test email."""
+    body = await request.json() or {}
+    cfg = _smtp_config()
+    to = (body.get("to") or cfg["sdr_notify"] or cfg["from"] or "").strip()
+    if not to:
+        raise HTTPException(400, "Provide a recipient ('to') — or save SDR Notify Email first.")
+    if not (cfg["host"] and cfg["from"]):
+        raise HTTPException(400, "SMTP not configured. Save host/port/user/pass/from first.")
+    ok = await _send_email(
+        to_addr=to,
+        subject="Knight AI SDR — SMTP test",
+        body_text=f"If you can read this, SMTP is working.\nHost: {cfg['host']}:{cfg['port']}\nFrom: {cfg['from']}\n",
+        body_html=f"<p>If you can read this, <b>SMTP is working</b>.</p><p><code>{cfg['host']}:{cfg['port']}</code> · From <code>{cfg['from']}</code></p>",
+    )
+    return {"ok": ok, "to": to}
 
 
 # ════════════════════════════════════════════════════════════

@@ -911,113 +911,100 @@ tbody tr.clickable { cursor: pointer; }
           <button class="btn btn-primary" onclick="saveEmailAgent()"><i data-lucide="save"></i> Save Agent</button>
         </div>
 
-        <!-- SMTP status banner -->
-        <div id="eaSmtpBanner" class="card" style="border-left:4px solid #9CA3AF;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-            <div>
-              <strong style="font-size:14px;">SMTP Status</strong>
-              <div id="eaSmtpDetail" style="font-size:12px;color:var(--text-muted);margin-top:2px;">Checking…</div>
+        <!-- ────────── STEP 1 · SMTP CONNECTION (simplified) ────────── -->
+        <div class="card" style="border-left:4px solid #6366F1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div class="card-title" style="margin-bottom:0;">① SMTP Connection</div>
+            <div id="eaSmtpDetail" style="font-size:12px;">Checking…</div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;">
+            Enter your SMTP creds once. <b>Gmail:</b> host=<code>smtp.gmail.com</code>, port=<code>587</code>, use an <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:#6366F1;">App Password</a>.
+          </p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>SMTP Host</label>
+              <input id="smtpHost" placeholder="smtp.gmail.com"/>
             </div>
-            <div style="display:flex;gap:8px;">
-              <input id="eaTestRecipient" placeholder="you@yourdomain.com" style="min-width:240px;"/>
-              <button class="btn btn-secondary btn-sm" onclick="emailAgentTestSend()"><i data-lucide="send"></i> Send Test Draft</button>
+            <div class="form-group">
+              <label>Port</label>
+              <input id="smtpPort" type="number" placeholder="587" value="587"/>
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              <input id="smtpUser" placeholder="you@gmail.com" autocomplete="off"/>
+            </div>
+            <div class="form-group">
+              <label>Password / App Password</label>
+              <input id="smtpPass" type="password" placeholder="leave blank to keep existing" autocomplete="new-password"/>
+            </div>
+            <div class="form-group">
+              <label>From Address</label>
+              <input id="smtpFrom" placeholder="you@yourdomain.com"/>
+            </div>
+            <div class="form-group">
+              <label>SDR Notify (your inbox)</label>
+              <input id="smtpSdrNotify" placeholder="you@yourdomain.com"/>
             </div>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
-            Set <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code>,
-            <code>EMAIL_FROM</code>, <code>SDR_NOTIFY_EMAIL</code> in Railway env. Gmail users → use an App Password.
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+            <label class="checkbox-label" style="font-size:12px;">
+              <input type="checkbox" id="smtpUseTls" checked/> Use STARTTLS (port 587)
+            </label>
+            <div style="flex:1;"></div>
+            <button class="btn btn-secondary btn-sm" onclick="saveSmtpConfig()"><i data-lucide="save"></i> Save</button>
+            <input id="eaTestRecipient" placeholder="send test to…" style="min-width:200px;"/>
+            <button class="btn btn-primary btn-sm" onclick="saveAndTestSmtp()"><i data-lucide="send"></i> Save &amp; Test</button>
           </div>
         </div>
 
-        <!-- Persona / Style -->
+        <!-- ────────── STEP 2 · CLAUDE PERSONA (simplified) ────────── -->
         <div class="card">
-          <div class="card-title">Persona &amp; Style</div>
+          <div class="card-title">② Claude Drafting Persona</div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;">
+            Tell Claude how to write follow-ups. Claude reads each call's transcript + outcome and personalizes every email automatically.
+          </p>
           <div class="form-grid">
             <div class="form-group">
-              <label>Sender Name</label>
+              <label>Sender Name (signs the email)</label>
               <input id="eaSenderName" placeholder="Alex from Knight"/>
             </div>
             <div class="form-group">
-              <label>From Address (override env)</label>
-              <input id="eaFromAddress" placeholder="leave blank to use EMAIL_FROM"/>
-            </div>
-            <div class="form-group">
-              <label>Default CC (comma-separated)</label>
-              <input id="eaDefaultCc" placeholder="manager@yourdomain.com"/>
-            </div>
-            <div class="form-group">
-              <label>Reply-To</label>
-              <input id="eaReplyTo" placeholder="optional"/>
-            </div>
-            <div class="form-group">
-              <label>Length</label>
-              <select id="eaLength">
-                <option value="short">Short (≤120 words)</option>
-                <option value="medium">Medium (120–220)</option>
-                <option value="long">Long (220+)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Language</label>
-              <input id="eaLanguage" placeholder="English"/>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Tone</label>
-            <textarea id="eaTone" rows="2" placeholder="Friendly, concise, professional. Match the prospect's energy."></textarea>
-          </div>
-          <div class="form-group">
-            <label>Custom Drafting Instructions (the persona — like AI Agent setup)</label>
-            <textarea id="eaInstructions" rows="6" placeholder="You are an SDR. Reference one specific thing they said. End with a clear next step. Avoid jargon. Be human."></textarea>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-              Claude reads this + the call transcript + insights, then drafts a personalized email.
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Default Subject Template</label>
-            <input id="eaSubjectTpl" placeholder="Following up on our call"/>
-          </div>
-          <div class="form-group">
-            <label>Signature (text)</label>
-            <textarea id="eaSignature" rows="3" placeholder="Best,&#10;{sender_name}&#10;Knight AI SDR"></textarea>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Use <code>{sender_name}</code> token to inject the sender name.</div>
-          </div>
-        </div>
-
-        <!-- Auto-send rules -->
-        <div class="card">
-          <div class="card-title">Auto-Send Rules</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="checkbox-label" style="margin-top:22px;">
-                <input type="checkbox" id="eaEnabled" checked/> Email Agent enabled
-              </label>
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label" style="margin-top:22px;">
-                <input type="checkbox" id="eaAutoSend" checked/> Auto-send after every eligible call
-              </label>
-            </div>
-            <div class="form-group">
-              <label>Send Delay (minutes after call ends)</label>
+              <label>Send Delay (minutes after call)</label>
               <input id="eaDelay" type="number" min="0" max="1440" value="5"/>
             </div>
-            <div class="form-group">
-              <label class="checkbox-label" style="margin-top:22px;">
-                <input type="checkbox" id="eaIncludeSummary" checked/> Include call summary in body
-              </label>
+          </div>
+          <div class="form-group">
+            <label>How should Claude write? (style brief)</label>
+            <textarea id="eaInstructions" rows="5" placeholder="Friendly, concise, professional. Reference one specific thing they said. Keep it under 120 words. End with a clear next step."></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              💡 Claude handles subject, tone, length, and phrasing per-call from the transcript — you just set the style.
             </div>
           </div>
           <div class="form-group">
-            <label>Send For Outcomes</label>
-            <div id="eaOutcomeChecks" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
-              <label class="checkbox-label"><input type="checkbox" data-oc="meeting_booked" checked> Meeting Booked</label>
-              <label class="checkbox-label"><input type="checkbox" data-oc="callback_scheduled" checked> Callback Scheduled</label>
-              <label class="checkbox-label"><input type="checkbox" data-oc="interested" checked> Interested</label>
-              <label class="checkbox-label"><input type="checkbox" data-oc="voicemail"> Voicemail</label>
-              <label class="checkbox-label"><input type="checkbox" data-oc="no_answer"> No Answer</label>
-              <label class="checkbox-label"><input type="checkbox" data-oc="gatekeeper"> Gatekeeper</label>
-            </div>
+            <label>Signature</label>
+            <textarea id="eaSignature" rows="3" placeholder="Best,&#10;{sender_name}&#10;Knight AI SDR"></textarea>
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding-top:6px;">
+            <label class="checkbox-label" style="font-size:13px;">
+              <input type="checkbox" id="eaEnabled" checked/> <b>Email Agent enabled</b>
+            </label>
+            <label class="checkbox-label" style="font-size:13px;">
+              <input type="checkbox" id="eaAutoSend" checked/> Auto-send after every eligible call
+            </label>
+          </div>
+          <!-- hidden compatibility fields (saved but not surfaced) -->
+          <input type="hidden" id="eaFromAddress"/>
+          <input type="hidden" id="eaDefaultCc"/>
+          <input type="hidden" id="eaReplyTo"/>
+          <input type="hidden" id="eaLength" value="short"/>
+          <input type="hidden" id="eaLanguage" value="English"/>
+          <input type="hidden" id="eaTone" value="Friendly, concise, professional. Match the prospect's energy."/>
+          <input type="hidden" id="eaSubjectTpl" value="Following up on our call"/>
+          <input type="hidden" id="eaIncludeSummary" value="1"/>
+          <div id="eaOutcomeChecks" style="display:none;">
+            <input type="checkbox" data-oc="meeting_booked" checked>
+            <input type="checkbox" data-oc="callback_scheduled" checked>
+            <input type="checkbox" data-oc="interested" checked>
           </div>
         </div>
 
@@ -2823,8 +2810,7 @@ async function refreshEmailStatus() {
         'from: <code>' + escHtml(d.from_addr || '?') + '</code>' +
         (d.sdr_notify ? ' · SDR notify: <code>' + escHtml(d.sdr_notify) + '</code>' : '');
     } else {
-      detail.innerHTML = '<span style="color:#EF4444;font-weight:600;">✗ Not configured</span> — ' +
-        'set SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM in Railway env.';
+      detail.innerHTML = '<span style="color:#EF4444;font-weight:600;">✗ Not connected</span> — fill the form below and hit Save &amp; Test.';
     }
   }
   return ok;
@@ -2832,27 +2818,66 @@ async function refreshEmailStatus() {
 
 async function loadEmailAgentPage() {
   await refreshEmailStatus();
+  await loadSmtpConfig();
   const d = await GET('/api/email-agent');
   if (d._error) return toast('Failed to load email agent', 'error');
   document.getElementById('eaSenderName').value    = d.sender_name || '';
   document.getElementById('eaFromAddress').value   = d.from_address || '';
   document.getElementById('eaDefaultCc').value     = d.default_cc || '';
   document.getElementById('eaReplyTo').value       = d.reply_to || '';
-  document.getElementById('eaLength').value        = d.length || 'short';
-  document.getElementById('eaLanguage').value      = d.language || 'English';
-  document.getElementById('eaTone').value          = d.tone || '';
+  document.getElementById('eaTone').value          = d.tone || 'Friendly, concise, professional. Match the prospect\u2019s energy.';
   document.getElementById('eaInstructions').value  = d.draft_instructions || '';
-  document.getElementById('eaSubjectTpl').value    = d.subject_template || '';
+  document.getElementById('eaSubjectTpl').value    = d.subject_template || 'Following up on our call';
   document.getElementById('eaSignature').value     = d.signature || '';
   document.getElementById('eaEnabled').checked     = !!d.enabled;
   document.getElementById('eaAutoSend').checked    = !!d.auto_send_after_call;
   document.getElementById('eaDelay').value         = d.send_delay_minutes || 5;
-  document.getElementById('eaIncludeSummary').checked = !!d.include_call_summary;
-  const set = new Set(d.outcomes_to_email || []);
-  document.querySelectorAll('#eaOutcomeChecks input[type=checkbox]').forEach(function(c) {
-    c.checked = set.has(c.getAttribute('data-oc'));
-  });
   loadEmailHistory();
+}
+
+async function loadSmtpConfig() {
+  const c = await GET('/api/smtp/config');
+  if (c._error) return;
+  document.getElementById('smtpHost').value      = c.host || '';
+  document.getElementById('smtpPort').value      = c.port || 587;
+  document.getElementById('smtpUser').value      = c.user || '';
+  document.getElementById('smtpFrom').value      = c.from || '';
+  document.getElementById('smtpSdrNotify').value = c.sdr_notify || '';
+  document.getElementById('smtpUseTls').checked  = c.use_tls !== false;
+  if (c.has_password) {
+    document.getElementById('smtpPass').placeholder = '\u2022\u2022\u2022\u2022 saved (leave blank to keep)';
+  }
+}
+
+async function saveSmtpConfig() {
+  const payload = {
+    host:       document.getElementById('smtpHost').value.trim(),
+    port:       parseInt(document.getElementById('smtpPort').value, 10) || 587,
+    user:       document.getElementById('smtpUser').value.trim(),
+    pass:       document.getElementById('smtpPass').value,
+    from:       document.getElementById('smtpFrom').value.trim(),
+    sdr_notify: document.getElementById('smtpSdrNotify').value.trim(),
+    use_tls:    document.getElementById('smtpUseTls').checked,
+  };
+  const d = await POST('/api/smtp/config', payload);
+  if (d._error) return toast('SMTP save failed: ' + d.detail, 'error');
+  document.getElementById('smtpPass').value = '';
+  toast(d.configured ? 'SMTP saved \u2713' : 'Saved (host/from still missing)', d.configured ? 'success' : 'info');
+  await refreshEmailStatus();
+  refreshTopStatusBanner();
+  return d;
+}
+
+async function saveAndTestSmtp() {
+  const saved = await saveSmtpConfig();
+  if (!saved || !saved.configured) return toast('Fill host + from before testing', 'error');
+  const to = document.getElementById('eaTestRecipient').value.trim() || saved.sdr_notify || saved.from;
+  if (!to) return toast('Enter a recipient', 'error');
+  toast('Sending test email to ' + to + '\u2026', 'info');
+  const r = await POST('/api/smtp/test', { to: to });
+  if (r._error) return toast('Test failed: ' + r.detail, 'error');
+  if (r.ok) toast('Test sent! Check ' + to, 'success');
+  else toast('SMTP rejected the send. Check creds.', 'error');
 }
 
 async function saveEmailAgent() {
@@ -2873,7 +2898,7 @@ async function saveEmailAgent() {
     signature: document.getElementById('eaSignature').value,
     draft_instructions: document.getElementById('eaInstructions').value,
     subject_template: document.getElementById('eaSubjectTpl').value,
-    include_call_summary: document.getElementById('eaIncludeSummary').checked,
+    include_call_summary: (document.getElementById('eaIncludeSummary').value || '1') !== '0',
     outcomes_to_email: outcomes,
   };
   const d = await POST('/api/email-agent', payload);
