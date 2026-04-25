@@ -444,6 +444,10 @@ tbody tr.clickable { cursor: pointer; }
       <div class="nav-item" data-page="ai-agents" onclick="navigate('ai-agents')">
         <i data-lucide="bot"></i> <span>AI Agent</span>
       </div>
+      <div class="nav-item" data-page="email-agent" onclick="navigate('email-agent')">
+        <i data-lucide="mail"></i> <span>Email Agent</span>
+        <span id="emailStatusDot" class="sdot" style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#9CA3AF;"></span>
+      </div>
       <div class="nav-separator"></div>
       <div class="nav-item" data-page="live-calls" onclick="navigate('live-calls')">
         <i data-lucide="phone-call"></i> <span>Live Calls</span>
@@ -495,6 +499,14 @@ tbody tr.clickable { cursor: pointer; }
       <button onclick="navigate('campaigns')" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:4px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit;">View</button>
       <button onclick="pauseCampaign()" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit;">Pause</button>
       <button onclick="stopCampaign()" style="background:rgba(239,68,68,0.3); border:1px solid rgba(239,68,68,0.5); color:#fff; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit;">Stop</button>
+    </div>
+
+    <!-- ── Global SMTP / Email status banner (Phase 4) ── -->
+    <div id="topStatusBanner" style="display:none;padding:8px 20px;font-size:12px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:80;background:var(--bg);">
+      <span id="topEmailStatus" style="display:flex;align-items:center;gap:6px;"></span>
+      <span id="topQueuedCount" style="display:flex;align-items:center;gap:6px;color:var(--text-muted);"></span>
+      <span style="flex:1;"></span>
+      <a onclick="navigate('email-agent')" style="cursor:pointer;color:var(--primary);font-weight:600;">Open Email Agent →</a>
     </div>
 
     <div class="content">
@@ -885,6 +897,160 @@ tbody tr.clickable { cursor: pointer; }
                 <button class="btn btn-success btn-sm" onclick="addSelectedBellaToCampaign()"><i data-lucide="megaphone"></i> Add to Campaign</button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== EMAIL AGENT (SMTP + Claude drafter) ===================== -->
+      <div class="page" id="page-email-agent">
+        <div class="page-header">
+          <div>
+            <h2>📧 Email Agent</h2>
+            <p>Define how Claude drafts follow-up emails after every call. SMTP delivers, Claude personalizes.</p>
+          </div>
+          <button class="btn btn-primary" onclick="saveEmailAgent()"><i data-lucide="save"></i> Save Agent</button>
+        </div>
+
+        <!-- SMTP status banner -->
+        <div id="eaSmtpBanner" class="card" style="border-left:4px solid #9CA3AF;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <strong style="font-size:14px;">SMTP Status</strong>
+              <div id="eaSmtpDetail" style="font-size:12px;color:var(--text-muted);margin-top:2px;">Checking…</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <input id="eaTestRecipient" placeholder="you@yourdomain.com" style="min-width:240px;"/>
+              <button class="btn btn-secondary btn-sm" onclick="emailAgentTestSend()"><i data-lucide="send"></i> Send Test Draft</button>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
+            Set <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASS</code>,
+            <code>EMAIL_FROM</code>, <code>SDR_NOTIFY_EMAIL</code> in Railway env. Gmail users → use an App Password.
+          </div>
+        </div>
+
+        <!-- Persona / Style -->
+        <div class="card">
+          <div class="card-title">Persona &amp; Style</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Sender Name</label>
+              <input id="eaSenderName" placeholder="Alex from Knight"/>
+            </div>
+            <div class="form-group">
+              <label>From Address (override env)</label>
+              <input id="eaFromAddress" placeholder="leave blank to use EMAIL_FROM"/>
+            </div>
+            <div class="form-group">
+              <label>Default CC (comma-separated)</label>
+              <input id="eaDefaultCc" placeholder="manager@yourdomain.com"/>
+            </div>
+            <div class="form-group">
+              <label>Reply-To</label>
+              <input id="eaReplyTo" placeholder="optional"/>
+            </div>
+            <div class="form-group">
+              <label>Length</label>
+              <select id="eaLength">
+                <option value="short">Short (≤120 words)</option>
+                <option value="medium">Medium (120–220)</option>
+                <option value="long">Long (220+)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Language</label>
+              <input id="eaLanguage" placeholder="English"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Tone</label>
+            <textarea id="eaTone" rows="2" placeholder="Friendly, concise, professional. Match the prospect's energy."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Custom Drafting Instructions (the persona — like AI Agent setup)</label>
+            <textarea id="eaInstructions" rows="6" placeholder="You are an SDR. Reference one specific thing they said. End with a clear next step. Avoid jargon. Be human."></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              Claude reads this + the call transcript + insights, then drafts a personalized email.
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Default Subject Template</label>
+            <input id="eaSubjectTpl" placeholder="Following up on our call"/>
+          </div>
+          <div class="form-group">
+            <label>Signature (text)</label>
+            <textarea id="eaSignature" rows="3" placeholder="Best,&#10;{sender_name}&#10;Knight AI SDR"></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Use <code>{sender_name}</code> token to inject the sender name.</div>
+          </div>
+        </div>
+
+        <!-- Auto-send rules -->
+        <div class="card">
+          <div class="card-title">Auto-Send Rules</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="checkbox-label" style="margin-top:22px;">
+                <input type="checkbox" id="eaEnabled" checked/> Email Agent enabled
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label" style="margin-top:22px;">
+                <input type="checkbox" id="eaAutoSend" checked/> Auto-send after every eligible call
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Send Delay (minutes after call ends)</label>
+              <input id="eaDelay" type="number" min="0" max="1440" value="5"/>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label" style="margin-top:22px;">
+                <input type="checkbox" id="eaIncludeSummary" checked/> Include call summary in body
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Send For Outcomes</label>
+            <div id="eaOutcomeChecks" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
+              <label class="checkbox-label"><input type="checkbox" data-oc="meeting_booked" checked> Meeting Booked</label>
+              <label class="checkbox-label"><input type="checkbox" data-oc="callback_scheduled" checked> Callback Scheduled</label>
+              <label class="checkbox-label"><input type="checkbox" data-oc="interested" checked> Interested</label>
+              <label class="checkbox-label"><input type="checkbox" data-oc="voicemail"> Voicemail</label>
+              <label class="checkbox-label"><input type="checkbox" data-oc="no_answer"> No Answer</label>
+              <label class="checkbox-label"><input type="checkbox" data-oc="gatekeeper"> Gatekeeper</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">Preview Draft (Claude)</div>
+            <button class="btn btn-secondary btn-sm" onclick="emailAgentPreview()"><i data-lucide="sparkles"></i> Generate Preview</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label>Sample Prospect Name</label><input id="eaPrevName" value="Eduardo"/></div>
+            <div class="form-group"><label>Sample Company</label><input id="eaPrevCompany" value="Acme Corp"/></div>
+            <div class="form-group" style="grid-column:span 2;">
+              <label>Sample Call Summary</label>
+              <input id="eaPrevSummary" value="Discussed CloudFuze migration timeline; interested in pilot for 50 users."/>
+            </div>
+          </div>
+          <div id="eaPreviewBox" style="display:none;background:var(--bg-2);padding:14px;border-radius:8px;margin-top:10px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Subject</div>
+            <div id="eaPrevSubject" style="font-weight:600;margin-bottom:10px;"></div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Body</div>
+            <div id="eaPrevBody" style="white-space:pre-wrap;font-size:13px;line-height:1.5;"></div>
+          </div>
+        </div>
+
+        <!-- Sent log -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">Recent Email Activity</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadEmailHistory()"><i data-lucide="refresh-cw"></i> Refresh</button>
+          </div>
+          <div id="eaHistoryContainer">
+            <div class="empty-state"><p>Load to see recent auto-sends.</p></div>
           </div>
         </div>
       </div>
@@ -1583,7 +1749,8 @@ function openSlideOver() { document.getElementById('contactSlideOver').classList
    =================================================================== */
 const pageTitles = {
   dashboard: 'Dashboard', campaigns: 'Campaigns', contacts: 'Contacts',
-  bella: 'Bella AI', 'ai-agents': 'AI Agent', 'live-calls': 'Live Calls',
+  bella: 'Bella AI', 'ai-agents': 'AI Agent', 'email-agent': 'Email Agent',
+  'live-calls': 'Live Calls',
   'call-logs': 'Call History', tasks: 'Tasks', calendar: 'Calendar',
   analytics: 'Analytics', settings: 'Settings'
 };
@@ -1607,6 +1774,7 @@ function navigate(page) {
   else if (page === 'bella') loadBellaPage();
   else if (page === 'contacts') loadContacts();
   else if (page === 'ai-agents') loadAgentsPage();
+  else if (page === 'email-agent') loadEmailAgentPage();
   else if (page === 'live-calls') { refreshActiveCalls(); loadRecentCalls(); }
   else if (page === 'call-logs') loadCallHistory();
   else if (page === 'tasks') loadTasksPage();
@@ -1896,6 +2064,22 @@ async function loadCampaignVoiceOptions() {
   });
 }
 
+// Phase 4: CSV import with field-mapping dialog.
+let _csvImportRows = [];
+
+function _csvGuessKey(headers, candidates) {
+  const norm = function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); };
+  const set = headers.map(norm);
+  for (const cand of candidates) {
+    const idx = set.indexOf(norm(cand));
+    if (idx !== -1) return headers[idx];
+  }
+  for (let i=0;i<set.length;i++) {
+    if (candidates.some(c => set[i].includes(norm(c)))) return headers[i];
+  }
+  return '';
+}
+
 async function uploadCSV() {
   const file = document.getElementById('csvFile').files[0];
   if (!file) return toast('Please select a file', 'error');
@@ -1903,21 +2087,100 @@ async function uploadCSV() {
   fd.append('file', file);
   const d = await apiUpload('/api/prospects/import-file', fd);
   if (d._error) return toast('Import failed: ' + d.detail, 'error');
-  const imported = d.rows || d.prospects || d.data || [];
-  if (Array.isArray(imported)) {
-    imported.forEach(r => {
-      campaignQueue.push({
-        name: [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.name || '',
-        phone: r.phone || r.phone_number || '',
-        email: r.email || '',
-        company: r.company || r.organization_name || '',
-        title: r.title || '',
-      });
-    });
+  const rows = d.rows || d.prospects || d.data || [];
+  if (!Array.isArray(rows) || !rows.length) return toast('No rows found in file', 'error');
+  _csvImportRows = rows;
+  // Open the mapping modal so user can confirm/override which CSV column goes where.
+  openCsvMappingModal(rows);
+}
+
+function openCsvMappingModal(rows) {
+  // Collect union of header keys.
+  const hdrSet = new Set();
+  rows.slice(0, 50).forEach(function(r){
+    if (r && typeof r === 'object') Object.keys(r).forEach(function(k){ hdrSet.add(k); });
+  });
+  const headers = Array.from(hdrSet);
+  const mk = function(label, key, candidates, required) {
+    const guess = _csvGuessKey(headers, candidates);
+    const opts = '<option value="">— skip —</option>' + headers.map(function(h){
+      return '<option value="'+escHtml(h)+'"'+(h===guess?' selected':'')+'>'+escHtml(h)+'</option>';
+    }).join('');
+    return '<div class="form-group"><label>'+label+(required?' <span style="color:var(--danger);">*</span>':'')+'</label>'+
+           '<select id="csvMap_'+key+'" data-key="'+key+'" data-required="'+(required?'1':'0')+'">'+opts+'</select></div>';
+  };
+  const modalHtml =
+    '<div id="csvMapModal" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeCsvMappingModal()">' +
+      '<div style="background:var(--bg);border-radius:12px;padding:24px;max-width:780px;width:100%;max-height:90vh;overflow:auto;">' +
+        '<h3 style="margin-top:0;">Map CSV Fields</h3>' +
+        '<p style="color:var(--text-muted);font-size:13px;">Match each Knight field to a column in your file. We\'ve guessed the best matches — confirm or override.</p>' +
+        '<div class="form-grid">' +
+          mk('First Name', 'first_name', ['first_name','firstname','given_name','fname'], true) +
+          mk('Last Name', 'last_name', ['last_name','lastname','surname','lname'], false) +
+          mk('Phone', 'phone', ['phone','phone_number','mobile','cell','telephone'], true) +
+          mk('Email', 'email', ['email','email_address','work_email'], true) +
+          mk('Company', 'company', ['company','organization','organisation','employer','organization_name'], false) +
+          mk('Title', 'title', ['title','job_title','position','role'], false) +
+        '</div>' +
+        '<div style="margin-top:12px;padding:10px;background:var(--bg-2);border-radius:6px;font-size:12px;color:var(--text-muted);">' +
+          'First row preview: <code>' + escHtml(JSON.stringify(rows[0]).slice(0,300)) + '</code>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+          '<button class="btn btn-secondary" onclick="closeCsvMappingModal()">Cancel</button>' +
+          '<button class="btn btn-primary" onclick="applyCsvMapping()"><i data-lucide="check"></i> Import '+rows.length+' Prospects</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  const wrap = document.createElement('div');
+  wrap.innerHTML = modalHtml;
+  document.body.appendChild(wrap.firstElementChild);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeCsvMappingModal() {
+  const m = document.getElementById('csvMapModal');
+  if (m) m.remove();
+}
+
+function applyCsvMapping() {
+  const get = function(k){ const el=document.getElementById('csvMap_'+k); return el ? el.value : ''; };
+  const map = {
+    first_name: get('first_name'),
+    last_name: get('last_name'),
+    phone: get('phone'),
+    email: get('email'),
+    company: get('company'),
+    title: get('title'),
+  };
+  // Required field validation.
+  const required = ['first_name', 'phone', 'email'];
+  const missing = required.filter(function(k){ return !map[k]; });
+  if (missing.length) {
+    return toast('Required mapping missing: ' + missing.join(', '), 'error');
   }
+  let added = 0, skipped = 0;
+  _csvImportRows.forEach(function(r) {
+    const fn = map.first_name ? r[map.first_name] : '';
+    const ln = map.last_name ? r[map.last_name] : '';
+    const phone = map.phone ? r[map.phone] : '';
+    const email = map.email ? r[map.email] : '';
+    if (!phone || !email) { skipped++; return; }
+    campaignQueue.push({
+      name: [fn, ln].filter(Boolean).join(' ').trim() || fn || ln || '',
+      first_name: fn || '',
+      last_name: ln || '',
+      phone: String(phone).trim(),
+      email: String(email).trim(),
+      company: map.company ? (r[map.company] || '') : '',
+      title: map.title ? (r[map.title] || '') : '',
+    });
+    added++;
+  });
   renderQueue();
-  toast('Imported ' + (imported.length || 0) + ' prospects', 'success');
+  closeCsvMappingModal();
   document.getElementById('csvFile').value = '';
+  if (added) toast('Imported ' + added + ' prospects' + (skipped ? ' (' + skipped + ' skipped — missing email/phone)' : ''), 'success');
+  else toast('No rows imported — check that mapped columns have values', 'error');
 }
 
 function addManualProspect() {
@@ -2514,6 +2777,167 @@ document.addEventListener('change', function(e) {
 /* ===================================================================
    AI AGENT SETUP -- SINGLE AGENT
    =================================================================== */
+/* ───────── EMAIL AGENT (Phase 4) ───────── */
+async function refreshTopStatusBanner() {
+  const banner = document.getElementById('topStatusBanner');
+  if (!banner) return;
+  try {
+    const [eStat, cQ] = await Promise.all([GET('/api/email/status'), GET('/api/callbacks/pending')]);
+    const ok = eStat && eStat.configured;
+    const queued = (cQ && cQ.callbacks) ? cQ.callbacks.length : 0;
+    let html = '';
+    if (ok) {
+      html = '<span style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block;"></span>'
+           + '📧 Email connected · <code style="background:transparent;">' + escHtml(eStat.from_addr || eStat.host || '') + '</code>';
+    } else {
+      html = '<span style="width:8px;height:8px;border-radius:50%;background:#EF4444;display:inline-block;"></span>'
+           + '<span style="color:#EF4444;font-weight:600;">📧 SMTP not configured</span> — Email Agent paused. Set SMTP env vars.';
+    }
+    document.getElementById('topEmailStatus').innerHTML = html;
+    document.getElementById('topQueuedCount').innerHTML = queued > 0
+      ? '<i data-lucide="phone-call" style="width:12px;height:12px;"></i> ' + queued + ' queued auto-dial' + (queued !== 1 ? 's' : '')
+      : '';
+    banner.style.display = 'flex';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) {
+    banner.style.display = 'none';
+  }
+}
+// Auto-refresh banner every 60s.
+setInterval(function(){ refreshTopStatusBanner(); }, 60000);
+// Refresh once on first load.
+window.addEventListener('DOMContentLoaded', function(){ setTimeout(refreshTopStatusBanner, 800); });
+
+async function refreshEmailStatus() {
+  const d = await GET('/api/email/status');
+  const dot = document.getElementById('emailStatusDot');
+  const banner = document.getElementById('eaSmtpBanner');
+  const detail = document.getElementById('eaSmtpDetail');
+  const ok = d && d.configured;
+  if (dot) dot.style.background = ok ? '#10B981' : '#EF4444';
+  if (banner) banner.style.borderLeftColor = ok ? '#10B981' : '#EF4444';
+  if (detail) {
+    if (ok) {
+      detail.innerHTML = '<span style="color:#10B981;font-weight:600;">✓ Connected</span> · ' +
+        'host: <code>' + escHtml(d.host || '?') + '</code> · ' +
+        'from: <code>' + escHtml(d.from_addr || '?') + '</code>' +
+        (d.sdr_notify ? ' · SDR notify: <code>' + escHtml(d.sdr_notify) + '</code>' : '');
+    } else {
+      detail.innerHTML = '<span style="color:#EF4444;font-weight:600;">✗ Not configured</span> — ' +
+        'set SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM in Railway env.';
+    }
+  }
+  return ok;
+}
+
+async function loadEmailAgentPage() {
+  await refreshEmailStatus();
+  const d = await GET('/api/email-agent');
+  if (d._error) return toast('Failed to load email agent', 'error');
+  document.getElementById('eaSenderName').value    = d.sender_name || '';
+  document.getElementById('eaFromAddress').value   = d.from_address || '';
+  document.getElementById('eaDefaultCc').value     = d.default_cc || '';
+  document.getElementById('eaReplyTo').value       = d.reply_to || '';
+  document.getElementById('eaLength').value        = d.length || 'short';
+  document.getElementById('eaLanguage').value      = d.language || 'English';
+  document.getElementById('eaTone').value          = d.tone || '';
+  document.getElementById('eaInstructions').value  = d.draft_instructions || '';
+  document.getElementById('eaSubjectTpl').value    = d.subject_template || '';
+  document.getElementById('eaSignature').value     = d.signature || '';
+  document.getElementById('eaEnabled').checked     = !!d.enabled;
+  document.getElementById('eaAutoSend').checked    = !!d.auto_send_after_call;
+  document.getElementById('eaDelay').value         = d.send_delay_minutes || 5;
+  document.getElementById('eaIncludeSummary').checked = !!d.include_call_summary;
+  const set = new Set(d.outcomes_to_email || []);
+  document.querySelectorAll('#eaOutcomeChecks input[type=checkbox]').forEach(function(c) {
+    c.checked = set.has(c.getAttribute('data-oc'));
+  });
+  loadEmailHistory();
+}
+
+async function saveEmailAgent() {
+  const outcomes = Array.from(document.querySelectorAll('#eaOutcomeChecks input[type=checkbox]'))
+    .filter(function(c){ return c.checked; })
+    .map(function(c){ return c.getAttribute('data-oc'); });
+  const payload = {
+    enabled: document.getElementById('eaEnabled').checked,
+    auto_send_after_call: document.getElementById('eaAutoSend').checked,
+    send_delay_minutes: parseInt(document.getElementById('eaDelay').value, 10) || 5,
+    sender_name: document.getElementById('eaSenderName').value,
+    from_address: document.getElementById('eaFromAddress').value,
+    default_cc: document.getElementById('eaDefaultCc').value,
+    reply_to: document.getElementById('eaReplyTo').value,
+    tone: document.getElementById('eaTone').value,
+    length: document.getElementById('eaLength').value,
+    language: document.getElementById('eaLanguage').value,
+    signature: document.getElementById('eaSignature').value,
+    draft_instructions: document.getElementById('eaInstructions').value,
+    subject_template: document.getElementById('eaSubjectTpl').value,
+    include_call_summary: document.getElementById('eaIncludeSummary').checked,
+    outcomes_to_email: outcomes,
+  };
+  const d = await POST('/api/email-agent', payload);
+  if (d._error) return toast('Save failed: ' + d.detail, 'error');
+  toast('Email Agent saved', 'success');
+  refreshTopStatusBanner();
+}
+
+async function emailAgentPreview() {
+  await saveEmailAgent();  // ensure latest persona is what we test against
+  const payload = {
+    prospect_name: document.getElementById('eaPrevName').value,
+    company: document.getElementById('eaPrevCompany').value,
+    summary: document.getElementById('eaPrevSummary').value,
+  };
+  toast('Drafting via Claude…', 'info');
+  const d = await POST('/api/email-agent/draft-preview', payload);
+  if (d._error) return toast('Draft failed: ' + d.detail, 'error');
+  document.getElementById('eaPrevSubject').textContent = d.subject || '';
+  document.getElementById('eaPrevBody').textContent = d.body_text || '';
+  document.getElementById('eaPreviewBox').style.display = 'block';
+}
+
+async function emailAgentTestSend() {
+  const to = document.getElementById('eaTestRecipient').value.trim();
+  if (!to) return toast('Enter a recipient first', 'error');
+  await saveEmailAgent();
+  toast('Sending test draft via SMTP…', 'info');
+  const d = await POST('/api/email-agent/test-send', { to: to,
+    prospect_name: document.getElementById('eaPrevName').value,
+    company: document.getElementById('eaPrevCompany').value });
+  if (d._error || !d.ok) return toast('Send failed: ' + (d.detail || 'see logs'), 'error');
+  toast('Sent! Check your inbox.', 'success');
+}
+
+async function loadEmailHistory() {
+  const d = await GET('/api/email/sent');
+  if (d._error) return;
+  const items = (d && d.emails) || [];
+  const c = document.getElementById('eaHistoryContainer');
+  if (!items.length) {
+    c.innerHTML = '<div class="empty-state"><p>No emails sent yet.</p></div>';
+    return;
+  }
+  c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+    '<th>Status</th><th>To</th><th>Prospect</th><th>Subject</th><th>Outcome</th><th>When</th>' +
+    '</tr></thead><tbody>' +
+    items.slice(0,50).map(function(e) {
+      const st = (e.status || '').toLowerCase();
+      const stBadge = st === 'sent' ? '<span class="badge badge-green">sent</span>' :
+                      st === 'scheduled' ? '<span class="badge badge-amber">scheduled</span>' :
+                      st === 'error' ? '<span class="badge badge-red">error</span>' :
+                      '<span class="badge badge-gray">' + escHtml(st) + '</span>';
+      const when = e.sent_at || e.due_at_utc || '';
+      const local = when ? new Date(when.replace(/Z?$/,'Z')).toLocaleString() : '';
+      return '<tr><td>'+stBadge+'</td><td>'+escHtml(e.to||'')+'</td>' +
+             '<td>'+escHtml(e.prospect_name||'')+(e.company ? ' <span style="color:var(--text-muted);">· '+escHtml(e.company)+'</span>' : '')+'</td>' +
+             '<td>'+escHtml(e.subject||'')+'</td>' +
+             '<td>'+escHtml((e.outcome||'').replace(/_/g,' '))+'</td>' +
+             '<td>'+escHtml(local)+'</td></tr>';
+    }).join('') +
+    '</tbody></table></div>';
+}
+
 async function loadAgentsPage() {
   // Load current script (single agent)
   const script = await api('GET', '/api/script');

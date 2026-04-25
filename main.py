@@ -2888,6 +2888,24 @@ async def _post_call_email_actions(rec: dict, insights: dict,
     short_tag = (insights.get("short_tag") or "").strip()
     phone = rec.get("to") or rec.get("phone") or ""
 
+    # ─── 0. Email Agent: queue an AI-drafted follow-up email if eligible ───
+    try:
+        ea = _load_email_agent()
+        eligible_outcomes = set(ea.get("outcomes_to_email") or [])
+        skip_outcomes = set(ea.get("skip_outcomes") or [])
+        if (ea.get("enabled") and ea.get("auto_send_after_call")
+                and outcome in eligible_outcomes and outcome not in skip_outcomes
+                and prospect_email):
+            transcript_text = _gather_call_transcript_text(rec)
+            _queue_email_send(
+                rec=rec, insights=insights,
+                call_control_id=call_control_id,
+                transcript_text=transcript_text,
+                delay_minutes=int(ea.get("send_delay_minutes") or 5),
+            )
+    except Exception:
+        logger.exception("Email Agent auto-queue failed for %s", call_control_id[:20])
+
     # ─── 1. Meeting booked → send .ics invite + notify SDR ───
     if outcome == "meeting_booked":
         mt = (insights.get("meeting_time_utc") or insights.get("meeting_time") or "").strip()
@@ -3115,7 +3133,26 @@ async def _scheduler_dial_one_for_campaign(c: dict) -> bool:
 
 
 async def _scheduler_tick() -> None:
-    """One iteration of the unified scheduler (campaigns + auto-callbacks)."""
+    """One iteration of the unified scheduler (campaigns + auto-callbacks + email_send)."""
+    # ── 0. Email-Agent auto-sends (drain everything that's due — emails are cheap) ──
+    try:
+        now_utc = datetime.utcnow()
+        for t in _list_pending_email_sends():
+            due = (t.get("due_at_utc") or "").replace("Z", "")
+            try:
+                due_dt = datetime.fromisoformat(due)
+            except Exception:
+                continue
+            if due_dt > now_utc:
+                continue
+            try:
+                await _dispatch_email_send_task(t)
+            except Exception:
+                logger.exception("Email send dispatch failed for task %s", t.get("id"))
+                _mark_task_field(t["id"], auto_send_status="error")
+    except Exception:
+        logger.exception("email_send tick failed")
+
     # ── A. Auto-callbacks (highest priority — always honor user-promised time) ──
     try:
         now_utc = datetime.utcnow()
@@ -3273,6 +3310,400 @@ async def admin_test_email(request: Request):
         body_text="If you're reading this, SMTP is configured correctly.\n",
     )
     return {"ok": ok, "to": to, "smtp_configured": bool(_smtp_config()["host"])}
+
+
+@app.get("/api/email/status")
+async def email_status():
+    """Lightweight probe used by the dashboard banner."""
+    cfg = _smtp_config()
+    return {
+        "configured": bool(cfg["host"] and cfg["from"]),
+        "host": cfg["host"],
+        "from_addr": cfg["from"],
+        "sdr_notify": cfg["sdr_notify"],
+    }
+
+
+# ════════════════════════════════════════════════════════════
+#  EMAIL AGENT — persona + Claude drafter + auto-send pipeline
+# ════════════════════════════════════════════════════════════
+EMAIL_AGENT_FILE = Path(__file__).parent / "data" / "email_agent.json"
+
+
+_EMAIL_AGENT_DEFAULTS = {
+    "enabled": True,
+    "auto_send_after_call": True,
+    "send_delay_minutes": 5,         # how long after the call ends before drafting+sending
+    "sender_name": "Alex from Knight",
+    "from_address": "",               # if empty, uses EMAIL_FROM env
+    "default_cc": "",                 # comma-separated additional CCs
+    "reply_to": "",
+    "tone": "Friendly, concise, professional. Match the prospect's energy.",
+    "length": "short",                # short | medium | long
+    "language": "English",
+    "signature": "Best,\n{sender_name}\nKnight AI SDR",
+    "signature_html": "",             # optional HTML signature
+    "draft_instructions": (
+        "You are an SDR following up on a sales call. Reference one specific thing "
+        "they said. Keep it under 120 words unless asked otherwise. End with a clear "
+        "next step (calendar link, reply prompt, or specific question)."
+    ),
+    "subject_template": "Following up on our call",
+    "include_call_summary": True,
+    "send_meeting_invite_with_followup": True,
+    "outcomes_to_email": ["meeting_booked", "callback_scheduled", "interested"],
+    "skip_outcomes": ["do_not_call", "not_interested"],
+    "updated_at": "",
+}
+
+
+def _load_email_agent() -> dict:
+    if EMAIL_AGENT_FILE.exists():
+        try:
+            data = json.loads(EMAIL_AGENT_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                merged = dict(_EMAIL_AGENT_DEFAULTS)
+                merged.update(data)
+                return merged
+        except Exception:
+            pass
+    return dict(_EMAIL_AGENT_DEFAULTS)
+
+
+def _save_email_agent(data: dict) -> dict:
+    merged = dict(_EMAIL_AGENT_DEFAULTS)
+    merged.update({k: v for k, v in (data or {}).items() if k in _EMAIL_AGENT_DEFAULTS})
+    merged["updated_at"] = datetime.utcnow().isoformat()
+    EMAIL_AGENT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    EMAIL_AGENT_FILE.write_text(json.dumps(merged, indent=2, default=str), encoding="utf-8")
+    return merged
+
+
+@app.get("/api/email-agent")
+async def get_email_agent():
+    return _load_email_agent()
+
+
+@app.post("/api/email-agent")
+async def save_email_agent(request: Request):
+    body = await request.json()
+    return _save_email_agent(body or {})
+
+
+# ── Claude drafter ─────────────────────────────────────────
+async def _claude_draft_email(*, ea: dict, rec: dict, insights: dict,
+                              transcript_text: str = "",
+                              user_brief: str = "",
+                              extra_context: str = "") -> dict:
+    """Use Claude to write a follow-up email. Returns {subject, body_text, body_html}."""
+    sender_name = (ea.get("sender_name") or "").strip() or "Alex"
+    tone = ea.get("tone") or "Friendly, concise, professional."
+    length = ea.get("length") or "short"
+    language = ea.get("language") or "English"
+    instr = ea.get("draft_instructions") or ""
+    sig = (ea.get("signature") or "").replace("{sender_name}", sender_name)
+    subj_tpl = ea.get("subject_template") or "Following up on our call"
+    include_summary = ea.get("include_call_summary", True)
+    prospect_name = rec.get("prospect_name") or "there"
+    company = rec.get("company") or ""
+    outcome = (insights or {}).get("outcome") or ""
+    summary = (insights or {}).get("summary") or ""
+    next_step = (insights or {}).get("next_step") or ""
+    pain = (insights or {}).get("prospect_pain_points") or []
+    signals = (insights or {}).get("buying_signals") or []
+    objections = (insights or {}).get("objections") or []
+
+    transcript_snippet = ""
+    if transcript_text:
+        # Trim transcript to last ~3000 chars to keep prompt focused.
+        transcript_snippet = transcript_text[-3000:]
+
+    prompt = f"""You are an SDR named {sender_name} drafting a personal follow-up email to a prospect.
+
+# Persona / Style guide
+Tone: {tone}
+Length: {length}
+Language: {language}
+
+# Custom instructions
+{instr}
+
+# Prospect
+Name: {prospect_name}
+Company: {company}
+
+# Call outcome
+Outcome: {outcome}
+Summary: {summary}
+Recommended next step: {next_step}
+Pain points: {", ".join(map(str, pain)) or "—"}
+Buying signals: {", ".join(map(str, signals)) or "—"}
+Objections raised: {", ".join(map(str, objections)) or "—"}
+
+# Recent transcript (verbatim — reference one specific thing they said)
+{transcript_snippet or "(no transcript captured)"}
+
+# Extra context from user (if any)
+{user_brief or extra_context or "(none)"}
+
+Now produce JSON ONLY in this shape — no preamble, no fences:
+{{
+  "subject": "concise subject line (no clickbait, max 60 chars). Default base: \\"{subj_tpl}\\".",
+  "body_text": "the full email body in plain text. {'' if include_summary else 'Do NOT include the call summary.'} End with the signature exactly:\\n\\n{sig}",
+  "body_html": "the same email but rendered as simple HTML (use <p> tags, <br> for line breaks, do NOT include <html>/<body> wrappers)."
+}}"""
+
+    try:
+        client = AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+        resp = await client.messages.create(
+            model=config.ANTHROPIC_MODEL,
+            max_tokens=900,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        data = json.loads(raw.strip())
+        if not isinstance(data, dict):
+            raise ValueError("draft not a JSON object")
+        return {
+            "subject": (data.get("subject") or subj_tpl).strip(),
+            "body_text": (data.get("body_text") or "").strip(),
+            "body_html": (data.get("body_html") or "").strip(),
+        }
+    except Exception as e:
+        logger.exception("Claude email draft failed")
+        # Fallback: basic template so we never silently fail.
+        body = (f"Hi {prospect_name},\n\n"
+                f"Thanks for taking the time today. Quick recap:\n{summary or '—'}\n\n"
+                f"{next_step or 'Reply to this email and we can pick the right next step.'}\n\n{sig}")
+        return {"subject": subj_tpl, "body_text": body,
+                "body_html": body.replace("\n", "<br>")}
+
+
+def _gather_call_transcript_text(rec: dict) -> str:
+    turns = (rec or {}).get("transcript") or (rec or {}).get("turns") or []
+    if not isinstance(turns, list):
+        return ""
+    out: list[str] = []
+    for t in turns:
+        if not isinstance(t, dict):
+            continue
+        role = (t.get("role") or t.get("speaker") or "").lower()
+        text = (t.get("text") or t.get("content") or "").strip()
+        if not text:
+            continue
+        spk = "Prospect" if role in ("user", "human", "prospect") else "AI"
+        out.append(f"{spk}: {text}")
+    return "\n".join(out)
+
+
+@app.post("/api/email-agent/draft-preview")
+async def post_email_agent_draft_preview(request: Request):
+    """Manual preview — feed sample fields, see what Claude will write."""
+    body = await request.json()
+    ea = _load_email_agent()
+    rec = body.get("rec") or {"prospect_name": body.get("prospect_name", "Sample"),
+                              "company": body.get("company", "Acme")}
+    insights = body.get("insights") or {"outcome": "interested",
+                                        "summary": body.get("summary") or "Discussed integration timeline.",
+                                        "next_step": "Send pricing one-pager and book technical demo."}
+    transcript = body.get("transcript") or ""
+    extra = body.get("extra_context") or ""
+    return await _claude_draft_email(ea=ea, rec=rec, insights=insights,
+                                     transcript_text=transcript, extra_context=extra)
+
+
+@app.post("/api/email-agent/test-send")
+async def post_email_agent_test_send(request: Request):
+    body = await request.json()
+    to = (body.get("to") or "").strip()
+    if not to:
+        raise HTTPException(400, "to is required")
+    ea = _load_email_agent()
+    draft = await _claude_draft_email(
+        ea=ea,
+        rec={"prospect_name": body.get("prospect_name", "Sample"),
+             "company": body.get("company", "Acme")},
+        insights={"outcome": "interested",
+                  "summary": "Sample call summary for SMTP test.",
+                  "next_step": "Confirm receipt of this test email."},
+        transcript_text="Prospect: This is a sample transcript.",
+        extra_context=body.get("extra_context") or "",
+    )
+    ok = await _send_email(
+        to_addr=to,
+        subject=draft["subject"],
+        body_text=draft["body_text"],
+        body_html=draft["body_html"],
+        cc=ea.get("default_cc") or "",
+        reply_to=ea.get("reply_to") or "",
+    )
+    return {"ok": ok, "draft": draft}
+
+
+# ── Auto-send pipeline ─────────────────────────────────────
+def _queue_email_send(*, rec: dict, insights: dict, call_control_id: str,
+                     transcript_text: str = "", delay_minutes: int = 5) -> str | None:
+    """Persist a pending email_send task. Returns task id or None."""
+    try:
+        existing = load_tasks() or []
+        # Idempotent — one auto-email per call.
+        for t in existing:
+            if (t.get("call_control_id") == call_control_id
+                    and (t.get("type") or "") == "email_send"):
+                return None
+        camp_id, camp_name = _find_campaign_for_call(rec)
+        due_iso = (datetime.utcnow() + timedelta(minutes=max(0, int(delay_minutes))))\
+            .replace(microsecond=0).isoformat() + "Z"
+        # Capture the transcript NOW so we don't lose it later.
+        task = {
+            "id": str(uuid.uuid4())[:8],
+            "type": "email_send",
+            "auto_send": True,
+            "auto_send_status": "scheduled",
+            "due_at_utc": due_iso,
+            "due_date": due_iso[:10],
+            "status": "pending",
+            "prospect_name": rec.get("prospect_name", ""),
+            "phone": rec.get("to", "") or rec.get("phone", ""),
+            "company": rec.get("company", ""),
+            "email_to": (rec.get("prospect_email") or rec.get("email") or "").strip(),
+            "outcome": (insights or {}).get("outcome") or "",
+            "campaign_id": camp_id,
+            "campaign_name": camp_name,
+            "call_control_id": call_control_id,
+            "snapshot_insights": insights or {},
+            "snapshot_rec": {k: rec.get(k) for k in
+                             ("prospect_name", "company", "to", "phone",
+                              "prospect_email", "email")},
+            "snapshot_transcript": (transcript_text or "")[-6000:],
+            "notes": f"Auto-followup for outcome={(insights or {}).get('outcome','?')}",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        save_task(task)
+        logger.info("Queued email_send task=%s due=%s to=%s",
+                    task["id"], due_iso, task["email_to"] or "(no addr)")
+        return task["id"]
+    except Exception:
+        logger.exception("_queue_email_send failed")
+        return None
+
+
+def _list_pending_email_sends() -> list[dict]:
+    out: list[dict] = []
+    for t in (load_tasks() or []):
+        if ((t.get("type") or "") == "email_send"
+                and (t.get("status") or "").lower() == "pending"
+                and (t.get("auto_send_status") or "scheduled") == "scheduled"):
+            out.append(t)
+    return out
+
+
+async def _dispatch_email_send_task(t: dict) -> None:
+    """Draft via Claude and send via SMTP. Marks the task done either way."""
+    ea = _load_email_agent()
+    if not ea.get("enabled"):
+        _mark_task_field(t["id"], auto_send_status="disabled",
+                         status="done", completed=True)
+        return
+    to = (t.get("email_to") or "").strip()
+    if not to:
+        _mark_task_field(t["id"], auto_send_status="no_address",
+                         status="done", completed=True,
+                         notes=(t.get("notes") or "") + " — no email address on prospect")
+        return
+    rec_snap = dict(t.get("snapshot_rec") or {})
+    rec_snap.setdefault("prospect_name", t.get("prospect_name", ""))
+    rec_snap.setdefault("company", t.get("company", ""))
+    rec_snap.setdefault("prospect_email", to)
+    insights = dict(t.get("snapshot_insights") or {})
+    transcript = t.get("snapshot_transcript") or ""
+
+    # Respect skip-outcomes guard.
+    outcome = (insights.get("outcome") or t.get("outcome") or "").lower()
+    if outcome and outcome in (ea.get("skip_outcomes") or []):
+        _mark_task_field(t["id"], auto_send_status="skipped_outcome",
+                         status="done", completed=True)
+        return
+
+    draft = await _claude_draft_email(
+        ea=ea, rec=rec_snap, insights=insights, transcript_text=transcript,
+    )
+    ok = await _send_email(
+        to_addr=to,
+        subject=draft["subject"],
+        body_text=draft["body_text"],
+        body_html=draft["body_html"],
+        cc=ea.get("default_cc") or "",
+        reply_to=ea.get("reply_to") or "",
+    )
+    _mark_task_field(
+        t["id"],
+        auto_send_status="sent" if ok else "error",
+        status="done" if ok else "pending",
+        completed=bool(ok),
+        sent_at=(datetime.utcnow().isoformat() if ok else ""),
+        sent_subject=draft.get("subject", ""),
+        sent_body_text=draft.get("body_text", ""),
+    )
+
+
+@app.post("/api/email/send-from-call/{cc_id}")
+async def post_send_email_from_call(cc_id: str, request: Request):
+    """Manual trigger — draft and send right now using the call's transcript."""
+    body = (await request.json()) if request.headers.get("content-type", "").startswith("application/json") else {}
+    rec = active_calls.get(cc_id) or get_call_by_control_id(cc_id)
+    if not rec:
+        raise HTTPException(404, f"Call {cc_id} not found")
+    to = (body.get("to") or rec.get("prospect_email") or rec.get("email") or "").strip()
+    if not to:
+        raise HTTPException(400, "No email address — pass 'to' in body or set prospect_email on the call")
+    ea = _load_email_agent()
+    transcript = _gather_call_transcript_text(rec)
+    draft = await _claude_draft_email(
+        ea=ea, rec=rec, insights=rec.get("insights") or {},
+        transcript_text=transcript, extra_context=body.get("extra_context") or "",
+    )
+    if body.get("preview_only"):
+        return {"ok": True, "draft": draft, "to": to}
+    ok = await _send_email(
+        to_addr=to,
+        subject=draft["subject"],
+        body_text=draft["body_text"],
+        body_html=draft["body_html"],
+        cc=ea.get("default_cc") or "",
+        reply_to=ea.get("reply_to") or "",
+    )
+    return {"ok": ok, "draft": draft, "to": to}
+
+
+@app.get("/api/email/sent")
+async def list_sent_emails():
+    """Email-send history derived from completed email_send tasks."""
+    out = []
+    for t in (load_tasks() or []):
+        if (t.get("type") or "") != "email_send":
+            continue
+        out.append({
+            "id": t.get("id"),
+            "status": t.get("auto_send_status") or t.get("status"),
+            "to": t.get("email_to"),
+            "prospect_name": t.get("prospect_name"),
+            "company": t.get("company"),
+            "campaign_name": t.get("campaign_name"),
+            "subject": t.get("sent_subject") or "",
+            "due_at_utc": t.get("due_at_utc"),
+            "sent_at": t.get("sent_at"),
+            "outcome": t.get("outcome"),
+            "call_control_id": t.get("call_control_id"),
+        })
+    out.sort(key=lambda x: (x.get("sent_at") or x.get("due_at_utc") or ""), reverse=True)
+    return {"emails": out}
 
 
 # ════════════════════════════════════════════════════════════
