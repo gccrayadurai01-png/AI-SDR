@@ -1125,6 +1125,7 @@ tbody tr.clickable { cursor: pointer; }
           <div class="stat-card" style="padding:12px 14px;border-left:3px solid var(--success);"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Meetings</div><div id="tsMeeting" style="font-size:24px;font-weight:700;">0</div></div>
           <div class="stat-card" style="padding:12px 14px;border-left:3px solid #3B82F6;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Interested</div><div id="tsInterested" style="font-size:24px;font-weight:700;">0</div></div>
           <div class="stat-card" style="padding:12px 14px;border-left:3px solid #6B7280;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Follow-ups</div><div id="tsFollow" style="font-size:24px;font-weight:700;">0</div></div>
+          <div class="stat-card" style="padding:12px 14px;border-left:3px solid #8B5CF6;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Queued Auto-Dials</div><div id="tsQueued" style="font-size:24px;font-weight:700;color:#8B5CF6;">0</div></div>
         </div>
 
         <!-- Filter chips -->
@@ -1136,6 +1137,7 @@ tbody tr.clickable { cursor: pointer; }
           <button class="chip" data-filter="meeting" onclick="setTaskFilter('meeting')">Meetings</button>
           <button class="chip" data-filter="interested" onclick="setTaskFilter('interested')">Interested</button>
           <button class="chip" data-filter="follow_up" onclick="setTaskFilter('follow_up')">Follow-ups</button>
+          <button class="chip" data-filter="queued" onclick="setTaskFilter('queued')" style="border-color:#8B5CF6;color:#8B5CF6;">Queued Auto-Dials</button>
           <button class="chip" data-filter="done" onclick="setTaskFilter('done')">Completed</button>
         </div>
 
@@ -3661,6 +3663,9 @@ function renderTasksPage() {
   document.getElementById('tsMeeting').textContent = byType('meeting');
   document.getElementById('tsInterested').textContent = byOutcome('interested');
   document.getElementById('tsFollow').textContent = byType('follow_up') + byType('follow-up');
+  const queuedCount = open.filter(function(t){ return t.auto_dial && (t.auto_dial_status || 'scheduled') === 'scheduled'; }).length;
+  const tsQ = document.getElementById('tsQueued');
+  if (tsQ) tsQ.textContent = queuedCount;
 
   // Sidebar badge — count overdue + due-today
   const urgent = open.filter(function(t){ return _taskIsOverdue(t) || _taskIsToday(t); }).length;
@@ -3680,6 +3685,7 @@ function renderTasksPage() {
     case 'meeting': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && (t.type||'').toLowerCase() === 'meeting'; }); break;
     case 'interested': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && (t.outcome||'').toLowerCase() === 'interested'; }); break;
     case 'follow_up': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && ((t.type||'').toLowerCase() === 'follow_up' || (t.type||'').toLowerCase() === 'follow-up'); }); break;
+    case 'queued': filtered = tasks.filter(function(t){ return _taskIsOpen(t) && t.auto_dial && (t.auto_dial_status || 'scheduled') === 'scheduled'; }); break;
     case 'all':
     default: filtered = tasks.filter(_taskIsOpen);
   }
@@ -3743,6 +3749,29 @@ function renderTasksPage() {
     let dueCell = t.due_date ? escHtml(t.due_date) : '<span style="color:var(--text-muted);">—</span>';
     if (overdue) dueCell = '<span style="color:var(--danger);font-weight:600;">' + escHtml(t.due_date) + ' (overdue)</span>';
     else if (_taskIsToday(t)) dueCell = '<span style="color:var(--warning);font-weight:600;">Today</span>';
+    // Auto-dial queued: show precise countdown to dial time.
+    if (t.auto_dial && (t.auto_dial_status || 'scheduled') === 'scheduled' && t.due_at_utc) {
+      const dueMs = new Date(t.due_at_utc.replace('Z','') + 'Z').getTime();
+      const nowMs = Date.now();
+      const diff = dueMs - nowMs;
+      const fmtRel = function(ms) {
+        if (ms <= 0) return 'dialing soon…';
+        const s = Math.floor(ms/1000);
+        if (s < 60) return 'in ' + s + 's';
+        const m = Math.floor(s/60);
+        if (m < 60) return 'in ' + m + 'm ' + (s%60) + 's';
+        const h = Math.floor(m/60);
+        if (h < 24) return 'in ' + h + 'h ' + (m%60) + 'm';
+        const d = Math.floor(h/24);
+        return 'in ' + d + 'd ' + (h%24) + 'h';
+      };
+      const localStr = new Date(dueMs).toLocaleString();
+      const color = diff <= 0 ? '#10B981' : (diff < 60*60*1000 ? '#8B5CF6' : 'var(--text)');
+      dueCell = '<div style="display:flex;flex-direction:column;gap:2px;">' +
+        '<span style="font-weight:600;color:' + color + ';"><i data-lucide="phone-call" style="width:11px;height:11px;display:inline-block;vertical-align:-1px;margin-right:3px;"></i>' + fmtRel(diff) + '</span>' +
+        '<span style="font-size:10px;color:var(--text-muted);">' + escHtml(localStr) + '</span>' +
+      '</div>';
+    }
 
     const cc = t.call_control_id || '';
     const callBtn = cc ? '<button class="btn btn-secondary btn-sm" title="Open call" onclick="navigate(\'call-logs\');setTimeout(function(){openCallDetail(\'' + cc + '\');},250);"><i data-lucide="phone" style="width:12px;height:12px;"></i></button>' : '';
