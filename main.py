@@ -2455,18 +2455,39 @@ def _bootstrap_multitenant():
         _save_tenants(tenants)
 
     users = _load_users()
-    if "admin" not in users:
+    changed = False
+
+    # 'admin' is the tenant-default operator (sees legacy call history).
+    needs_admin_seed = "admin" not in users or users["admin"].get("role") == "owner"
+    if needs_admin_seed:
         h, salt = _hash_pw("knight2024!")
         users["admin"] = {
-            "username": "admin",
-            "pw_hash": h,
-            "salt": salt,
-            "tenant_id": None,        # owner has no tenant scope
-            "role": "owner",
+            "username":   "admin",
+            "pw_hash":    h,
+            "salt":       salt,
+            "tenant_id":  "tenant_default",
+            "role":       "tenant_admin",
             "created_at": datetime.utcnow().isoformat(),
         }
+        changed = True
+        logger.info("Seeded admin / knight2024! (tenant_default tenant_admin)")
+
+    # 'owner' is the only super-user — sees oversight dashboard only.
+    if "owner" not in users:
+        h, salt = _hash_pw("Knight2026!")
+        users["owner"] = {
+            "username":   "owner",
+            "pw_hash":    h,
+            "salt":       salt,
+            "tenant_id":  None,
+            "role":       "owner",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        changed = True
+        logger.info("Seeded owner / Knight2026! (super-admin)")
+
+    if changed:
         _save_users(users)
-        logger.info("Bootstrapped owner user: admin / knight2024!")
 
     _migrate_to_default_tenant()
 
@@ -2692,7 +2713,7 @@ async def admin_create_user(request: Request):
 @app.delete("/api/admin/users/{username}")
 async def admin_delete_user(username: str, request: Request):
     _require_owner(request)
-    if username == "admin":
+    if username == "owner":
         raise HTTPException(400, "Cannot delete owner")
     users = _load_users()
     if username not in users:
@@ -2700,6 +2721,172 @@ async def admin_delete_user(username: str, request: Request):
     users.pop(username, None)
     _save_users(users)
     return {"ok": True}
+
+
+# ── Owner oversight: aggregated stats ──────────────────────────
+def _tenant_calls_path(tenant_id: str) -> Path:
+    return _tenant_dir(tenant_id) / "calls.json"
+
+
+def _count_tenant_stats(tenant_id: str) -> dict:
+    """Read a tenant's calls.json (or legacy fallback) and return aggregates."""
+    paths_to_try = [
+        _tenant_calls_path(tenant_id),
+        # legacy fallback (pre-migration data lived here)
+        DATA_DIR / "calls.json" if tenant_id == "tenant_default" else None,
+    ]
+    calls = []
+    for p in paths_to_try:
+        if not p:
+            continue
+        try:
+            if p.exists():
+                d = json.loads(p.read_text(encoding="utf-8"))
+                calls = d if isinstance(d, list) else d.get("calls", [])
+                break
+        except Exception:
+            calls = []
+            break
+
+    total       = len(calls)
+    completed   = sum(1 for c in calls if isinstance(c, dict) and c.get("status") in ("completed", "ended"))
+    meetings    = sum(1 for c in calls if isinstance(c, dict) and (
+        (c.get("outcome") == "meeting_booked")
+        or ((c.get("insights") or {}).get("outcome") == "meeting_booked")
+    ))
+    callbacks   = sum(1 for c in calls if isinstance(c, dict) and (
+        (c.get("outcome") == "callback_scheduled")
+        or ((c.get("insights") or {}).get("outcome") == "callback_scheduled")
+    ))
+    interested  = sum(1 for c in calls if isinstance(c, dict) and (
+        (c.get("outcome") == "interested")
+        or ((c.get("insights") or {}).get("outcome") == "interested")
+    ))
+    last_at = ""
+    for c in calls:
+        if isinstance(c, dict):
+            ts = c.get("started_at") or c.get("created_at") or ""
+            if ts > last_at:
+                last_at = ts
+
+    # crude credit estimation (placeholder until usage ledger is wired in Phase 4):
+    # ~1 credit per completed call. Owner sees "credits_used".
+    credits_used = completed
+    return {
+        "total_calls":      total,
+        "completed_calls":  completed,
+        "meetings_booked":  meetings,
+        "callbacks":        callbacks,
+        "interested":       interested,
+        "credits_used":     credits_used,
+        "last_activity":    last_at,
+    }
+
+
+@app.get("/api/admin/overview")
+async def admin_overview(request: Request):
+    """Owner-only: master dashboard aggregating tenants, credits, connections."""
+    _require_owner(request)
+    tenants = _load_tenants()
+    users   = _load_users()
+
+    # per-tenant stats
+    tenant_rows = []
+    total_calls = 0
+    total_meetings = 0
+    total_credits_consumed = 0
+    total_credits_balance  = 0
+    for t in tenants:
+        st = _count_tenant_stats(t["id"])
+        u_count = sum(1 for u in users.values() if u.get("tenant_id") == t["id"])
+        row = {
+            **t,
+            **st,
+            "user_count": u_count,
+        }
+        tenant_rows.append(row)
+        total_calls += st["total_calls"]
+        total_meetings += st["meetings_booked"]
+        total_credits_consumed += st["credits_used"]
+        total_credits_balance += int(t.get("credits_balance") or 0)
+
+    # connection statuses (mirrors /api/status but owner-friendly)
+    smtp_cfg = _smtp_config()
+    el_key   = (os.environ.get("ELEVENLABS_API_KEY") or "").strip()
+    connections = {
+        "telnyx":     bool((os.environ.get("TELNYX_API_KEY") or "").strip()),
+        "anthropic":  bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip()),
+        "elevenlabs": bool(el_key),
+        "smtp":       bool(smtp_cfg.get("host") and smtp_cfg.get("from")),
+        "apollo":     bool((os.environ.get("APOLLO_API_KEY") or "").strip()),
+    }
+
+    return {
+        "totals": {
+            "tenants":          len(tenants),
+            "users":            len(users),
+            "active_tenants":   sum(1 for t in tenants if t.get("status") == "active"),
+            "total_calls":      total_calls,
+            "total_meetings":   total_meetings,
+            "credits_balance":  total_credits_balance,
+            "credits_consumed": total_credits_consumed,
+        },
+        "connections": connections,
+        "tenants":     tenant_rows,
+    }
+
+
+@app.get("/api/admin/tenants/{tenant_id}/stats")
+async def admin_tenant_stats(tenant_id: str, request: Request):
+    """Drill-in: detailed stats + recent calls for a specific tenant."""
+    _require_owner(request)
+    tenants = _load_tenants()
+    t = next((x for x in tenants if x.get("id") == tenant_id), None)
+    if not t:
+        raise HTTPException(404, "Tenant not found")
+    st = _count_tenant_stats(tenant_id)
+    # last 20 calls
+    paths_to_try = [
+        _tenant_calls_path(tenant_id),
+        DATA_DIR / "calls.json" if tenant_id == "tenant_default" else None,
+    ]
+    calls = []
+    for p in paths_to_try:
+        if p and p.exists():
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+                calls = d if isinstance(d, list) else d.get("calls", [])
+                break
+            except Exception:
+                pass
+    calls_sorted = sorted(
+        [c for c in calls if isinstance(c, dict)],
+        key=lambda c: c.get("started_at") or c.get("created_at") or "",
+        reverse=True,
+    )[:20]
+    recent = [{
+        "call_control_id": c.get("call_control_id"),
+        "prospect_name":   c.get("prospect_name"),
+        "company":         c.get("company"),
+        "phone":           c.get("phone") or c.get("to") or c.get("to_number"),
+        "status":          c.get("status"),
+        "outcome":         c.get("outcome") or (c.get("insights") or {}).get("outcome"),
+        "duration":        c.get("duration") or c.get("duration_sec"),
+        "started_at":      c.get("started_at") or c.get("created_at"),
+    } for c in calls_sorted]
+
+    users = _load_users()
+    tenant_users = [
+        {k: v for k, v in u.items() if k not in ("pw_hash", "salt")}
+        for u in users.values() if u.get("tenant_id") == tenant_id
+    ]
+
+    return {
+        "tenant":       t,
+        "stats":        st,
+        "recent_calls": recent,
+        "users":        tenant_users,
+    }
 
 
 # ════════════════════════════════════════════════════════════

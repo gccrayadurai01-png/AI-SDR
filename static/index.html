@@ -429,51 +429,57 @@ tbody tr.clickable { cursor: pointer; }
       <p>AI Sales Development</p>
     </div>
     <nav class="sidebar-nav">
-      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <!-- OWNER-ONLY NAV (hidden for tenants) -->
+      <div class="nav-item owner-only" data-page="owner-dashboard" onclick="navigate('owner-dashboard')" style="display:none;">
+        <i data-lucide="shield-check"></i> <span>Owner Dashboard</span>
+      </div>
+      <div class="nav-item owner-only" data-page="admin-tenants" onclick="navigate('admin-tenants')" style="display:none;">
+        <i data-lucide="building-2"></i> <span>Tenants</span>
+      </div>
+      <div class="nav-item owner-only" data-page="admin-users" onclick="navigate('admin-users')" style="display:none;">
+        <i data-lucide="users"></i> <span>Users</span>
+      </div>
+
+      <!-- TENANT NAV (hidden for owner) -->
+      <div class="nav-item tenant-only active" data-page="dashboard" onclick="navigate('dashboard')">
         <i data-lucide="layout-dashboard"></i> <span>Dashboard</span>
       </div>
-      <div class="nav-item" data-page="campaigns" onclick="navigate('campaigns')">
+      <div class="nav-item tenant-only" data-page="campaigns" onclick="navigate('campaigns')">
         <i data-lucide="megaphone"></i> <span>Campaigns</span>
       </div>
-      <div class="nav-item" data-page="contacts" onclick="navigate('contacts')">
+      <div class="nav-item tenant-only" data-page="contacts" onclick="navigate('contacts')">
         <i data-lucide="users"></i> <span>Contacts</span>
       </div>
-      <div class="nav-item" data-page="bella" onclick="navigate('bella')">
+      <div class="nav-item tenant-only" data-page="bella" onclick="navigate('bella')">
         <i data-lucide="search"></i> <span>Bella AI</span>
       </div>
-      <div class="nav-item" data-page="ai-agents" onclick="navigate('ai-agents')">
+      <div class="nav-item tenant-only" data-page="ai-agents" onclick="navigate('ai-agents')">
         <i data-lucide="bot"></i> <span>AI Agent</span>
       </div>
-      <div class="nav-item" data-page="email-agent" onclick="navigate('email-agent')">
+      <div class="nav-item tenant-only" data-page="email-agent" onclick="navigate('email-agent')">
         <i data-lucide="mail"></i> <span>Email Agent</span>
         <span id="emailStatusDot" class="sdot" style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#9CA3AF;"></span>
       </div>
-      <div class="nav-separator"></div>
-      <div class="nav-item" data-page="live-calls" onclick="navigate('live-calls')">
+      <div class="nav-separator tenant-only"></div>
+      <div class="nav-item tenant-only" data-page="live-calls" onclick="navigate('live-calls')">
         <i data-lucide="phone-call"></i> <span>Live Calls</span>
         <span class="nav-dot"></span>
       </div>
-      <div class="nav-item" data-page="call-logs" onclick="navigate('call-logs')">
+      <div class="nav-item tenant-only" data-page="call-logs" onclick="navigate('call-logs')">
         <i data-lucide="history"></i> <span>Call Logs</span>
       </div>
-      <div class="nav-item" data-page="tasks" onclick="navigate('tasks')">
+      <div class="nav-item tenant-only" data-page="tasks" onclick="navigate('tasks')">
         <i data-lucide="check-square"></i> <span>Tasks</span>
         <span id="tasksBadge" style="display:none;margin-left:auto;background:#EF4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;">0</span>
       </div>
-      <div class="nav-separator"></div>
-      <div class="nav-item" data-page="calendar" onclick="navigate('calendar')">
+      <div class="nav-separator tenant-only"></div>
+      <div class="nav-item tenant-only" data-page="calendar" onclick="navigate('calendar')">
         <i data-lucide="calendar"></i> <span>Calendar</span>
       </div>
-      <div class="nav-item" data-page="analytics" onclick="navigate('analytics')">
+      <div class="nav-item tenant-only" data-page="analytics" onclick="navigate('analytics')">
         <i data-lucide="bar-chart-3"></i> <span>Analytics</span>
       </div>
-      <div class="nav-item owner-only" data-page="admin-tenants" onclick="navigate('admin-tenants')" style="display:none;">
-        <i data-lucide="building-2"></i> <span>Tenants (Owner)</span>
-      </div>
-      <div class="nav-item owner-only" data-page="admin-users" onclick="navigate('admin-users')" style="display:none;">
-        <i data-lucide="users"></i> <span>Users (Owner)</span>
-      </div>
-      <div class="nav-item" data-page="settings" onclick="navigate('settings')">
+      <div class="nav-item tenant-only" data-page="settings" onclick="navigate('settings')">
         <i data-lucide="settings"></i> <span>Settings</span>
       </div>
     </nav>
@@ -1045,6 +1051,57 @@ tbody tr.clickable { cursor: pointer; }
           <div id="eaHistoryContainer">
             <div class="empty-state"><p>Load to see recent auto-sends.</p></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ===================== OWNER DASHBOARD (Owner only) ===================== -->
+      <div class="page" id="page-owner-dashboard">
+        <div class="page-header">
+          <div>
+            <h2>🛡️ Owner Console</h2>
+            <p>SaaS oversight — tenants, credit consumption, and platform connections.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="loadOwnerDashboard()"><i data-lucide="refresh-cw"></i> Refresh</button>
+        </div>
+
+        <!-- KPI tiles -->
+        <div class="stats-grid" id="ownerKpis">
+          <div class="stat-card"><div class="stat-icon" style="background:#6366F1;"><i data-lucide="building-2"></i></div>
+            <div><div class="stat-value" id="kpiTenants">—</div><div class="stat-label">Active Tenants</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#10B981;"><i data-lucide="phone"></i></div>
+            <div><div class="stat-value" id="kpiCalls">—</div><div class="stat-label">Total Calls (all tenants)</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#F59E0B;"><i data-lucide="calendar-check"></i></div>
+            <div><div class="stat-value" id="kpiMeetings">—</div><div class="stat-label">Meetings Booked</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#EC4899;"><i data-lucide="zap"></i></div>
+            <div><div class="stat-value" id="kpiCredits">—</div><div class="stat-label">Credits Consumed</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#3B82F6;"><i data-lucide="wallet"></i></div>
+            <div><div class="stat-value" id="kpiBalance">—</div><div class="stat-label">Total Credit Balance</div></div></div>
+        </div>
+
+        <!-- Connections strip -->
+        <div class="card">
+          <div class="card-title">Platform Connections</div>
+          <div id="ownerConnections" style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;">
+            <span>Loading…</span>
+          </div>
+        </div>
+
+        <!-- Per-tenant breakdown -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">Tenants — usage breakdown</div>
+            <button class="btn btn-primary btn-sm" onclick="navigate('admin-tenants')"><i data-lucide="plus"></i> Manage Tenants</button>
+          </div>
+          <div id="ownerTenantsBreakdown"><div class="empty-state"><p>Loading…</p></div></div>
+        </div>
+
+        <!-- Drill-in panel -->
+        <div id="ownerTenantDetail" class="card" style="display:none;border-left:4px solid #6366F1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;" id="otdTitle">Tenant Detail</div>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ownerTenantDetail').style.display='none';"><i data-lucide="x"></i> Close</button>
+          </div>
+          <div id="otdBody">Loading…</div>
         </div>
       </div>
 
@@ -1836,7 +1893,7 @@ const pageTitles = {
   'live-calls': 'Live Calls',
   'call-logs': 'Call History', tasks: 'Tasks', calendar: 'Calendar',
   analytics: 'Analytics', settings: 'Settings',
-  'admin-tenants': 'Tenants (Owner)', 'admin-users': 'Users (Owner)'
+  'owner-dashboard': 'Owner Console', 'admin-tenants': 'Tenants', 'admin-users': 'Users'
 };
 
 function navigate(page) {
@@ -1865,6 +1922,7 @@ function navigate(page) {
   else if (page === 'calendar') loadCalendarPage();
   else if (page === 'analytics') loadAnalytics();
   else if (page === 'settings') loadSettings();
+  else if (page === 'owner-dashboard') loadOwnerDashboard();
   else if (page === 'admin-tenants') loadAdminTenantsPage();
   else if (page === 'admin-users') loadAdminUsersPage();
 
@@ -3194,12 +3252,124 @@ async function deleteUser(uname) {
   loadAdminUsersPage();
 }
 
-/* Reveal owner-only nav after login */
+/* Reveal owner-only nav, hide tenant nav for owner */
 function applyRoleVisibility() {
   const role = sessionStorage.getItem('knight_role') || '';
+  const isOwner = (role === 'owner');
   document.querySelectorAll('.owner-only').forEach(function(el){
-    el.style.display = (role === 'owner') ? '' : 'none';
+    el.style.display = isOwner ? '' : 'none';
   });
+  document.querySelectorAll('.tenant-only').forEach(function(el){
+    el.style.display = isOwner ? 'none' : '';
+  });
+  // Hide top global banner for owner (it's a tenant-side widget)
+  const tb = document.getElementById('topStatusBanner');
+  if (tb) tb.style.display = isOwner ? 'none' : '';
+}
+
+/* ────────── OWNER DASHBOARD ────────── */
+async function loadOwnerDashboard() {
+  const d = await GET('/api/admin/overview');
+  if (d._error) {
+    toast('Owner overview failed: '+d.detail, 'error');
+    return;
+  }
+  const t = d.totals || {};
+  document.getElementById('kpiTenants').textContent  = (t.active_tenants || 0) + ' / ' + (t.tenants || 0);
+  document.getElementById('kpiCalls').textContent    = t.total_calls || 0;
+  document.getElementById('kpiMeetings').textContent = t.total_meetings || 0;
+  document.getElementById('kpiCredits').textContent  = t.credits_consumed || 0;
+  document.getElementById('kpiBalance').textContent  = t.credits_balance || 0;
+
+  // Connections strip
+  const conn = d.connections || {};
+  const dot = function(ok){
+    return '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+(ok?'#10B981':'#EF4444')+';margin-right:6px;vertical-align:middle;"></span>';
+  };
+  document.getElementById('ownerConnections').innerHTML =
+    '<span>'+dot(conn.telnyx)+'Telnyx</span>' +
+    '<span>'+dot(conn.anthropic)+'Anthropic (Claude)</span>' +
+    '<span>'+dot(conn.elevenlabs)+'ElevenLabs</span>' +
+    '<span>'+dot(conn.smtp)+'SMTP</span>' +
+    '<span>'+dot(conn.apollo)+'Apollo</span>';
+
+  // Per-tenant table
+  const rows = d.tenants || [];
+  const c = document.getElementById('ownerTenantsBreakdown');
+  if (!rows.length) {
+    c.innerHTML = '<div class="empty-state"><p>No tenants yet — go to Tenants to create one.</p></div>';
+  } else {
+    c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+      '<th>Tenant</th><th>Plan</th><th>Phone</th><th>Users</th><th>Calls</th><th>Meetings</th><th>Credits Used</th><th>Balance</th><th>Last Activity</th><th></th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function(r){
+        const last = r.last_activity ? new Date(r.last_activity.replace(/Z?$/,'Z')).toLocaleString() : '—';
+        return '<tr>' +
+          '<td><b>'+escHtml(r.name||'')+'</b><br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(r.id)+'</span></td>' +
+          '<td>'+escHtml(r.plan||'')+'</td>' +
+          '<td>'+escHtml(r.phone_number||'—')+'</td>' +
+          '<td>'+(r.user_count||0)+'</td>' +
+          '<td>'+(r.total_calls||0)+'</td>' +
+          '<td>'+(r.meetings_booked||0)+'</td>' +
+          '<td><b>'+(r.credits_used||0)+'</b></td>' +
+          '<td>'+(r.credits_balance||0)+'</td>' +
+          '<td style="font-size:11px;color:var(--text-muted);">'+escHtml(last)+'</td>' +
+          '<td><button class="btn btn-secondary btn-sm" onclick="ownerDrillIn(\''+r.id+'\')"><i data-lucide="eye"></i> View</button></td>' +
+        '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+async function ownerDrillIn(tid) {
+  const panel = document.getElementById('ownerTenantDetail');
+  panel.style.display = '';
+  document.getElementById('otdTitle').textContent = 'Tenant Detail · '+tid;
+  document.getElementById('otdBody').innerHTML = 'Loading…';
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
+  const d = await GET('/api/admin/tenants/'+encodeURIComponent(tid)+'/stats');
+  if (d._error) {
+    document.getElementById('otdBody').innerHTML = '<p style="color:#EF4444;">'+escHtml(d.detail||'failed')+'</p>';
+    return;
+  }
+  const t = d.tenant || {}, s = d.stats || {};
+  document.getElementById('otdTitle').textContent = 'Tenant · '+(t.name||tid);
+  const calls = (d.recent_calls || []).map(function(c){
+    const out = (c.outcome||'').replace(/_/g,' ');
+    const when = c.started_at ? new Date(c.started_at.replace(/Z?$/,'Z')).toLocaleString() : '—';
+    return '<tr><td>'+escHtml(c.prospect_name||'—')+'<br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(c.company||'')+'</span></td>' +
+      '<td>'+escHtml(c.phone||'')+'</td>' +
+      '<td>'+escHtml(c.status||'')+'</td>' +
+      '<td>'+escHtml(out)+'</td>' +
+      '<td>'+(c.duration||0)+'s</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">'+escHtml(when)+'</td></tr>';
+  }).join('');
+  const userRows = (d.users || []).map(function(u){
+    return '<li><b>'+escHtml(u.username)+'</b> <span style="color:var(--text-muted);">· '+escHtml(u.role||'')+'</span></li>';
+  }).join('') || '<li><em>No login users yet</em></li>';
+
+  document.getElementById('otdBody').innerHTML =
+    '<div class="form-grid">' +
+      '<div><b>Plan:</b> '+escHtml(t.plan||'')+'</div>' +
+      '<div><b>Phone:</b> '+escHtml(t.phone_number||'—')+'</div>' +
+      '<div><b>Status:</b> '+escHtml(t.status||'')+'</div>' +
+      '<div><b>Credits Balance:</b> '+(t.credits_balance||0)+'</div>' +
+      '<div><b>Created:</b> '+escHtml((t.created_at||'').slice(0,10))+'</div>' +
+      '<div><b>Notes:</b> '+escHtml(t.notes||'—')+'</div>' +
+    '</div>' +
+    '<div style="margin-top:14px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">' +
+      '<div class="stat-card"><div><div class="stat-value">'+(s.total_calls||0)+'</div><div class="stat-label">Calls</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-value">'+(s.completed_calls||0)+'</div><div class="stat-label">Completed</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-value">'+(s.meetings_booked||0)+'</div><div class="stat-label">Meetings</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-value">'+(s.callbacks||0)+'</div><div class="stat-label">Callbacks</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-value">'+(s.credits_used||0)+'</div><div class="stat-label">Credits Used</div></div></div>' +
+    '</div>' +
+    '<div style="margin-top:18px;"><b>Login users:</b><ul style="margin:6px 0 0 18px;font-size:13px;">'+userRows+'</ul></div>' +
+    '<div style="margin-top:18px;"><b>Recent calls (last 20):</b></div>' +
+    (calls
+      ? '<div class="table-wrap" style="margin-top:6px;"><table><thead><tr><th>Prospect</th><th>Phone</th><th>Status</th><th>Outcome</th><th>Dur</th><th>When</th></tr></thead><tbody>'+calls+'</tbody></table></div>'
+      : '<p style="color:var(--text-muted);font-size:13px;">No calls yet.</p>'
+    );
 }
 
 async function loadAgentsPage() {
@@ -4773,17 +4943,23 @@ function init() {
 
   loadStatus();
 
-  // Hash routing
-  const hash = window.location.hash.replace('#', '') || 'dashboard';
-  if (pageTitles[hash]) navigate(hash);
-  else navigate('dashboard');
-
-  // Show logged-in user
+  // Show logged-in user + apply role gating BEFORE routing
   const user = sessionStorage.getItem('cloudfuze_user');
   const role = sessionStorage.getItem('knight_role') || '';
   const userEl = document.getElementById('loggedInUser');
   if (userEl && user) userEl.textContent = user + (role==='owner' ? ' · owner' : '');
   applyRoleVisibility();
+
+  // Hash routing — owners default to owner-dashboard, tenants to dashboard
+  const defaultPage = (role === 'owner') ? 'owner-dashboard' : 'dashboard';
+  const hash = window.location.hash.replace('#', '') || defaultPage;
+  // Block tenant pages for owner and vice versa
+  const ownerPages  = ['owner-dashboard','admin-tenants','admin-users'];
+  const allowed = (role === 'owner')
+    ? ownerPages.includes(hash)
+    : !ownerPages.includes(hash);
+  if (pageTitles[hash] && allowed) navigate(hash);
+  else navigate(defaultPage);
 
   // Initialize Lucide icons
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -4791,7 +4967,10 @@ function init() {
 
 window.addEventListener('hashchange', function() {
   const hash = window.location.hash.replace('#', '');
-  if (pageTitles[hash]) navigate(hash);
+  const role = sessionStorage.getItem('knight_role') || '';
+  const ownerPages = ['owner-dashboard','admin-tenants','admin-users'];
+  const allowed = (role === 'owner') ? ownerPages.includes(hash) : !ownerPages.includes(hash);
+  if (pageTitles[hash] && allowed) navigate(hash);
 });
 
 // Auto-refresh status + dashboard every 10s
