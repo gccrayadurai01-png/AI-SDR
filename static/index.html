@@ -617,6 +617,48 @@ tbody tr.clickable { cursor: pointer; }
             </div>
           </div>
 
+          <!-- ── Schedule (Phase 3) ── -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div class="card-title" style="margin-bottom:0;">Dial Schedule</div>
+              <label class="checkbox-label" style="margin:0;font-size:13px;">
+                <input type="checkbox" id="schedEnabled" onchange="toggleScheduleEditor()"/> Enable scheduled dialing
+              </label>
+            </div>
+            <div id="scheduleEditor" style="display:none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Timezone</label>
+                  <select id="schedTimezone"></select>
+                </div>
+                <div class="form-group" style="grid-column:span 2;">
+                  <label>Days of Week</label>
+                  <div id="schedDays" style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="0" checked> Mon</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="1" checked> Tue</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="2" checked> Wed</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="3" checked> Thu</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="4" checked> Fri</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="5"> Sat</label>
+                    <label class="checkbox-label" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;"><input type="checkbox" data-day="6"> Sun</label>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <strong style="font-size:13px;">Dial Windows</strong>
+                  <button class="btn btn-secondary btn-sm" onclick="addScheduleWindow()"><i data-lucide="plus" style="width:12px;height:12px;"></i> Add Window</button>
+                </div>
+                <div id="schedWindowsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+                  Windows must not overlap. Each window has its own dial cap.
+                  Example: 09:00–10:00 cap 25, 13:00–14:00 cap 25.
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Add Prospects -->
           <div class="card">
             <div class="card-title">Add Prospects</div>
@@ -1888,6 +1930,82 @@ function renderQueue() {
 function removeFromQueue(i) { campaignQueue.splice(i, 1); renderQueue(); }
 function clearQueue() { campaignQueue = []; renderQueue(); toast('Queue cleared', 'info'); }
 
+// ── Phase 3: Schedule editor ──
+let _campTimezones = [];
+
+async function loadTimezonesIntoSelect() {
+  const sel = document.getElementById('schedTimezone');
+  if (!sel || sel.options.length > 1) return;
+  if (!_campTimezones.length) {
+    const d = await GET('/api/timezones');
+    _campTimezones = (d && d.timezones) ? d.timezones : ['UTC'];
+  }
+  sel.innerHTML = _campTimezones.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
+  // Default: try to match browser TZ.
+  try {
+    const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (local && _campTimezones.indexOf(local) !== -1) sel.value = local;
+  } catch(e) {}
+}
+
+function toggleScheduleEditor() {
+  const on = document.getElementById('schedEnabled').checked;
+  document.getElementById('scheduleEditor').style.display = on ? 'block' : 'none';
+  if (on) {
+    loadTimezonesIntoSelect();
+    if (!document.querySelectorAll('#schedWindowsList .sched-window').length) {
+      addScheduleWindow('09:00', '10:00', 25);
+      addScheduleWindow('13:00', '14:00', 25);
+    }
+  }
+}
+
+function addScheduleWindow(startVal, endVal, capVal) {
+  const list = document.getElementById('schedWindowsList');
+  const row = document.createElement('div');
+  row.className = 'sched-window';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:6px;';
+  row.innerHTML =
+    '<label style="font-size:11px;color:var(--text-muted);">Start<input type="time" class="sw-start" value="'+(startVal||'09:00')+'" style="display:block;margin-top:2px;width:100%;"/></label>' +
+    '<label style="font-size:11px;color:var(--text-muted);">End<input type="time" class="sw-end" value="'+(endVal||'10:00')+'" style="display:block;margin-top:2px;width:100%;"/></label>' +
+    '<label style="font-size:11px;color:var(--text-muted);">Dial Cap<input type="number" min="1" class="sw-cap" value="'+(capVal||25)+'" style="display:block;margin-top:2px;width:100%;"/></label>' +
+    '<button class="btn btn-danger btn-sm" onclick="this.closest(\'.sched-window\').remove()"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>';
+  list.appendChild(row);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function collectSchedulePayload() {
+  if (!document.getElementById('schedEnabled').checked) return null;
+  const tz = document.getElementById('schedTimezone').value || 'UTC';
+  const days = Array.from(document.querySelectorAll('#schedDays input[type=checkbox]'))
+    .filter(function(c){ return c.checked; })
+    .map(function(c){ return parseInt(c.getAttribute('data-day'), 10); });
+  const windows = Array.from(document.querySelectorAll('#schedWindowsList .sched-window')).map(function(r) {
+    return {
+      start: r.querySelector('.sw-start').value || '09:00',
+      end:   r.querySelector('.sw-end').value || '10:00',
+      dial_cap: parseInt(r.querySelector('.sw-cap').value, 10) || 0,
+    };
+  }).filter(function(w){ return w.dial_cap > 0; });
+  return { enabled: true, timezone: tz, days_of_week: days, windows: windows };
+}
+
+async function applyScheduleAfterCreate(campaignId) {
+  const sched = collectSchedulePayload();
+  if (!sched) return;
+  const r = await fetch('/api/campaigns/' + campaignId + '/schedule', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ schedule: sched }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(function(){return '';});
+    toast('Schedule rejected: ' + t.slice(0,160), 'error');
+  } else {
+    toast('Schedule saved — auto-dialer will run during your windows', 'success');
+  }
+}
+
 // ── Create & Start Campaign ──
 async function createAndStartCampaign() {
   const name = document.getElementById('newCampName').value.trim();
@@ -1907,9 +2025,13 @@ async function createAndStartCampaign() {
     auto_mode: autoCall,
     start_now: true
   };
+  // If schedule enabled, do NOT start_now — let the scheduler handle it.
+  const schedPayload = collectSchedulePayload();
+  if (schedPayload) payload.start_now = false;
   const d = await POST('/api/campaigns/create', payload);
   if (d._error) return toast('Failed: ' + (d.detail || 'Error'), 'error');
-  toast('Campaign created & started!', 'success');
+  if (schedPayload) await applyScheduleAfterCreate(d.id);
+  toast(schedPayload ? 'Campaign scheduled — will dial in your windows' : 'Campaign created & started!', 'success');
   // Also add prospects to contacts
   await addProspectsToContacts(campaignQueue, name);
   campaignQueue = [];
@@ -1935,6 +2057,8 @@ async function saveCampaignDraft() {
   };
   const d = await POST('/api/campaigns/create', payload);
   if (d._error) return toast('Failed: ' + (d.detail || 'Error'), 'error');
+  const schedPayload = collectSchedulePayload();
+  if (schedPayload) await applyScheduleAfterCreate(d.id);
   toast('Campaign saved as draft', 'success');
   await addProspectsToContacts(campaignQueue, name);
   campaignQueue = [];
@@ -3385,12 +3509,107 @@ function setTaskCampaignFilter(v) {
   renderTasksPage();
 }
 
+let _taskCallsByCC = {};
+let _expandedTasks = {};
+
 async function loadTasksPage() {
-  const d = await GET('/api/tasks');
-  if (d._error) return toast('Failed to load tasks', 'error');
-  allTasks = Array.isArray(d) ? d : (d.tasks || []);
+  const [tDat, hDat] = await Promise.all([GET('/api/tasks'), GET('/api/calls/history')]);
+  if (tDat && tDat._error) return toast('Failed to load tasks', 'error');
+  allTasks = Array.isArray(tDat) ? tDat : (tDat.tasks || []);
+  // Build a call_control_id -> call lookup so we can show recording + insights inline.
+  const calls = Array.isArray(hDat) ? hDat : ((hDat && hDat.calls) || []);
+  _taskCallsByCC = {};
+  calls.forEach(function(c) {
+    const cc = c.call_control_id || c.id || '';
+    if (cc) _taskCallsByCC[cc] = c;
+  });
   renderTasksPage();
 }
+
+function toggleTaskExpand(id) {
+  _expandedTasks[id] = !_expandedTasks[id];
+  renderTasksPage();
+}
+
+function _renderTaskDetail(t) {
+  const cc = t.call_control_id || '';
+  const call = cc ? (_taskCallsByCC[cc] || null) : null;
+  const ins = (call && call.insights) || {};
+  const recordingUrl = '/api/recordings/' + encodeURIComponent(cc);
+  const recordingAvailable = !!(call && (call.recording_url || call.recording_saved_at));
+  // Outcome banner color
+  const oc = (t.outcome || ins.outcome || '').toLowerCase();
+  const outColors = {
+    meeting_booked:     { bg:'#DCFCE7', fg:'#166534', label:'Meeting Booked' },
+    callback_scheduled: { bg:'#FEF3C7', fg:'#92400E', label:'Callback Scheduled' },
+    interested:         { bg:'#DBEAFE', fg:'#1E40AF', label:'Interested' },
+    not_interested:     { bg:'#FEE2E2', fg:'#991B1B', label:'Not Interested' },
+    no_answer:          { bg:'#F3F4F6', fg:'#374151', label:'No Answer' },
+    voicemail:          { bg:'#F3F4F6', fg:'#374151', label:'Voicemail' },
+    do_not_call:        { bg:'#FEE2E2', fg:'#991B1B', label:'Do Not Call' },
+    hung_up:            { bg:'#FEE2E2', fg:'#991B1B', label:'Hung Up' },
+    gatekeeper:         { bg:'#F3F4F6', fg:'#374151', label:'Gatekeeper' },
+  };
+  const oS = outColors[oc] || { bg:'#E5E7EB', fg:'#374151', label:(oc||'unknown').replace(/_/g,' ') };
+
+  const list = function(arr) {
+    if (!Array.isArray(arr) || !arr.length) return '<span style="color:var(--text-muted);">—</span>';
+    return '<ul style="margin:4px 0 0 18px;padding:0;">' + arr.map(function(x){
+      return '<li style="margin-bottom:4px;">' + escHtml(String(x)) + '</li>';
+    }).join('') + '</ul>';
+  };
+
+  const dialedAt = call && call.dialed_at ? new Date(call.dialed_at).toLocaleString() :
+                   (t.created_at ? new Date(t.created_at).toLocaleString() : '');
+  const dur = call && call.duration_seconds ? (Math.floor(call.duration_seconds/60) + 'm ' + (call.duration_seconds%60) + 's') : '';
+
+  let html = '<div style="padding:16px;background:var(--bg-2);border-radius:8px;margin:8px 0;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">' +
+      '<span class="badge" style="background:'+oS.bg+';color:'+oS.fg+';font-size:13px;padding:6px 12px;font-weight:600;">'+escHtml(oS.label)+'</span>' +
+      (ins.interest_level !== undefined ? '<span style="font-size:12px;color:var(--text-muted);">Interest: <strong>'+ins.interest_level+'%</strong></span>' : '') +
+      (ins.sentiment ? '<span style="font-size:12px;color:var(--text-muted);">Sentiment: <strong style="text-transform:capitalize;">'+escHtml(String(ins.sentiment).replace(/_/g,' '))+'</strong></span>' : '') +
+      (dialedAt ? '<span style="font-size:12px;color:var(--text-muted);">Called: '+escHtml(dialedAt)+'</span>' : '') +
+      (dur ? '<span style="font-size:12px;color:var(--text-muted);">Duration: '+escHtml(dur)+'</span>' : '') +
+      (t.campaign_name ? '<span class="badge" style="background:#EEF2FF;color:#4338CA;">'+escHtml(t.campaign_name)+'</span>' : '') +
+    '</div>';
+
+  if (ins.summary) {
+    html += '<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Summary</div>' +
+            '<div style="font-size:13px;line-height:1.5;">'+escHtml(ins.summary)+'</div></div>';
+  }
+  if (ins.next_step) {
+    html += '<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Recommended Next Step</div>' +
+            '<div style="font-size:13px;font-weight:600;color:var(--primary);">'+escHtml(ins.next_step)+'</div></div>';
+  }
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">' +
+    '<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Key Points</div>'+list(ins.key_points)+'</div>' +
+    '<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Action Items</div>'+list(ins.action_items)+'</div>' +
+    '<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Pain Points</div>'+list(ins.prospect_pain_points)+'</div>' +
+    '<div><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Buying Signals</div>'+list(ins.buying_signals)+'</div>' +
+    (Array.isArray(ins.objections) && ins.objections.length ? '<div style="grid-column:span 2;"><div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Objections Raised</div>'+list(ins.objections)+'</div>' : '') +
+  '</div>';
+
+  // Recording player + transcript link
+  if (cc) {
+    html += '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+        '<strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Call Recording</strong>' +
+        '<button class="btn btn-secondary btn-sm" onclick="refreshRecording(\''+cc+'\')"><i data-lucide="refresh-cw" style="width:11px;height:11px;"></i> Refresh</button>' +
+        '<a class="btn btn-secondary btn-sm" href="'+recordingUrl+'" download><i data-lucide="download" style="width:11px;height:11px;"></i> Download</a>' +
+        '<button class="btn btn-secondary btn-sm" onclick="navigate(\'call-logs\');setTimeout(function(){openCallDetail(\''+cc+'\');},250);"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Open Call</button>' +
+      '</div>' +
+      '<audio controls preload="none" style="width:100%;margin-top:6px;" onerror="handleRecordingError(\''+cc+'\')">' +
+        '<source src="'+recordingUrl+'" type="audio/mpeg">' +
+      '</audio>' +
+      (recordingAvailable ? '' : '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Recording may still be processing. Click <em>Refresh</em> if playback fails.</div>') +
+    '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+
 
 function _taskIsOpen(t) { return !t.completed && t.status !== 'done'; }
 function _taskIsOverdue(t) {
@@ -3528,21 +3747,27 @@ function renderTasksPage() {
     const cc = t.call_control_id || '';
     const callBtn = cc ? '<button class="btn btn-secondary btn-sm" title="Open call" onclick="navigate(\'call-logs\');setTimeout(function(){openCallDetail(\'' + cc + '\');},250);"><i data-lucide="phone" style="width:12px;height:12px;"></i></button>' : '';
     const dialBtn = t.phone ? '<button class="btn btn-primary btn-sm" title="Call now" onclick="dialFromTask(' + JSON.stringify(t).replace(/"/g,'&quot;') + ')"><i data-lucide="phone-outgoing" style="width:12px;height:12px;"></i></button>' : '';
+    const isExpanded = !!_expandedTasks[t.id];
+    const expandBtn = '<button class="btn btn-secondary btn-sm" title="' + (isExpanded ? 'Hide details' : 'Show call details + recording') + '" onclick="toggleTaskExpand(\'' + t.id + '\')"><i data-lucide="' + (isExpanded ? 'chevron-up' : 'chevron-down') + '" style="width:12px;height:12px;"></i></button>';
 
-    return '<tr style="' + (done ? 'opacity:0.45;' : '') + (overdue ? 'background:rgba(239,68,68,0.04);' : '') + '">' +
+    let row = '<tr style="' + (done ? 'opacity:0.45;' : '') + (overdue ? 'background:rgba(239,68,68,0.04);' : '') + '">' +
       '<td><input type="checkbox" ' + (done ? 'checked' : '') + ' onchange="toggleTask(\'' + t.id + '\',this.checked)" style="width:16px;height:16px;"/></td>' +
       '<td><div style="font-weight:600;">' + escHtml(t.prospect_name || '—') + '</div>' +
         (t.company ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(t.company) + '</div>' : '') + '</td>' +
       '<td>' + (t.campaign_name ? '<span class="badge" style="background:#EEF2FF;color:#4338CA;">' + escHtml(t.campaign_name) + '</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
       '<td>' + typeBadge + '</td>' +
-      '<td>' + (outcome ? '<span style="font-size:12px;color:var(--text-secondary);text-transform:capitalize;">' + escHtml(outcome) + '</span>' : '<span style="color:var(--text-muted);">—</span>') + '</td>' +
+      '<td>' + outcomeBadge + '</td>' +
       '<td>' + dueCell + '</td>' +
       '<td style="max-width:320px;"><div style="font-size:12px;color:var(--text-secondary);white-space:normal;">' + escHtml((t.notes || '').slice(0,180)) + '</div></td>' +
-      '<td style="text-align:right;white-space:nowrap;">' + dialBtn + ' ' + callBtn + ' ' +
+      '<td style="text-align:right;white-space:nowrap;">' + expandBtn + ' ' + dialBtn + ' ' + callBtn + ' ' +
         '<button class="btn btn-secondary btn-sm" onclick=\'openTaskModal(' + JSON.stringify(t).replace(/'/g,"\\'") + ')\'>Edit</button> ' +
         '<button class="btn btn-danger btn-sm" onclick="deleteTask(\'' + t.id + '\')"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>' +
       '</td>' +
     '</tr>';
+    if (isExpanded) {
+      row += '<tr class="task-detail-row"><td colspan="8" style="padding:0;">' + _renderTaskDetail(t) + '</td></tr>';
+    }
+    return row;
   }).join('');
   html += '</tbody></table></div>';
 

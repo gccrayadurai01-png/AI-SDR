@@ -2593,6 +2593,689 @@ def _ensure_task_for_meeting(call_control_id: str, rec: dict, insights: dict) ->
 
 
 # ════════════════════════════════════════════════════════════
+#  PHASE 3 — CAMPAIGN SCHEDULER + EMAIL FOLLOWUP + CALLBACK AUTO-DIAL
+# ════════════════════════════════════════════════════════════
+import smtplib
+import ssl
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
+try:
+    from zoneinfo import ZoneInfo  # py3.9+
+except Exception:  # pragma: no cover
+    ZoneInfo = None  # type: ignore
+
+# Common TZs surfaced in the UI.
+COMMON_TIMEZONES = [
+    "UTC",
+    "America/New_York",      # EST/EDT
+    "America/Chicago",       # CST/CDT
+    "America/Denver",        # MST/MDT
+    "America/Los_Angeles",   # PST/PDT
+    "America/Phoenix",
+    "America/Toronto",
+    "America/Sao_Paulo",
+    "Europe/London",         # GMT/BST
+    "Europe/Berlin",
+    "Europe/Paris",
+    "Europe/Madrid",
+    "Europe/Athens",
+    "Europe/Moscow",
+    "Asia/Dubai",
+    "Asia/Karachi",
+    "Asia/Kolkata",          # IST
+    "Asia/Singapore",
+    "Asia/Tokyo",
+    "Asia/Shanghai",
+    "Australia/Sydney",
+    "Pacific/Auckland",
+]
+
+
+@app.get("/api/timezones")
+async def list_timezones():
+    """Surface a curated TZ list for the campaign-schedule UI."""
+    return {"timezones": COMMON_TIMEZONES}
+
+
+# ──────────────────────────────────────────────────────────────
+# Email (SMTP) — used for meeting invites + SDR notifications
+# ──────────────────────────────────────────────────────────────
+def _smtp_config() -> dict:
+    return {
+        "host": os.environ.get("SMTP_HOST", "").strip(),
+        "port": int(os.environ.get("SMTP_PORT", "587") or 587),
+        "user": os.environ.get("SMTP_USER", "").strip(),
+        "pass": os.environ.get("SMTP_PASS", "").strip(),
+        "from": os.environ.get("EMAIL_FROM", "").strip()
+                or os.environ.get("SMTP_FROM", "").strip(),
+        "sdr_notify": os.environ.get("SDR_NOTIFY_EMAIL", "").strip(),
+        "use_tls": (os.environ.get("SMTP_USE_TLS", "1").strip() != "0"),
+    }
+
+
+def _send_email_sync(to_addr: str, subject: str, body_text: str,
+                     body_html: str = "", ics_content: str = "",
+                     cc: str = "", reply_to: str = "") -> bool:
+    """Synchronous SMTP send. Returns True on success.
+    Designed to be called from a thread executor so we don't block the loop."""
+    cfg = _smtp_config()
+    if not (cfg["host"] and cfg["from"] and to_addr):
+        logger.info("SMTP not configured or no recipient — skipping email to %r", to_addr)
+        return False
+    msg = EmailMessage()
+    msg["From"] = cfg["from"]
+    msg["To"] = to_addr
+    if cc:
+        msg["Cc"] = cc
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid()
+    msg.set_content(body_text or " ")
+    if body_html:
+        msg.add_alternative(body_html, subtype="html")
+    if ics_content:
+        # Attach as both alternative (for inline parsing) and as a file so
+        # most clients (Gmail, Outlook, Apple Mail) auto-detect the invite.
+        msg.add_attachment(
+            ics_content.encode("utf-8"),
+            maintype="text",
+            subtype="calendar",
+            filename="invite.ics",
+        )
+    try:
+        ctx = ssl.create_default_context()
+        recipients = [to_addr] + ([cc] if cc else [])
+        if cfg["port"] == 465:
+            with smtplib.SMTP_SSL(cfg["host"], cfg["port"], context=ctx, timeout=20) as s:
+                if cfg["user"]:
+                    s.login(cfg["user"], cfg["pass"])
+                s.send_message(msg, from_addr=cfg["from"], to_addrs=recipients)
+        else:
+            with smtplib.SMTP(cfg["host"], cfg["port"], timeout=20) as s:
+                s.ehlo()
+                if cfg["use_tls"]:
+                    s.starttls(context=ctx)
+                    s.ehlo()
+                if cfg["user"]:
+                    s.login(cfg["user"], cfg["pass"])
+                s.send_message(msg, from_addr=cfg["from"], to_addrs=recipients)
+        logger.info("Email sent to %s — subject=%r", to_addr, subject[:60])
+        return True
+    except Exception:
+        logger.exception("SMTP send failed to %s", to_addr)
+        return False
+
+
+async def _send_email(to_addr: str, subject: str, body_text: str,
+                      body_html: str = "", ics_content: str = "",
+                      cc: str = "", reply_to: str = "") -> bool:
+    return await asyncio.to_thread(
+        _send_email_sync, to_addr, subject, body_text, body_html,
+        ics_content, cc, reply_to,
+    )
+
+
+def _build_ics(*, summary: str, description: str, start_utc: datetime,
+               duration_minutes: int = 30, organizer_email: str = "",
+               attendee_email: str = "", uid: str = "") -> str:
+    """Build a minimal RFC5545 VEVENT inline. start_utc must be a naive UTC datetime."""
+    end_utc = start_utc + timedelta(minutes=duration_minutes)
+    fmt = lambda d: d.strftime("%Y%m%dT%H%M%SZ")
+    uid = uid or (str(uuid.uuid4()) + "@knight-ai-sdr")
+    org = organizer_email or _smtp_config()["from"] or "noreply@example.com"
+    desc = (description or "").replace("\r", "").replace("\n", "\\n")
+    summ = (summary or "Meeting").replace("\r", " ").replace("\n", " ")
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Knight AI SDR//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:REQUEST",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{fmt(datetime.utcnow())}",
+        f"DTSTART:{fmt(start_utc)}",
+        f"DTEND:{fmt(end_utc)}",
+        f"SUMMARY:{summ}",
+        f"DESCRIPTION:{desc}",
+        f"ORGANIZER;CN=Knight AI SDR:mailto:{org}",
+    ]
+    if attendee_email:
+        lines.append(
+            f"ATTENDEE;CN={attendee_email};RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:{attendee_email}"
+        )
+    lines += ["STATUS:CONFIRMED", "END:VEVENT", "END:VCALENDAR"]
+    return "\r\n".join(lines) + "\r\n"
+
+
+# ──────────────────────────────────────────────────────────────
+# Time parsing — turn "in 2 hours", "tomorrow at 3pm" into UTC ISO
+# ──────────────────────────────────────────────────────────────
+_REL_RE = _re.compile(
+    r"in\s+(\d+(?:\.\d+)?)\s*(minute|min|hour|hr|day)s?",
+    flags=_re.IGNORECASE,
+)
+
+
+def _parse_relative_when(text: str) -> str | None:
+    """Best-effort parse of 'in N hours/min/days' phrases. Returns ISO8601 UTC or None."""
+    if not text:
+        return None
+    m = _REL_RE.search(text)
+    if not m:
+        return None
+    qty = float(m.group(1))
+    unit = m.group(2).lower()
+    if unit.startswith("min"):
+        delta = timedelta(minutes=qty)
+    elif unit.startswith(("hour", "hr")):
+        delta = timedelta(hours=qty)
+    else:
+        delta = timedelta(days=qty)
+    return (datetime.utcnow() + delta).replace(microsecond=0).isoformat() + "Z"
+
+
+def _resolve_callback_when(insights: dict, transcript_text: str = "") -> str | None:
+    """Extract callback time from insights or transcript. Returns ISO8601 UTC or None."""
+    if not isinstance(insights, dict):
+        return None
+    # 1. Explicit field if Claude already produced one.
+    for k in ("callback_at_utc", "callback_time_utc", "callback_iso"):
+        v = (insights.get(k) or "").strip() if isinstance(insights.get(k), str) else ""
+        if v:
+            return v
+    # 2. Search next_step / summary / short_tag / transcript for "in N hours".
+    blobs = []
+    for k in ("next_step", "summary", "short_tag"):
+        if isinstance(insights.get(k), str):
+            blobs.append(insights[k])
+    if transcript_text:
+        blobs.append(transcript_text)
+    for blob in blobs:
+        iso = _parse_relative_when(blob)
+        if iso:
+            return iso
+    return None
+
+
+# ──────────────────────────────────────────────────────────────
+# Callback queue — auto-dial at scheduled time.
+# Stored alongside tasks (type=callback, auto_dial=True, due_at_utc=...).
+# ──────────────────────────────────────────────────────────────
+def _queue_auto_callback(rec: dict, due_at_utc_iso: str, reason: str = "",
+                         call_control_id: str = "") -> None:
+    """Persist a callback task that the scheduler will auto-dial when due."""
+    try:
+        existing = load_tasks() or []
+        # Prevent duplicate auto-dial for the same source call.
+        for t in existing:
+            if (t.get("call_control_id") == call_control_id
+                    and t.get("auto_dial")
+                    and (t.get("status") or "").lower() == "pending"):
+                return
+        camp_id, camp_name = _find_campaign_for_call(rec)
+        task = {
+            "id": str(uuid.uuid4())[:8],
+            "prospect_name": rec.get("prospect_name", ""),
+            "phone": rec.get("to", "") or rec.get("phone", ""),
+            "company": rec.get("company", ""),
+            "type": "callback",
+            "outcome": "callback_scheduled",
+            "campaign_id": camp_id,
+            "campaign_name": camp_name,
+            "due_date": due_at_utc_iso[:10],
+            "due_at_utc": due_at_utc_iso,
+            "auto_dial": True,
+            "auto_dial_status": "scheduled",
+            "notes": reason or "Auto-callback scheduled from call.",
+            "status": "pending",
+            "call_control_id": call_control_id,
+            "prospect_email": rec.get("prospect_email", ""),
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        save_task(task)
+        logger.info("Queued auto-callback to %s at %s", task["phone"], due_at_utc_iso)
+    except Exception:
+        logger.exception("Failed to queue auto-callback")
+
+
+def _list_pending_auto_callbacks() -> list[dict]:
+    out: list[dict] = []
+    for t in (load_tasks() or []):
+        if (t.get("auto_dial")
+                and (t.get("status") or "").lower() == "pending"
+                and (t.get("auto_dial_status") or "scheduled") in ("scheduled",)):
+            out.append(t)
+    return out
+
+
+def _mark_task_field(task_id: str, **fields) -> None:
+    try:
+        ts = load_tasks() or []
+        changed = False
+        for t in ts:
+            if t.get("id") == task_id:
+                t.update(fields)
+                changed = True
+                break
+        if changed:
+            from json import dumps as _dumps
+            (Path(__file__).parent / "data" / "tasks.json").write_text(
+                _dumps(ts, indent=2, default=str), encoding="utf-8")
+    except Exception:
+        logger.exception("_mark_task_field failed for %s", task_id)
+
+
+# ──────────────────────────────────────────────────────────────
+# Post-call: send invite + notify + queue auto-callback
+# ──────────────────────────────────────────────────────────────
+async def _post_call_email_actions(rec: dict, insights: dict,
+                                    call_control_id: str) -> None:
+    """Fire emails and auto-callback queueing based on outcome."""
+    if not isinstance(insights, dict):
+        return
+    outcome = _normalize_outcome(insights.get("outcome"))
+    cfg = _smtp_config()
+    sdr_notify = cfg["sdr_notify"]
+    prospect_email = (rec.get("prospect_email") or rec.get("email") or "").strip()
+    prospect_name = rec.get("prospect_name") or "there"
+    company = rec.get("company") or ""
+    summary = (insights.get("summary") or "").strip()
+    next_step = (insights.get("next_step") or "").strip()
+    short_tag = (insights.get("short_tag") or "").strip()
+    phone = rec.get("to") or rec.get("phone") or ""
+
+    # ─── 1. Meeting booked → send .ics invite + notify SDR ───
+    if outcome == "meeting_booked":
+        mt = (insights.get("meeting_time_utc") or insights.get("meeting_time") or "").strip()
+        start_utc: datetime | None = None
+        if mt:
+            try:
+                start_utc = datetime.fromisoformat(mt.replace("Z", "")).replace(microsecond=0)
+            except Exception:
+                pass
+        if start_utc is None:
+            # Fallback: tomorrow at 10:00 UTC if AI didn't extract a time.
+            start_utc = (datetime.utcnow() + timedelta(days=1)).replace(
+                hour=10, minute=0, second=0, microsecond=0)
+        ics = _build_ics(
+            summary=f"Meeting with {prospect_name}" + (f" — {company}" if company else ""),
+            description=f"Scheduled via call. {summary}\n\n{next_step}",
+            start_utc=start_utc,
+            duration_minutes=30,
+            organizer_email=cfg["from"],
+            attendee_email=prospect_email,
+        )
+        body = (f"Hi {prospect_name},\n\n"
+                f"Thanks for the call! I've blocked 30 minutes on the calendar "
+                f"as discussed. Calendar invite is attached — accept it and you're set.\n\n"
+                f"{summary}\n\n"
+                f"Talk soon!\n")
+        html = body.replace("\n", "<br>")
+        if prospect_email:
+            await _send_email(
+                to_addr=prospect_email,
+                subject=f"Meeting confirmation — {start_utc.strftime('%b %d, %H:%M UTC')}",
+                body_text=body, body_html=html,
+                ics_content=ics,
+                cc=sdr_notify,  # cc the SDR so they have it on their calendar too
+                reply_to=cfg["from"],
+            )
+        # Always notify SDR, even if prospect email is missing
+        if sdr_notify and not prospect_email:
+            await _send_email(
+                to_addr=sdr_notify,
+                subject=f"[Meeting Booked] {prospect_name} — {short_tag or 'see notes'}",
+                body_text=(f"Meeting booked with {prospect_name} ({phone}).\n"
+                          f"Time (UTC): {start_utc.isoformat()}\n\n{summary}\n\n"
+                          f"Next step: {next_step}\n"),
+                ics_content=ics,
+            )
+        return
+
+    # ─── 2. Callback scheduled → queue auto-dial + email confirm + notify SDR ───
+    if outcome == "callback_scheduled":
+        # Try to resolve a precise callback time (e.g. "in 2 hours").
+        cb_iso = _resolve_callback_when(insights)
+        if cb_iso:
+            _queue_auto_callback(rec, cb_iso, reason=next_step or summary,
+                                 call_control_id=call_control_id)
+            try:
+                cb_dt = datetime.fromisoformat(cb_iso.replace("Z", ""))
+                when_h = cb_dt.strftime("%b %d, %H:%M UTC")
+            except Exception:
+                when_h = cb_iso
+            if prospect_email:
+                await _send_email(
+                    to_addr=prospect_email,
+                    subject=f"Quick follow-up at {when_h}",
+                    body_text=(f"Hi {prospect_name},\n\n"
+                              f"Thanks for the chat — as agreed I'll give you a quick "
+                              f"call back around {when_h}.\n\n"
+                              f"{summary}\n\nTalk soon!\n"),
+                )
+            if sdr_notify:
+                await _send_email(
+                    to_addr=sdr_notify,
+                    subject=f"[Callback queued] {prospect_name} — {when_h}",
+                    body_text=(f"Auto-callback scheduled for {prospect_name} ({phone}).\n"
+                              f"Due (UTC): {cb_iso}\n\n{summary}\n\nReason: {next_step}\n"),
+                )
+        else:
+            # No specific time → just notify the SDR.
+            if sdr_notify:
+                await _send_email(
+                    to_addr=sdr_notify,
+                    subject=f"[Callback requested] {prospect_name}",
+                    body_text=(f"Callback requested by {prospect_name} ({phone}) "
+                              f"but no specific time captured.\n\n{summary}\n"
+                              f"Next step: {next_step}\n"),
+                )
+        return
+
+    # ─── 3. Interested → polite follow-up email ───
+    if outcome == "interested":
+        if prospect_email:
+            await _send_email(
+                to_addr=prospect_email,
+                subject=f"Following up on our call",
+                body_text=(f"Hi {prospect_name},\n\n"
+                          f"Thanks for taking the time today. Quick recap:\n"
+                          f"{summary}\n\n"
+                          f"Reply to this email and we can lock in next steps.\n\n"
+                          f"Best,\n"),
+                cc=sdr_notify,
+                reply_to=cfg["from"],
+            )
+        if sdr_notify:
+            await _send_email(
+                to_addr=sdr_notify,
+                subject=f"[Interested] {prospect_name} — followup sent",
+                body_text=(f"{prospect_name} ({phone}) showed interest.\n\n"
+                          f"{summary}\n\nNext: {next_step}\n"),
+            )
+        return
+
+
+# ──────────────────────────────────────────────────────────────
+# Campaign scheduler — windows per day, dial caps, timezone-aware
+# ──────────────────────────────────────────────────────────────
+def _validate_schedule(sched: dict) -> tuple[bool, str]:
+    """Validate a campaign schedule dict. Returns (ok, error_msg)."""
+    if not isinstance(sched, dict):
+        return False, "schedule must be an object"
+    tz = (sched.get("timezone") or "UTC").strip()
+    if ZoneInfo is not None:
+        try:
+            ZoneInfo(tz)
+        except Exception:
+            return False, f"unknown timezone {tz!r}"
+    days = sched.get("days_of_week") or [0, 1, 2, 3, 4]
+    if not (isinstance(days, list) and all(isinstance(d, int) and 0 <= d <= 6 for d in days)):
+        return False, "days_of_week must be a list of ints 0..6 (Mon=0)"
+    windows = sched.get("windows") or []
+    if not isinstance(windows, list):
+        return False, "windows must be a list"
+    parsed: list[tuple[int, int, int]] = []  # (start_min, end_min, cap)
+    for i, w in enumerate(windows):
+        if not isinstance(w, dict):
+            return False, f"window {i} must be an object"
+        try:
+            sh, sm = (w.get("start") or "").split(":")
+            eh, em = (w.get("end") or "").split(":")
+            sm_int = int(sh) * 60 + int(sm)
+            em_int = int(eh) * 60 + int(em)
+            cap = int(w.get("dial_cap", 0))
+        except Exception:
+            return False, f"window {i}: invalid HH:MM or dial_cap"
+        if em_int <= sm_int:
+            return False, f"window {i}: end must be after start"
+        if cap < 0:
+            return False, f"window {i}: dial_cap must be >= 0"
+        parsed.append((sm_int, em_int, cap))
+    parsed.sort()
+    for i in range(1, len(parsed)):
+        if parsed[i][0] < parsed[i - 1][1]:
+            return False, f"windows overlap at index {i}"
+    return True, ""
+
+
+def _campaign_now_local(sched: dict) -> datetime:
+    tz = (sched.get("timezone") or "UTC").strip()
+    if ZoneInfo is not None:
+        try:
+            return datetime.now(ZoneInfo(tz))
+        except Exception:
+            pass
+    return datetime.utcnow()
+
+
+def _campaign_active_window_idx(sched: dict, now_local: datetime) -> int | None:
+    """Return current active window index, or None."""
+    days = sched.get("days_of_week") or [0, 1, 2, 3, 4]
+    if now_local.weekday() not in days:
+        return None
+    cur_min = now_local.hour * 60 + now_local.minute
+    windows = sched.get("windows") or []
+    for i, w in enumerate(windows):
+        try:
+            sh, sm = (w.get("start") or "").split(":")
+            eh, em = (w.get("end") or "").split(":")
+            s = int(sh) * 60 + int(sm)
+            e = int(eh) * 60 + int(em)
+            if s <= cur_min < e:
+                return i
+        except Exception:
+            continue
+    return None
+
+
+async def _scheduler_dial_one_for_campaign(c: dict) -> bool:
+    """Place a single call for the campaign if any prospect is eligible."""
+    prospects = c.get("prospects") or []
+    for p in prospects:
+        if not isinstance(p, dict):
+            continue
+        status = (p.get("status") or "queued").lower()
+        if status in ("dialed", "completed", "skipped"):
+            continue
+        phone = normalize_phone(p.get("phone")) or p.get("phone") or ""
+        if not phone:
+            continue
+        if is_dnc(phone):
+            _mark_campaign_prospect(c["id"], phone, status="skipped", outcome="dnc")
+            continue
+        # Place the call.
+        try:
+            req = CallRequest(
+                to_number=phone,
+                prospect_name=prospect_display_name(p),
+                company=p.get("company") or "",
+                notes=p.get("notes") or "",
+                prospect_email=str(p.get("email") or "").strip(),
+                voice_id=c.get("voice_id") or "",
+            )
+            result = await place_outbound_call(req)
+            cc_id = result.get("call_control_id")
+            _mark_campaign_prospect(
+                c["id"], phone,
+                status="dialed", outcome="",
+                call_control_id=cc_id,
+                dialed_at=datetime.utcnow().isoformat(),
+            )
+            return True
+        except Exception:
+            logger.exception("Scheduler dial failed for %s", phone)
+            _mark_campaign_prospect(c["id"], phone, status="error")
+            continue
+    return False
+
+
+async def _scheduler_tick() -> None:
+    """One iteration of the unified scheduler (campaigns + auto-callbacks)."""
+    # ── A. Auto-callbacks (highest priority — always honor user-promised time) ──
+    try:
+        now_utc = datetime.utcnow()
+        for t in _list_pending_auto_callbacks():
+            due = (t.get("due_at_utc") or "").replace("Z", "")
+            try:
+                due_dt = datetime.fromisoformat(due)
+            except Exception:
+                continue
+            if due_dt > now_utc:
+                continue
+            phone = t.get("phone") or ""
+            if not phone or is_dnc(phone):
+                _mark_task_field(t["id"], auto_dial_status="skipped",
+                                 status="done", completed=True)
+                continue
+            try:
+                req = CallRequest(
+                    to_number=phone,
+                    prospect_name=t.get("prospect_name") or "there",
+                    company=t.get("company") or "",
+                    notes=f"Auto-callback follow-up. {t.get('notes') or ''}",
+                    prospect_email=t.get("prospect_email") or "",
+                )
+                result = await place_outbound_call(req)
+                _mark_task_field(t["id"],
+                                 auto_dial_status="dialed",
+                                 status="done", completed=True,
+                                 dialed_call_control_id=result.get("call_control_id"),
+                                 dialed_at=datetime.utcnow().isoformat())
+                logger.info("Auto-callback dialed task=%s phone=%s", t.get("id"), phone)
+            except Exception:
+                logger.exception("Auto-callback dial failed for %s", phone)
+                _mark_task_field(t["id"], auto_dial_status="error")
+    except Exception:
+        logger.exception("Auto-callback tick failed")
+
+    # ── B. Campaign window scheduler ──
+    try:
+        # Skip if a manual campaign run is already in progress (avoid double-dial).
+        if _active_campaign_id:
+            return
+        camps = _load_campaigns()
+        for c in camps:
+            if not isinstance(c, dict):
+                continue
+            sched = c.get("schedule") or {}
+            if not sched.get("enabled"):
+                continue
+            if (c.get("status") or "").lower() in ("completed", "stopped"):
+                continue
+            now_local = _campaign_now_local(sched)
+            widx = _campaign_active_window_idx(sched, now_local)
+            if widx is None:
+                continue
+            window = (sched.get("windows") or [])[widx]
+            cap = int(window.get("dial_cap", 0))
+            if cap <= 0:
+                continue
+            today = now_local.date().isoformat()
+            counters = c.setdefault("dials_by_date", {})
+            day_counters = counters.setdefault(today, {})
+            already = int(day_counters.get(str(widx), 0))
+            if already >= cap:
+                continue
+            ok = await _scheduler_dial_one_for_campaign(c)
+            if ok:
+                day_counters[str(widx)] = already + 1
+                # Persist counter increment.
+                _update_campaign(c["id"], {
+                    "dials_by_date": counters,
+                    "status": "scheduled",
+                })
+                # One dial per tick across all campaigns to avoid bursts.
+                return
+    except Exception:
+        logger.exception("Campaign scheduler tick failed")
+
+
+_scheduler_task: asyncio.Task | None = None
+
+
+async def _scheduler_loop() -> None:
+    logger.info("Phase 3 scheduler loop started.")
+    while True:
+        try:
+            await _scheduler_tick()
+        except Exception:
+            logger.exception("Scheduler loop iteration failed")
+        # 60s cadence — fine-grained enough for hourly/15-min dial caps.
+        await asyncio.sleep(60)
+
+
+@app.on_event("startup")
+async def _start_phase3_scheduler():
+    global _scheduler_task
+    if _scheduler_task is None or _scheduler_task.done():
+        _scheduler_task = asyncio.create_task(_scheduler_loop())
+
+
+# ──────────────────────────────────────────────────────────────
+# Phase 3 API endpoints
+# ──────────────────────────────────────────────────────────────
+@app.patch("/api/campaigns/{campaign_id}/schedule")
+async def patch_campaign_schedule(campaign_id: str, request: Request):
+    body = await request.json()
+    sched = body.get("schedule") if isinstance(body, dict) else None
+    if not isinstance(sched, dict):
+        sched = body  # allow PATCH with raw schedule body
+    sched.setdefault("enabled", True)
+    sched.setdefault("timezone", "UTC")
+    sched.setdefault("days_of_week", [0, 1, 2, 3, 4])
+    sched.setdefault("windows", [])
+    ok, err = _validate_schedule(sched)
+    if not ok:
+        raise HTTPException(400, err)
+    updated = _update_campaign(campaign_id, {"schedule": sched})
+    if not updated:
+        raise HTTPException(404, "Campaign not found")
+    return {"ok": True, "schedule": sched}
+
+
+@app.post("/api/callbacks/schedule")
+async def post_schedule_callback(request: Request):
+    body = await request.json()
+    phone = (body.get("phone") or "").strip()
+    when = (body.get("when_utc") or body.get("due_at_utc") or "").strip()
+    if not phone or not when:
+        raise HTTPException(400, "phone and when_utc are required")
+    rec = {
+        "to": phone,
+        "prospect_name": body.get("prospect_name", ""),
+        "company": body.get("company", ""),
+        "prospect_email": body.get("prospect_email", ""),
+    }
+    _queue_auto_callback(rec, when, reason=body.get("notes", ""),
+                         call_control_id=body.get("call_control_id", ""))
+    return {"ok": True}
+
+
+@app.get("/api/callbacks/pending")
+async def list_pending_callbacks():
+    return {"callbacks": _list_pending_auto_callbacks()}
+
+
+@app.post("/api/admin/test-email")
+async def admin_test_email(request: Request):
+    body = await request.json()
+    to = (body.get("to") or _smtp_config()["sdr_notify"] or "").strip()
+    if not to:
+        raise HTTPException(400, "Recipient 'to' missing and SDR_NOTIFY_EMAIL not set")
+    ok = await _send_email(
+        to_addr=to,
+        subject="Knight AI SDR — SMTP test",
+        body_text="If you're reading this, SMTP is configured correctly.\n",
+    )
+    return {"ok": ok, "to": to, "smtp_configured": bool(_smtp_config()["host"])}
+
+
+# ════════════════════════════════════════════════════════════
 #  OUTBOUND CALL
 # ════════════════════════════════════════════════════════════
 class CallRequest(BaseModel):
@@ -3559,6 +4242,7 @@ Return this exact JSON structure:
 "objections": ["any objections the prospect raised"],
 "next_step": "recommended next action",
 "meeting_time_utc": "ISO8601 UTC timestamp if meeting was booked, else empty string",
+"callback_at_utc": "ISO8601 UTC timestamp if prospect requested a callback at a specific time (e.g. 'call me back in 2 hours' or 'tomorrow at 3pm'), else empty string. Compute relative times from the current UTC time.",
 "prospect_pain_points": ["pain points mentioned by prospect"],
 "buying_signals": ["any positive buying signals detected"]}}"""
 
@@ -3582,6 +4266,7 @@ Return this exact JSON structure:
             # Normalize missing fields for UI and downstream logic.
             insights.setdefault("short_tag", "")
             insights.setdefault("meeting_time_utc", "")
+            insights.setdefault("callback_at_utc", "")
             # Force outcome into the canonical vocabulary so filters & tasks match.
             insights["outcome"] = _normalize_outcome(insights.get("outcome"))
         # Persist normalized outcome at BOTH insights.outcome AND the top-level
@@ -3599,6 +4284,10 @@ Return this exact JSON structure:
         # ── Auto-create task based on outcome for the new Tasks sidebar ──
         if isinstance(insights, dict):
             _ensure_task_for_outcome(cc_id, rec if isinstance(rec, dict) else {}, insights)
+        # ── Phase 3: email follow-ups + auto-callback queueing ──
+        if isinstance(insights, dict):
+            asyncio.create_task(_post_call_email_actions(
+                rec if isinstance(rec, dict) else {}, insights, cc_id))
         # ── Propagate outcome back to campaign prospect + DNC ──
         try:
             r = rec if isinstance(rec, dict) else (active_calls.get(cc_id) or {})
