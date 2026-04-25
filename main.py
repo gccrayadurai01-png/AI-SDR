@@ -1,5 +1,5 @@
 """
-CloudFuze AI SDR — FastAPI server
+Knight AI SDR — FastAPI server
 Uses Telnyx server-side transcription (no WebSocket audio streaming).
 Flow: call.answered → speak → start_transcription → call.transcription → Claude → speak → loop
 """
@@ -118,7 +118,7 @@ async def _app_lifespan(app: FastAPI):
 
 
 # ─── app ────────────────────────────────────────────────────
-app = FastAPI(title="CloudFuze AI SDR", version="3.0.0", lifespan=_app_lifespan)
+app = FastAPI(title="Knight AI SDR", version="3.0.0", lifespan=_app_lifespan)
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -815,7 +815,7 @@ async def serve_dashboard():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return JSONResponse({"status": "CloudFuze AI SDR running - dashboard not found"})
+    return JSONResponse({"status": "Knight AI SDR running - dashboard not found"})
 
 
 # ════════════════════════════════════════════════════════════
@@ -5378,7 +5378,7 @@ async def dashboard_stats():
 # ════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"CloudFuze AI SDR starting on port {config.PORT}")
+    logger.info(f"Knight AI SDR starting on port {config.PORT}")
     logger.info(f"Dashboard: http://localhost:{config.PORT}")
     # Pass the app object directly to avoid accidental module-resolution collisions.
     # (When passing an app object, uvicorn can't use reload reliably.)
