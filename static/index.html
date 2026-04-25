@@ -467,6 +467,12 @@ tbody tr.clickable { cursor: pointer; }
       <div class="nav-item" data-page="analytics" onclick="navigate('analytics')">
         <i data-lucide="bar-chart-3"></i> <span>Analytics</span>
       </div>
+      <div class="nav-item owner-only" data-page="admin-tenants" onclick="navigate('admin-tenants')" style="display:none;">
+        <i data-lucide="building-2"></i> <span>Tenants (Owner)</span>
+      </div>
+      <div class="nav-item owner-only" data-page="admin-users" onclick="navigate('admin-users')" style="display:none;">
+        <i data-lucide="users"></i> <span>Users (Owner)</span>
+      </div>
       <div class="nav-item" data-page="settings" onclick="navigate('settings')">
         <i data-lucide="settings"></i> <span>Settings</span>
       </div>
@@ -1042,6 +1048,94 @@ tbody tr.clickable { cursor: pointer; }
         </div>
       </div>
 
+      <!-- ===================== ADMIN · TENANTS (Owner only) ===================== -->
+      <div class="page" id="page-admin-tenants">
+        <div class="page-header">
+          <div>
+            <h2>🏢 Tenants</h2>
+            <p>Each tenant is an isolated workspace — own contacts, calls, agents, email sequence, and credit balance.</p>
+          </div>
+          <button class="btn btn-primary" onclick="showCreateTenantModal()"><i data-lucide="plus"></i> New Tenant</button>
+        </div>
+        <div class="card">
+          <div id="tenantsTableContainer"><div class="empty-state"><p>Loading…</p></div></div>
+        </div>
+
+        <!-- Create Tenant Modal -->
+        <div id="createTenantModal" class="modal" style="display:none;">
+          <div class="modal-content" style="max-width:560px;">
+            <div class="modal-header">
+              <h3>Create New Tenant</h3>
+              <button class="modal-close" onclick="closeCreateTenantModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group"><label>Company / Tenant Name</label><input id="ntName" placeholder="Acme Corp"/></div>
+              <div class="form-grid">
+                <div class="form-group"><label>Plan</label>
+                  <select id="ntPlan">
+                    <option value="starter">Starter</option>
+                    <option value="growth">Growth</option>
+                    <option value="enterprise">Enterprise</option>
+                    <option value="trial">Trial</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Initial Credit Balance</label><input id="ntCredits" type="number" value="0"/></div>
+              </div>
+              <div class="form-group"><label>Assigned Phone Number (Telnyx)</label><input id="ntPhone" placeholder="+15551234567"/></div>
+              <div class="form-group"><label>Notes (internal)</label><textarea id="ntNotes" rows="2"></textarea></div>
+              <hr style="border-color:rgba(255,255,255,0.1);margin:14px 0;"/>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Optional: seed a tenant-admin login at the same time.</div>
+              <div class="form-grid">
+                <div class="form-group"><label>Admin Username</label><input id="ntAdminUser" placeholder="acme_admin" autocomplete="off"/></div>
+                <div class="form-group"><label>Admin Password</label><input id="ntAdminPass" type="password" placeholder="strong password" autocomplete="new-password"/></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeCreateTenantModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="createTenant()"><i data-lucide="check"></i> Create</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== ADMIN · USERS (Owner only) ===================== -->
+      <div class="page" id="page-admin-users">
+        <div class="page-header">
+          <div>
+            <h2>👥 Users</h2>
+            <p>All login accounts across all tenants.</p>
+          </div>
+          <button class="btn btn-primary" onclick="showCreateUserModal()"><i data-lucide="user-plus"></i> Add User</button>
+        </div>
+        <div class="card">
+          <div id="usersTableContainer"><div class="empty-state"><p>Loading…</p></div></div>
+        </div>
+
+        <div id="createUserModal" class="modal" style="display:none;">
+          <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+              <h3>Add User</h3>
+              <button class="modal-close" onclick="closeCreateUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group"><label>Username</label><input id="nuUsername" autocomplete="off"/></div>
+              <div class="form-group"><label>Password</label><input id="nuPassword" type="password" autocomplete="new-password"/></div>
+              <div class="form-group"><label>Tenant</label><select id="nuTenant"></select></div>
+              <div class="form-group"><label>Role</label>
+                <select id="nuRole">
+                  <option value="tenant_admin">Tenant Admin</option>
+                  <option value="tenant_user">Tenant User</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeCreateUserModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="createUser()">Create</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ===================== AI AGENT (Single Agent Setup) ===================== -->
       <div class="page" id="page-ai-agents">
         <div class="page-header">
@@ -1610,6 +1704,8 @@ tbody tr.clickable { cursor: pointer; }
 async function api(method, path, body) {
   try {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const tok = sessionStorage.getItem('cloudfuze_token');
+    if (tok) opts.headers['Authorization'] = 'Bearer ' + tok;
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(path, opts);
     if (!r.ok) {
@@ -1739,7 +1835,8 @@ const pageTitles = {
   bella: 'Bella AI', 'ai-agents': 'AI Agent', 'email-agent': 'Email Agent',
   'live-calls': 'Live Calls',
   'call-logs': 'Call History', tasks: 'Tasks', calendar: 'Calendar',
-  analytics: 'Analytics', settings: 'Settings'
+  analytics: 'Analytics', settings: 'Settings',
+  'admin-tenants': 'Tenants (Owner)', 'admin-users': 'Users (Owner)'
 };
 
 function navigate(page) {
@@ -1768,6 +1865,8 @@ function navigate(page) {
   else if (page === 'calendar') loadCalendarPage();
   else if (page === 'analytics') loadAnalytics();
   else if (page === 'settings') loadSettings();
+  else if (page === 'admin-tenants') loadAdminTenantsPage();
+  else if (page === 'admin-users') loadAdminUsersPage();
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -2961,6 +3060,146 @@ async function loadEmailHistory() {
              '<td>'+escHtml(local)+'</td></tr>';
     }).join('') +
     '</tbody></table></div>';
+}
+
+/* ────────── ADMIN · TENANTS ────────── */
+async function loadAdminTenantsPage() {
+  const d = await GET('/api/admin/tenants');
+  const c = document.getElementById('tenantsTableContainer');
+  if (d._error) { c.innerHTML = '<div class="empty-state"><p>'+escHtml(d.detail || 'Failed to load')+'</p></div>'; return; }
+  const tenants = d.tenants || [];
+  if (!tenants.length) { c.innerHTML = '<div class="empty-state"><p>No tenants yet.</p></div>'; return; }
+  c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+    '<th>Name</th><th>ID</th><th>Plan</th><th>Phone</th><th>Users</th><th>Credits</th><th>Status</th><th>Actions</th>' +
+    '</tr></thead><tbody>' +
+    tenants.map(function(t){
+      return '<tr>' +
+        '<td><b>'+escHtml(t.name||'')+'</b><br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(t.notes||'')+'</span></td>' +
+        '<td><code style="font-size:11px;">'+escHtml(t.id||'')+'</code></td>' +
+        '<td>'+escHtml(t.plan||'')+'</td>' +
+        '<td>'+escHtml(t.phone_number||'—')+'</td>' +
+        '<td>'+(t.user_count||0)+'</td>' +
+        '<td>'+(t.credits_balance||0)+'</td>' +
+        '<td><span class="badge badge-'+(t.status==='active'?'green':'gray')+'">'+escHtml(t.status||'')+'</span></td>' +
+        '<td>' +
+          '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')"><i data-lucide="edit-2"></i></button> ' +
+          (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')"><i data-lucide="trash-2"></i></button>') +
+        '</td>' +
+      '</tr>';
+    }).join('') + '</tbody></table></div>';
+  if (window.lucide) lucide.createIcons();
+}
+
+function showCreateTenantModal() {
+  document.getElementById('ntName').value = '';
+  document.getElementById('ntPlan').value = 'starter';
+  document.getElementById('ntCredits').value = '0';
+  document.getElementById('ntPhone').value = '';
+  document.getElementById('ntNotes').value = '';
+  document.getElementById('ntAdminUser').value = '';
+  document.getElementById('ntAdminPass').value = '';
+  document.getElementById('createTenantModal').style.display = 'flex';
+}
+function closeCreateTenantModal(){ document.getElementById('createTenantModal').style.display='none'; }
+
+async function createTenant() {
+  const payload = {
+    name:            document.getElementById('ntName').value.trim(),
+    plan:            document.getElementById('ntPlan').value,
+    credits_balance: parseInt(document.getElementById('ntCredits').value, 10) || 0,
+    phone_number:    document.getElementById('ntPhone').value.trim(),
+    notes:           document.getElementById('ntNotes').value.trim(),
+    admin_username:  document.getElementById('ntAdminUser').value.trim(),
+    admin_password:  document.getElementById('ntAdminPass').value,
+  };
+  if (!payload.name) return toast('Name is required', 'error');
+  const r = await POST('/api/admin/tenants', payload);
+  if (r._error) return toast('Create failed: '+r.detail, 'error');
+  toast('Tenant created'+(r.seeded_user?' + login '+r.seeded_user:''), 'success');
+  closeCreateTenantModal();
+  loadAdminTenantsPage();
+}
+
+async function editTenant(tid) {
+  const newCreds = prompt('New credit balance for '+tid+' (leave blank to skip):');
+  if (newCreds === null) return;
+  const payload = {};
+  if (newCreds.trim() !== '') payload.credits_balance = parseInt(newCreds, 10) || 0;
+  const newPhone = prompt('Assigned phone number (blank to skip):');
+  if (newPhone && newPhone.trim()) payload.phone_number = newPhone.trim();
+  if (!Object.keys(payload).length) return;
+  const r = await api('PATCH', '/api/admin/tenants/'+encodeURIComponent(tid), payload);
+  if (r._error) return toast('Update failed: '+r.detail, 'error');
+  toast('Tenant updated', 'success');
+  loadAdminTenantsPage();
+}
+
+async function deleteTenant(tid, name) {
+  if (!confirm('Delete tenant "'+name+'"? Login users for this tenant will also be removed. Data folder is preserved.')) return;
+  const r = await api('DELETE', '/api/admin/tenants/'+encodeURIComponent(tid));
+  if (r._error) return toast('Delete failed: '+r.detail, 'error');
+  toast('Tenant deleted', 'success');
+  loadAdminTenantsPage();
+}
+
+/* ────────── ADMIN · USERS ────────── */
+async function loadAdminUsersPage() {
+  const [u, t] = await Promise.all([GET('/api/admin/users'), GET('/api/admin/tenants')]);
+  const c = document.getElementById('usersTableContainer');
+  if (u._error) { c.innerHTML = '<div class="empty-state"><p>'+escHtml(u.detail||'failed')+'</p></div>'; return; }
+  const users = u.users || [];
+  // populate tenant select
+  const sel = document.getElementById('nuTenant');
+  if (sel && t.tenants) {
+    sel.innerHTML = t.tenants.map(function(x){return '<option value="'+x.id+'">'+escHtml(x.name)+'</option>';}).join('');
+  }
+  if (!users.length) { c.innerHTML = '<div class="empty-state"><p>No users.</p></div>'; return; }
+  const tenantNames = {};
+  (t.tenants || []).forEach(function(x){ tenantNames[x.id] = x.name; });
+  c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+    '<th>Username</th><th>Role</th><th>Tenant</th><th>Created</th><th></th>' +
+    '</tr></thead><tbody>' +
+    users.map(function(uu){
+      const tname = uu.tenant_id ? (tenantNames[uu.tenant_id]||uu.tenant_id) : '— (owner)';
+      return '<tr><td><b>'+escHtml(uu.username)+'</b></td><td>'+escHtml(uu.role||'')+'</td><td>'+escHtml(tname)+'</td>' +
+        '<td style="font-size:11px;color:var(--text-muted);">'+escHtml((uu.created_at||'').slice(0,16))+'</td>' +
+        '<td>'+(uu.username==='admin'?'':'<button class="btn btn-secondary btn-sm" onclick="deleteUser(\''+uu.username+'\')"><i data-lucide="trash-2"></i></button>')+'</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  if (window.lucide) lucide.createIcons();
+}
+
+function showCreateUserModal(){ document.getElementById('createUserModal').style.display='flex'; }
+function closeCreateUserModal(){ document.getElementById('createUserModal').style.display='none'; }
+
+async function createUser() {
+  const payload = {
+    username:  document.getElementById('nuUsername').value.trim(),
+    password:  document.getElementById('nuPassword').value,
+    tenant_id: document.getElementById('nuTenant').value,
+    role:      document.getElementById('nuRole').value,
+  };
+  if (!payload.username || !payload.password || !payload.tenant_id) return toast('All fields required','error');
+  const r = await POST('/api/admin/users', payload);
+  if (r._error) return toast('Create failed: '+r.detail,'error');
+  toast('User created','success');
+  closeCreateUserModal();
+  loadAdminUsersPage();
+}
+
+async function deleteUser(uname) {
+  if (!confirm('Delete user "'+uname+'"?')) return;
+  const r = await api('DELETE', '/api/admin/users/'+encodeURIComponent(uname));
+  if (r._error) return toast('Delete failed: '+r.detail,'error');
+  toast('User deleted','success');
+  loadAdminUsersPage();
+}
+
+/* Reveal owner-only nav after login */
+function applyRoleVisibility() {
+  const role = sessionStorage.getItem('knight_role') || '';
+  document.querySelectorAll('.owner-only').forEach(function(el){
+    el.style.display = (role === 'owner') ? '' : 'none';
+  });
 }
 
 async function loadAgentsPage() {
@@ -4541,8 +4780,10 @@ function init() {
 
   // Show logged-in user
   const user = sessionStorage.getItem('cloudfuze_user');
+  const role = sessionStorage.getItem('knight_role') || '';
   const userEl = document.getElementById('loggedInUser');
-  if (userEl && user) userEl.textContent = user;
+  if (userEl && user) userEl.textContent = user + (role==='owner' ? ' · owner' : '');
+  applyRoleVisibility();
 
   // Initialize Lucide icons
   if (typeof lucide !== 'undefined') lucide.createIcons();

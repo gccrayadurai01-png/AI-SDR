@@ -2352,19 +2352,354 @@ async def _start_named_campaign_unlocked(camp_id: str) -> bool:
 # ════════════════════════════════════════════════════════════
 #  AUTH
 # ════════════════════════════════════════════════════════════
-CLOUDFUZE_USERS = {
-    "admin": "CloudFuze2024!",
-    "roy": "cloudfuze123",
-}
+# ════════════════════════════════════════════════════════════
+#  MULTI-TENANT FOUNDATION (Phase 1)
+#  - tenants.json   : master tenant registry (owner only sees full list)
+#  - users.json     : username -> {pw_hash, salt, tenant_id, role}
+#  - sessions       : in-memory token -> {username, tenant_id, role, ts}
+#  - data/tenants/{tenant_id}/  : per-tenant files (calls, agents, etc.)
+# ════════════════════════════════════════════════════════════
+import hashlib as _hashlib
+import secrets as _secrets
+
+DATA_DIR     = Path(__file__).parent / "data"
+TENANTS_FILE = DATA_DIR / "tenants.json"
+USERS_FILE   = DATA_DIR / "users.json"
+TENANTS_DIR  = DATA_DIR / "tenants"
+
+
+def _hash_pw(password: str, salt: str = "") -> tuple[str, str]:
+    salt = salt or _secrets.token_hex(16)
+    h = _hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+    return h, salt
+
+
+def _load_json(p: Path, default):
+    try:
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Failed to read %s", p)
+    return default
+
+
+def _save_json(p: Path, data) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+
+
+def _load_tenants() -> list[dict]:
+    return _load_json(TENANTS_FILE, [])
+
+
+def _save_tenants(tenants: list[dict]) -> None:
+    _save_json(TENANTS_FILE, tenants)
+
+
+def _load_users() -> dict:
+    return _load_json(USERS_FILE, {})
+
+
+def _save_users(users: dict) -> None:
+    _save_json(USERS_FILE, users)
+
+
+def _tenant_dir(tenant_id: str) -> Path:
+    safe = "".join(c for c in tenant_id if c.isalnum() or c in "-_") or "tenant_default"
+    p = TENANTS_DIR / safe
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _migrate_to_default_tenant():
+    """Move legacy single-tenant files into data/tenants/tenant_default/ once."""
+    legacy = [
+        "calls.json", "contacts.json", "tasks.json", "campaigns.json",
+        "script.json", "agents.json", "email_agent.json", "smtp_config.json",
+        "email_history.json", "uploaded_docs.json", "campaign_runs.json",
+    ]
+    target = _tenant_dir("tenant_default")
+    moved = []
+    for fname in legacy:
+        src = DATA_DIR / fname
+        dst = target / fname
+        if src.exists() and not dst.exists():
+            try:
+                dst.write_bytes(src.read_bytes())
+                src.unlink()
+                moved.append(fname)
+            except Exception:
+                logger.exception("Migrate %s failed", fname)
+    if moved:
+        logger.info("Migrated to tenant_default: %s", ", ".join(moved))
+
+
+def _bootstrap_multitenant():
+    """Create default tenant + owner login if missing. Idempotent."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    TENANTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    tenants = _load_tenants()
+    if not any(t.get("id") == "tenant_default" for t in tenants):
+        tenants.append({
+            "id": "tenant_default",
+            "name": "Default Tenant (legacy data)",
+            "slug": "default",
+            "status": "active",
+            "created_at": datetime.utcnow().isoformat(),
+            "phone_number": os.environ.get("TELNYX_PHONE_NUMBER", ""),
+            "credits_balance": 0,
+            "plan": "internal",
+            "notes": "Auto-created from pre-multi-tenant data.",
+        })
+        _save_tenants(tenants)
+
+    users = _load_users()
+    if "admin" not in users:
+        h, salt = _hash_pw("knight2024!")
+        users["admin"] = {
+            "username": "admin",
+            "pw_hash": h,
+            "salt": salt,
+            "tenant_id": None,        # owner has no tenant scope
+            "role": "owner",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        _save_users(users)
+        logger.info("Bootstrapped owner user: admin / knight2024!")
+
+    _migrate_to_default_tenant()
+
+
+# Run bootstrap at import time so login works on first request.
+try:
+    _bootstrap_multitenant()
+except Exception:
+    logger.exception("Multi-tenant bootstrap failed (non-fatal)")
+
+
+# ── Sessions (in-memory; reset on redeploy is fine for Phase 1) ──
+_SESSIONS: dict[str, dict] = {}
+
+
+def _make_session(user: dict) -> str:
+    token = _secrets.token_urlsafe(32)
+    _SESSIONS[token] = {
+        "username":  user["username"],
+        "tenant_id": user.get("tenant_id"),
+        "role":      user.get("role", "tenant_user"),
+        "ts":        datetime.utcnow().isoformat(),
+    }
+    return token
+
+
+def _session_from_request(request: Request) -> dict | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        tok = auth[7:].strip()
+        return _SESSIONS.get(tok)
+    return None
+
+
+def _require_session(request: Request) -> dict:
+    s = _session_from_request(request)
+    if not s:
+        raise HTTPException(401, "Not authenticated")
+    return s
+
+
+def _require_owner(request: Request) -> dict:
+    s = _require_session(request)
+    if s.get("role") != "owner":
+        raise HTTPException(403, "Owner only")
+    return s
+
 
 @app.post("/api/auth/login")
 async def login(request: Request):
-    body = await request.json()
-    username = body.get("username", "").strip().lower()
-    password = body.get("password", "")
-    if CLOUDFUZE_USERS.get(username) == password:
-        return {"ok": True, "username": username, "token": f"cloudfuze-{username}-session"}
+    body  = await request.json()
+    uname = (body.get("username") or "").strip().lower()
+    pwd   = body.get("password") or ""
+    users = _load_users()
+    u = users.get(uname)
+    if u:
+        h, _ = _hash_pw(pwd, u.get("salt", ""))
+        if h == u.get("pw_hash"):
+            token = _make_session(u)
+            return {
+                "ok":        True,
+                "username":  u["username"],
+                "tenant_id": u.get("tenant_id"),
+                "role":      u.get("role", "tenant_user"),
+                "token":     token,
+            }
     raise HTTPException(status_code=401, detail="Invalid username or password")
+
+
+@app.get("/api/me")
+async def whoami(request: Request):
+    s = _session_from_request(request)
+    if not s:
+        return {"authenticated": False}
+    return {"authenticated": True, **s}
+
+
+@app.post("/api/auth/logout")
+async def logout(request: Request):
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        _SESSIONS.pop(auth[7:].strip(), None)
+    return {"ok": True}
+
+
+# ── Tenant CRUD (owner only) ──────────────────────────────────────
+@app.get("/api/admin/tenants")
+async def admin_list_tenants(request: Request):
+    _require_owner(request)
+    tenants = _load_tenants()
+    users = _load_users()
+    # attach user count + last login per tenant
+    by_tenant: dict[str, int] = {}
+    for u in users.values():
+        tid = u.get("tenant_id")
+        if tid:
+            by_tenant[tid] = by_tenant.get(tid, 0) + 1
+    for t in tenants:
+        t["user_count"] = by_tenant.get(t.get("id"), 0)
+    return {"tenants": tenants}
+
+
+@app.post("/api/admin/tenants")
+async def admin_create_tenant(request: Request):
+    _require_owner(request)
+    body = await request.json() or {}
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "Tenant name is required")
+    slug = (body.get("slug") or name.lower().replace(" ", "_"))
+    slug = "".join(c for c in slug if c.isalnum() or c in "-_")[:40] or "tenant"
+    tenants = _load_tenants()
+    tid = f"tenant_{slug}_{_secrets.token_hex(3)}"
+    while any(t["id"] == tid for t in tenants):
+        tid = f"tenant_{slug}_{_secrets.token_hex(3)}"
+    rec = {
+        "id":              tid,
+        "name":            name,
+        "slug":            slug,
+        "status":          "active",
+        "created_at":      datetime.utcnow().isoformat(),
+        "phone_number":    (body.get("phone_number") or "").strip(),
+        "credits_balance": int(body.get("credits_balance", 0) or 0),
+        "plan":            (body.get("plan") or "starter").strip(),
+        "notes":           (body.get("notes") or "").strip(),
+    }
+    tenants.append(rec)
+    _save_tenants(tenants)
+    _tenant_dir(tid)  # create folder
+
+    # optionally seed a tenant-admin user in same call
+    admin_user = (body.get("admin_username") or "").strip().lower()
+    admin_pw   = body.get("admin_password") or ""
+    if admin_user and admin_pw:
+        users = _load_users()
+        if admin_user in users:
+            raise HTTPException(409, f"Username '{admin_user}' already taken")
+        h, salt = _hash_pw(admin_pw)
+        users[admin_user] = {
+            "username":   admin_user,
+            "pw_hash":    h,
+            "salt":       salt,
+            "tenant_id":  tid,
+            "role":       "tenant_admin",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        _save_users(users)
+        rec["seeded_user"] = admin_user
+    return rec
+
+
+@app.patch("/api/admin/tenants/{tenant_id}")
+async def admin_update_tenant(tenant_id: str, request: Request):
+    _require_owner(request)
+    body = await request.json() or {}
+    tenants = _load_tenants()
+    for t in tenants:
+        if t.get("id") == tenant_id:
+            for k in ("name", "phone_number", "plan", "notes", "status"):
+                if k in body:
+                    t[k] = body[k]
+            if "credits_balance" in body:
+                try:
+                    t["credits_balance"] = int(body["credits_balance"])
+                except Exception:
+                    pass
+            t["updated_at"] = datetime.utcnow().isoformat()
+            _save_tenants(tenants)
+            return t
+    raise HTTPException(404, "Tenant not found")
+
+
+@app.delete("/api/admin/tenants/{tenant_id}")
+async def admin_delete_tenant(tenant_id: str, request: Request):
+    _require_owner(request)
+    if tenant_id == "tenant_default":
+        raise HTTPException(400, "Cannot delete the default tenant")
+    tenants = [t for t in _load_tenants() if t.get("id") != tenant_id]
+    _save_tenants(tenants)
+    # remove users belonging to that tenant
+    users = _load_users()
+    users = {u: v for u, v in users.items() if v.get("tenant_id") != tenant_id}
+    _save_users(users)
+    # NOTE: tenant data folder is preserved on disk for safety; manual cleanup if needed.
+    return {"ok": True, "deleted": tenant_id}
+
+
+@app.get("/api/admin/users")
+async def admin_list_users(request: Request):
+    _require_owner(request)
+    users = _load_users()
+    return {"users": [
+        {k: v for k, v in u.items() if k not in ("pw_hash", "salt")}
+        for u in users.values()
+    ]}
+
+
+@app.post("/api/admin/users")
+async def admin_create_user(request: Request):
+    _require_owner(request)
+    body = await request.json() or {}
+    uname = (body.get("username") or "").strip().lower()
+    pwd   = body.get("password") or ""
+    tid   = (body.get("tenant_id") or "").strip()
+    role  = (body.get("role") or "tenant_user").strip()
+    if not (uname and pwd and tid):
+        raise HTTPException(400, "username, password, tenant_id required")
+    if not any(t.get("id") == tid for t in _load_tenants()):
+        raise HTTPException(404, "Tenant not found")
+    users = _load_users()
+    if uname in users:
+        raise HTTPException(409, "Username already exists")
+    h, salt = _hash_pw(pwd)
+    users[uname] = {
+        "username": uname, "pw_hash": h, "salt": salt,
+        "tenant_id": tid, "role": role,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    _save_users(users)
+    return {"ok": True, "username": uname, "tenant_id": tid, "role": role}
+
+
+@app.delete("/api/admin/users/{username}")
+async def admin_delete_user(username: str, request: Request):
+    _require_owner(request)
+    if username == "admin":
+        raise HTTPException(400, "Cannot delete owner")
+    users = _load_users()
+    if username not in users:
+        raise HTTPException(404, "User not found")
+    users.pop(username, None)
+    _save_users(users)
+    return {"ok": True}
 
 
 # ════════════════════════════════════════════════════════════
