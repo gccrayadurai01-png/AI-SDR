@@ -3088,7 +3088,7 @@ async def admin_tenant_stats(tenant_id: str, request: Request):
 # Public per-unit pricing (USD). Tweak via env if needed.
 PRICE_TELNYX_PER_MIN     = float(os.environ.get("PRICE_TELNYX_PER_MIN",     "0.0070"))   # outbound US voice
 PRICE_TELNYX_TTS_PER_MIN = float(os.environ.get("PRICE_TELNYX_TTS_PER_MIN", "0.0050"))   # speak/transcribe blended
-PRICE_EL_PER_1K_CHARS    = float(os.environ.get("PRICE_EL_PER_1K_CHARS",    "0.30"))     # ElevenLabs Creator/Pro avg
+PRICE_EL_PER_1K_CHARS    = float(os.environ.get("PRICE_EL_PER_1K_CHARS",    "0.198"))    # ElevenLabs Pro $99 / 500k chars
 PRICE_CLAUDE_IN_PER_MTOK  = float(os.environ.get("PRICE_CLAUDE_IN_PER_MTOK",  "1.00"))   # Haiku 4.5 input
 PRICE_CLAUDE_OUT_PER_MTOK = float(os.environ.get("PRICE_CLAUDE_OUT_PER_MTOK", "5.00"))   # Haiku 4.5 output
 

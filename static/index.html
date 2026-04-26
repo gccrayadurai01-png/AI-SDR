@@ -513,12 +513,33 @@ tbody tr.clickable { cursor: pointer; }
       <button onclick="stopCampaign()" style="background:rgba(239,68,68,0.3); border:1px solid rgba(239,68,68,0.5); color:#fff; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit;">Stop</button>
     </div>
 
-    <!-- ── Global SMTP / Email status banner (Phase 4) ── -->
-    <div id="topStatusBanner" style="display:none;padding:8px 20px;font-size:12px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:80;background:var(--bg);">
+    <!-- ── Global SMTP / Email status banner — owner-only (tenants don't see SMTP) ── -->
+    <div id="topStatusBanner" class="owner-only" style="display:none;padding:8px 20px;font-size:12px;align-items:center;gap:14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:80;background:var(--bg);">
       <span id="topEmailStatus" style="display:flex;align-items:center;gap:6px;"></span>
       <span id="topQueuedCount" style="display:flex;align-items:center;gap:6px;color:var(--text-muted);"></span>
       <span style="flex:1;"></span>
       <a onclick="navigate('email-agent')" style="cursor:pointer;color:var(--primary);font-weight:600;">Open Email Agent →</a>
+    </div>
+
+    <!-- ── Tenant calling balance pill (ElevenLabs-style; tenant-only) ── -->
+    <div id="tenantBalancePill" class="tenant-only"
+         style="display:none;position:sticky;top:0;z-index:80;background:var(--bg);
+                border-bottom:1px solid var(--border);padding:10px 20px;">
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:14px;">
+        <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#0F172A,#1E293B);
+                    border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:8px 14px;color:#fff;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#10B981;box-shadow:0 0 6px #10B981;"></div>
+          <div style="display:flex;flex-direction:column;line-height:1.2;">
+            <div style="font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;">Calling balance</div>
+            <div style="font-size:16px;font-weight:700;">
+              <span id="tbMinutes">—</span> <span style="color:#94A3B8;font-weight:500;font-size:12px;">min remaining</span>
+            </div>
+            <div style="font-size:11px;color:#94A3B8;">
+              <span id="tbDollars">$0.00</span> · <span id="tbRate">—</span>/min
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="content">
@@ -1072,10 +1093,10 @@ tbody tr.clickable { cursor: pointer; }
             <div><div class="stat-value" id="kpiCalls">—</div><div class="stat-label">Total Calls (all tenants)</div></div></div>
           <div class="stat-card"><div class="stat-icon" style="background:#F59E0B;"><i data-lucide="calendar-check"></i></div>
             <div><div class="stat-value" id="kpiMeetings">—</div><div class="stat-label">Meetings Booked</div></div></div>
-          <div class="stat-card"><div class="stat-icon" style="background:#EC4899;"><i data-lucide="zap"></i></div>
-            <div><div class="stat-value" id="kpiCredits">—</div><div class="stat-label">Credits Consumed</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#EC4899;"><i data-lucide="dollar-sign"></i></div>
+            <div><div class="stat-value" id="kpiSpend">—</div><div class="stat-label">Total Cost (all tenants)</div></div></div>
           <div class="stat-card"><div class="stat-icon" style="background:#3B82F6;"><i data-lucide="wallet"></i></div>
-            <div><div class="stat-value" id="kpiBalance">—</div><div class="stat-label">Total Credit Balance</div></div></div>
+            <div><div class="stat-value" id="kpiBalance">—</div><div class="stat-label">Total $ Balance (sum)</div></div></div>
         </div>
 
         <!-- Connections strip -->
@@ -1164,7 +1185,8 @@ tbody tr.clickable { cursor: pointer; }
                     <option value="trial">Trial</option>
                   </select>
                 </div>
-                <div class="form-group"><label>Initial Credit Balance</label><input id="ntCredits" type="number" value="0"/></div>
+                <div class="form-group"><label>Initial $ Balance</label><input id="ntDollars" type="number" step="0.01" value="0" placeholder="100.00"/></div>
+                <div class="form-group"><label>Margin %</label><input id="ntMargin" type="number" value="80" placeholder="80"/></div>
               </div>
               <div class="form-group"><label>Assigned Phone Number (Telnyx)</label><input id="ntPhone" placeholder="+15551234567"/></div>
               <div class="form-group"><label>Notes (internal)</label><textarea id="ntNotes" rows="2"></textarea></div>
@@ -3180,21 +3202,37 @@ async function loadAdminTenantsPage() {
   if (d._error) { c.innerHTML = '<div class="empty-state"><p>'+escHtml(d.detail || 'Failed to load')+'</p></div>'; return; }
   const tenants = d.tenants || [];
   if (!tenants.length) { c.innerHTML = '<div class="empty-state"><p>No tenants yet.</p></div>'; return; }
+  // Pull global avg cost-per-min from owner usage so we can show minutes-remaining
+  // for each tenant directly in the table.
+  let _avgPerMin = 0;
+  try {
+    const u = await GET('/api/admin/usage');
+    if (u && !u._error) _avgPerMin = (u.costs && u.costs.avg_per_min) || 0;
+  } catch (e) {}
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
   c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
-    '<th>Name</th><th>ID</th><th>Plan</th><th>Phone</th><th>Users</th><th>Credits</th><th>Status</th><th>Actions</th>' +
+    '<th>Name</th><th>ID</th><th>Plan</th><th>Phone</th><th>Users</th>' +
+    '<th>Balance ($)</th><th>Margin %</th><th>Min Remaining</th><th>Status</th><th>Actions</th>' +
     '</tr></thead><tbody>' +
     tenants.map(function(t){
+      const margin = (t.margin_pct == null) ? 80 : Number(t.margin_pct);
+      const bal    = Number(t.dollar_balance || 0);
+      const custPerMin = _avgPerMin > 0 ? _avgPerMin * (1 + margin/100) : 0;
+      const minRem = custPerMin > 0 ? (bal / custPerMin) : 0;
       return '<tr>' +
         '<td><b>'+escHtml(t.name||'')+'</b><br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(t.notes||'')+'</span></td>' +
         '<td><code style="font-size:11px;">'+escHtml(t.id||'')+'</code></td>' +
         '<td>'+escHtml(t.plan||'')+'</td>' +
         '<td>'+escHtml(t.phone_number||'—')+'</td>' +
         '<td>'+(t.user_count||0)+'</td>' +
-        '<td>'+(t.credits_balance||0)+'</td>' +
+        '<td><b>'+fmt$(bal)+'</b></td>' +
+        '<td>'+margin.toFixed(0)+'%</td>' +
+        '<td><b style="color:#10B981;">'+minRem.toFixed(0)+' min</b></td>' +
         '<td><span class="badge badge-'+(t.status==='active'?'green':'gray')+'">'+escHtml(t.status||'')+'</span></td>' +
-        '<td>' +
-          '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')"><i data-lucide="edit-2"></i></button> ' +
-          (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')"><i data-lucide="trash-2"></i></button>') +
+        '<td style="white-space:nowrap;">' +
+          '<button class="btn btn-secondary btn-sm" onclick="topUpTenant(\''+t.id+'\')" title="Top up balance"><i data-lucide="dollar-sign"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')" title="Edit"><i data-lucide="edit-2"></i></button> ' +
+          (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Delete"><i data-lucide="trash-2"></i></button>') +
         '</td>' +
       '</tr>';
     }).join('') + '</tbody></table></div>';
@@ -3204,7 +3242,8 @@ async function loadAdminTenantsPage() {
 function showCreateTenantModal() {
   document.getElementById('ntName').value = '';
   document.getElementById('ntPlan').value = 'starter';
-  document.getElementById('ntCredits').value = '0';
+  const dol = document.getElementById('ntDollars'); if (dol) dol.value = '0';
+  const mar = document.getElementById('ntMargin');  if (mar) mar.value = '80';
   document.getElementById('ntPhone').value = '';
   document.getElementById('ntNotes').value = '';
   document.getElementById('ntAdminUser').value = '';
@@ -3217,7 +3256,8 @@ async function createTenant() {
   const payload = {
     name:            document.getElementById('ntName').value.trim(),
     plan:            document.getElementById('ntPlan').value,
-    credits_balance: parseInt(document.getElementById('ntCredits').value, 10) || 0,
+    dollar_balance:  parseFloat((document.getElementById('ntDollars')||{value:'0'}).value) || 0,
+    margin_pct:      parseFloat((document.getElementById('ntMargin') ||{value:'80'}).value) || 80,
     phone_number:    document.getElementById('ntPhone').value.trim(),
     notes:           document.getElementById('ntNotes').value.trim(),
     admin_username:  document.getElementById('ntAdminUser').value.trim(),
@@ -3232,16 +3272,29 @@ async function createTenant() {
 }
 
 async function editTenant(tid) {
-  const newCreds = prompt('New credit balance for '+tid+' (leave blank to skip):');
-  if (newCreds === null) return;
+  const newBal = prompt('Set $ balance for '+tid+' (leave blank to skip):');
+  if (newBal === null) return;
   const payload = {};
-  if (newCreds.trim() !== '') payload.credits_balance = parseInt(newCreds, 10) || 0;
+  if (newBal.trim() !== '') payload.dollar_balance = parseFloat(newBal) || 0;
+  const newMargin = prompt('Margin % (e.g. 80 for 80% markup; blank to skip):');
+  if (newMargin && newMargin.trim() !== '') payload.margin_pct = parseFloat(newMargin) || 80;
   const newPhone = prompt('Assigned phone number (blank to skip):');
   if (newPhone && newPhone.trim()) payload.phone_number = newPhone.trim();
   if (!Object.keys(payload).length) return;
   const r = await api('PATCH', '/api/admin/tenants/'+encodeURIComponent(tid), payload);
   if (r._error) return toast('Update failed: '+r.detail, 'error');
   toast('Tenant updated', 'success');
+  loadAdminTenantsPage();
+}
+
+async function topUpTenant(tid) {
+  const amt = prompt('Add $ to '+tid+' (e.g. 50 for +$50, or -10 to deduct):');
+  if (amt === null || amt.trim() === '') return;
+  const delta = parseFloat(amt);
+  if (isNaN(delta)) return toast('Not a number', 'error');
+  const r = await POST('/api/admin/tenants/'+encodeURIComponent(tid)+'/adjust-balance', {delta: delta});
+  if (r._error) return toast('Adjust failed: '+r.detail, 'error');
+  toast('Balance now '+(r.dollar_balance||0).toFixed(2)+' · '+(r.minutes_remaining||0).toFixed(0)+' min', 'success');
   loadAdminTenantsPage();
 }
 
@@ -3369,9 +3422,29 @@ function applyRoleVisibility() {
   document.querySelectorAll('.tenant-only').forEach(function(el){
     el.style.display = isOwner ? 'none' : '';
   });
-  // Hide top global banner for owner (it's a tenant-side widget)
-  const tb = document.getElementById('topStatusBanner');
-  if (tb) tb.style.display = isOwner ? 'none' : '';
+  // topStatusBanner is owner-only (handled by .owner-only class above) —
+  // tenants no longer see the SMTP status nag at the top.
+
+  // Show calling-balance pill for tenants only and refresh it.
+  if (!isOwner) {
+    loadTenantBalance();
+    if (!window._tbInterval) {
+      window._tbInterval = setInterval(loadTenantBalance, 30000);
+    }
+  } else {
+    if (window._tbInterval) { clearInterval(window._tbInterval); window._tbInterval = null; }
+  }
+}
+
+async function loadTenantBalance() {
+  try {
+    const d = await GET('/api/tenant/balance');
+    if (!d || d._error) return;
+    const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
+    document.getElementById('tbMinutes').textContent = (d.minutes_remaining || 0).toFixed(1);
+    document.getElementById('tbDollars').textContent = fmt$(d.dollar_balance);
+    document.getElementById('tbRate').textContent    = fmt$(d.customer_per_min);
+  } catch (e) { /* ignore */ }
 }
 
 /* ────────── OWNER DASHBOARD ────────── */
@@ -3385,8 +3458,22 @@ async function loadOwnerDashboard() {
   document.getElementById('kpiTenants').textContent  = (t.active_tenants || 0) + ' / ' + (t.tenants || 0);
   document.getElementById('kpiCalls').textContent    = t.total_calls || 0;
   document.getElementById('kpiMeetings').textContent = t.total_meetings || 0;
-  document.getElementById('kpiCredits').textContent  = t.credits_consumed || 0;
-  document.getElementById('kpiBalance').textContent  = t.credits_balance || 0;
+  // Total $ spent across tenants — pull from /api/admin/usage costs.total
+  try {
+    const u = await GET('/api/admin/usage');
+    if (u && !u._error) {
+      const total = (u.costs && u.costs.total) || 0;
+      document.getElementById('kpiSpend').textContent = '$' + Number(total).toFixed(2);
+    }
+  } catch (e) {}
+  // Sum of dollar_balances across all tenants
+  try {
+    const tlist = await GET('/api/admin/tenants');
+    if (tlist && tlist.tenants) {
+      const sum = tlist.tenants.reduce(function(a,x){ return a + Number(x.dollar_balance||0); }, 0);
+      document.getElementById('kpiBalance').textContent = '$' + sum.toFixed(2);
+    }
+  } catch (e) {}
 
   // Connections strip
   const conn = d.connections || {};
@@ -3407,10 +3494,12 @@ async function loadOwnerDashboard() {
     c.innerHTML = '<div class="empty-state"><p>No tenants yet — go to Tenants to create one.</p></div>';
   } else {
     c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
-      '<th>Tenant</th><th>Plan</th><th>Phone</th><th>Users</th><th>Calls</th><th>Meetings</th><th>Credits Used</th><th>Balance</th><th>Last Activity</th><th></th>' +
+      '<th>Tenant</th><th>Plan</th><th>Phone</th><th>Users</th><th>Calls</th><th>Meetings</th><th>Cost ($)</th><th>Balance ($)</th><th>Last Activity</th><th></th>' +
       '</tr></thead><tbody>' +
       rows.map(function(r){
         const last = r.last_activity ? new Date(r.last_activity.replace(/Z?$/,'Z')).toLocaleString() : '—';
+        const cost = (r.total_cost != null) ? r.total_cost : (r.credits_used || 0);
+        const bal  = (r.dollar_balance != null) ? r.dollar_balance : 0;
         return '<tr>' +
           '<td><b>'+escHtml(r.name||'')+'</b><br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(r.id)+'</span></td>' +
           '<td>'+escHtml(r.plan||'')+'</td>' +
@@ -3418,8 +3507,8 @@ async function loadOwnerDashboard() {
           '<td>'+(r.user_count||0)+'</td>' +
           '<td>'+(r.total_calls||0)+'</td>' +
           '<td>'+(r.meetings_booked||0)+'</td>' +
-          '<td><b>'+(r.credits_used||0)+'</b></td>' +
-          '<td>'+(r.credits_balance||0)+'</td>' +
+          '<td><b>$'+Number(cost).toFixed(2)+'</b></td>' +
+          '<td>$'+Number(bal).toFixed(2)+'</td>' +
           '<td style="font-size:11px;color:var(--text-muted);">'+escHtml(last)+'</td>' +
           '<td><button class="btn btn-secondary btn-sm" onclick="ownerDrillIn(\''+r.id+'\')"><i data-lucide="eye"></i> View</button></td>' +
         '</tr>';
