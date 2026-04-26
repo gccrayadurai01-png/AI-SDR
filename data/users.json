@@ -1,0 +1,18 @@
+{
+  "admin": {
+    "username": "admin",
+    "pw_hash": "0bdfe458fd64d2115bd992712020010f57e7b8c5b827af13cabc2fbba19dcd4c",
+    "salt": "77d6183c2caa8ab3896ca3fc5130a0ca",
+    "tenant_id": "tenant_default",
+    "role": "tenant_admin",
+    "created_at": "2026-04-26T04:36:30.784886"
+  },
+  "owner": {
+    "username": "owner",
+    "pw_hash": "1e02aaaf7c529d1a8165a61d99145f0b700d1106e0a27ed266bcafdb576e7410",
+    "salt": "e01a4fc44ab641f64219e811e9c3c48d",
+    "tenant_id": null,
+    "role": "owner",
+    "created_at": "2026-04-26T04:36:30.825566"
+  }
+}

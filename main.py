@@ -839,7 +839,8 @@ async def serve_assets(path: str):
 
 
 # Trial-call lead capture from public landing page
-TRIAL_LEADS_FILE = DATA_DIR / "trial_leads.json"
+# (DATA_DIR is defined later for the multi-tenant block; keep this lazy-resolved)
+TRIAL_LEADS_FILE = Path(__file__).parent / "data" / "trial_leads.json"
 
 def _load_trial_leads():
     try:
