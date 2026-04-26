@@ -2596,8 +2596,11 @@ _SESSIONS: dict[str, dict] = {}
 # task and ContextVar mutations are isolated — making tenant scoping silently
 # fall back to DATA_DIR root.
 class TenantScopingMiddleware:
-    def __init__(self, asgi_app):
-        self.app = asgi_app
+    def __init__(self, app):
+        # NOTE: parameter MUST be named `app` because FastAPI's add_middleware
+        # passes it as a keyword arg (`cls(app=actual_app, **options)`).
+        # Renaming this to `asgi_app` breaks startup with TypeError.
+        self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
