@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, Body, FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -2767,7 +2767,8 @@ async def admin_update_tenant(tenant_id: str, request: Request):
     tenants = _load_tenants()
     for t in tenants:
         if t.get("id") == tenant_id:
-            for k in ("name", "phone_number", "plan", "notes", "status"):
+            for k in ("name", "phone_number", "plan", "notes", "status",
+                      "telnyx_connection_id", "notify_email", "billing_email"):
                 if k in body:
                     t[k] = body[k]
             if "credits_balance" in body:
@@ -3542,6 +3543,184 @@ async def stripe_webhook(request: Request):
     return {"ok": True}
 
 
+# ─── Phase 7: Monthly billing statements ──────────────────────
+# Renders a monthly invoice for a tenant: lists every call, total minutes,
+# total charged, balance changes, top-ups (Stripe / manual). Returns JSON
+# (for in-app display) or HTML (printable / save-as-PDF via browser).
+
+def _build_monthly_statement(tenant: dict, year: int, month: int) -> dict:
+    """Return a dict with summary + line items for the given tenant and month."""
+    if month < 1 or month > 12:
+        raise HTTPException(400, "month must be 1-12")
+    period_start = datetime(year, month, 1)
+    if month == 12:
+        period_end = datetime(year + 1, 1, 1)
+    else:
+        period_end = datetime(year, month + 1, 1)
+
+    # Pull this tenant's calls in the window
+    tid = tenant.get("id")
+    calls = []
+    for c in _all_calls_across_tenants():
+        if not isinstance(c, dict) or c.get("tenant_id") != tid:
+            continue
+        ts = c.get("ended_at") or c.get("started_at") or c.get("created_at") or ""
+        try:
+            d = datetime.fromisoformat((ts or "").replace("Z", ""))
+        except Exception:
+            continue
+        if period_start <= d < period_end:
+            calls.append(c)
+
+    # Cross-reference ledger rows to get exact charges
+    ledger = tenant.get("usage_ledger") or []
+    ledger_in_window = []
+    topups_in_window = []
+    for row in ledger:
+        if not isinstance(row, dict): continue
+        try:
+            d = datetime.fromisoformat((row.get("ts") or "").replace("Z", ""))
+        except Exception:
+            continue
+        if period_start <= d < period_end:
+            charge = float(row.get("charge_usd", 0) or 0)
+            if charge < 0:
+                topups_in_window.append(row)
+            else:
+                ledger_in_window.append(row)
+
+    total_minutes = sum(float(c.get("duration_seconds", 0) or 0) for c in calls) / 60.0
+    total_charged = sum(float(r.get("charge_usd", 0) or 0) for r in ledger_in_window)
+    total_topups  = sum(-float(r.get("charge_usd", 0) or 0) for r in topups_in_window)
+    view = _tenant_balance_view(tenant)
+
+    return {
+        "tenant_id":        tid,
+        "tenant_name":      tenant.get("name") or tid,
+        "period":           f"{year}-{month:02d}",
+        "period_start":     period_start.isoformat() + "Z",
+        "period_end":       period_end.isoformat() + "Z",
+        "summary": {
+            "calls":             len(calls),
+            "total_minutes":     round(total_minutes, 2),
+            "total_charged_usd": round(total_charged, 4),
+            "total_topups_usd":  round(total_topups, 2),
+            "rate_per_min":      view["customer_per_min"],
+            "margin_pct":        view["margin_pct"],
+            "balance_now":       view["dollar_balance"],
+        },
+        "calls":  [{
+            "ts":                c.get("ended_at") or c.get("started_at"),
+            "to":                c.get("to") or c.get("phone_number"),
+            "prospect_name":     c.get("prospect_name"),
+            "duration_seconds":  int(c.get("duration_seconds", 0) or 0),
+            "status":            c.get("status"),
+        } for c in calls],
+        "ledger": ledger_in_window,
+        "topups": topups_in_window,
+    }
+
+
+def _render_invoice_html(stmt: dict) -> str:
+    """Print-friendly invoice HTML (browser → 'Save as PDF')."""
+    s = stmt["summary"]
+    rows = ""
+    for c in stmt["calls"]:
+        ts = (c.get("ts") or "").replace("T", " ")[:19]
+        secs = c.get("duration_seconds", 0) or 0
+        mins = secs / 60.0
+        charge = mins * s["rate_per_min"]
+        rows += (f"<tr><td>{ts}</td>"
+                 f"<td>{(c.get('to') or '')}</td>"
+                 f"<td>{(c.get('prospect_name') or '')}</td>"
+                 f"<td>{secs}s</td>"
+                 f"<td>${charge:.4f}</td></tr>")
+    topup_rows = ""
+    for t in stmt["topups"]:
+        topup_rows += f"<tr><td>{(t.get('ts') or '')[:19].replace('T',' ')}</td><td>{t.get('note') or 'Top-up'}</td><td>${(-float(t.get('charge_usd',0) or 0)):.2f}</td></tr>"
+    if not topup_rows:
+        topup_rows = "<tr><td colspan='3' style='text-align:center;color:#888;'>No top-ups this period</td></tr>"
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Invoice {stmt['period']} — {stmt['tenant_name']}</title>
+<style>
+  body{{font-family:-apple-system,Segoe UI,sans-serif;color:#111;max-width:800px;margin:32px auto;padding:0 24px;}}
+  h1{{margin:0 0 4px;}}
+  .muted{{color:#666;font-size:13px;}}
+  .kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0;}}
+  .kpi{{padding:12px;background:#f5f7fb;border-radius:8px;}}
+  .kpi b{{display:block;font-size:20px;}}
+  table{{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;}}
+  th,td{{padding:8px 10px;text-align:left;border-bottom:1px solid #eee;}}
+  th{{background:#f5f7fb;}}
+  h3{{margin-top:32px;border-bottom:2px solid #111;padding-bottom:6px;}}
+  .total{{font-size:18px;font-weight:700;text-align:right;margin-top:16px;}}
+  @media print{{button{{display:none;}}}}
+</style></head><body>
+<button onclick="window.print()" style="float:right;padding:8px 16px;cursor:pointer;">🖨 Print / Save PDF</button>
+<h1>AI-SDR Calling Statement</h1>
+<div class="muted">{stmt['tenant_name']} · Period {stmt['period']} · {stmt['period_start'][:10]} → {stmt['period_end'][:10]}</div>
+<div class="kpis">
+  <div class="kpi"><span class="muted">Calls</span><b>{s['calls']}</b></div>
+  <div class="kpi"><span class="muted">Minutes</span><b>{s['total_minutes']:.1f}</b></div>
+  <div class="kpi"><span class="muted">Rate / min</span><b>${s['rate_per_min']:.4f}</b></div>
+  <div class="kpi"><span class="muted">Total Charged</span><b>${s['total_charged_usd']:.2f}</b></div>
+</div>
+<h3>Calls This Period</h3>
+<table><thead><tr><th>When</th><th>To</th><th>Prospect</th><th>Duration</th><th>Charge</th></tr></thead>
+<tbody>{rows or "<tr><td colspan='5' style='text-align:center;color:#888;'>No calls this period</td></tr>"}</tbody></table>
+<h3>Top-ups This Period</h3>
+<table><thead><tr><th>When</th><th>Source</th><th>Amount</th></tr></thead>
+<tbody>{topup_rows}</tbody></table>
+<div class="total">Total Charged: ${s['total_charged_usd']:.2f}</div>
+<div class="total" style="font-size:14px;color:#666;">Top-ups received: ${s['total_topups_usd']:.2f}</div>
+<div class="muted" style="margin-top:48px;text-align:center;">Generated by AI-SDR · {datetime.utcnow().isoformat()[:19]}Z</div>
+</body></html>"""
+
+
+@app.get("/api/tenant/statement/{year}/{month}")
+async def tenant_statement(year: int, month: int, request: Request):
+    """Tenant: get JSON statement for given month."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        raise HTTPException(400, "No tenant context")
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    return _build_monthly_statement(tenant, year, month)
+
+
+@app.get("/api/tenant/statement/{year}/{month}/html", response_class=HTMLResponse)
+async def tenant_statement_html(year: int, month: int, request: Request):
+    """Tenant: render invoice HTML (browser → 'Save as PDF')."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        raise HTTPException(400, "No tenant context")
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    stmt = _build_monthly_statement(tenant, year, month)
+    return HTMLResponse(content=_render_invoice_html(stmt))
+
+
+@app.get("/api/admin/tenants/{tenant_id}/statement/{year}/{month}")
+async def admin_tenant_statement(tenant_id: str, year: int, month: int, request: Request):
+    """Owner: any tenant's statement (JSON)."""
+    _require_owner(request)
+    tenant = next((t for t in _load_tenants() if t.get("id") == tenant_id), None)
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    return _build_monthly_statement(tenant, year, month)
+
+
+@app.get("/api/admin/tenants/{tenant_id}/statement/{year}/{month}/html", response_class=HTMLResponse)
+async def admin_tenant_statement_html(tenant_id: str, year: int, month: int, request: Request):
+    """Owner: any tenant's statement (HTML invoice)."""
+    _require_owner(request)
+    tenant = next((t for t in _load_tenants() if t.get("id") == tenant_id), None)
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    stmt = _build_monthly_statement(tenant, year, month)
+    return HTMLResponse(content=_render_invoice_html(stmt))
+
+
 # ─── Cost Measurement Timer ───────────────────────────────────
 # Owner can start named measurement windows ("timers"). Each timer snapshots
 # call-count, minutes, and provider-spend at start. Live stats show the DELTA
@@ -3920,10 +4099,81 @@ def _decrement_tenant_balance_for_call(tenant_id: str, duration_seconds: int) ->
             _save_tenants(tenants)
             logger.info("Charged tenant %s $%.4f for %ds call (rate $%.4f/min). New balance: $%.2f",
                         tenant_id, charge, duration_seconds, customer_per_min, new_balance)
+            # ── Low-balance email alert (debounced; once per threshold per day) ──
+            try:
+                view_after = _tenant_balance_view(t)
+                _maybe_send_low_balance_alert(t, view_after)
+            except Exception:
+                logger.exception("Low-balance alert failed for tenant %s", tenant_id)
             return _tenant_balance_view(t)
     except Exception:
         logger.exception("decrement_tenant_balance failed for tenant %s", tenant_id)
     return None
+
+
+def _maybe_send_low_balance_alert(tenant: dict, view: dict) -> None:
+    """Send an email alert when minutes_remaining crosses a threshold (low/critical/depleted).
+    Debounced: once per threshold per day per tenant."""
+    minutes = float(view.get("minutes_remaining", 0) or 0)
+    dollars = float(view.get("dollar_balance", 0) or 0)
+    if dollars > 0 and minutes >= 30:
+        return  # No alert needed
+    level = "depleted" if dollars <= 0 else ("critical" if minutes < 10 else "low")
+    today = datetime.utcnow().date().isoformat()
+    last_alerts = tenant.get("low_balance_alerts_sent") or {}
+    if last_alerts.get(level) == today:
+        return  # Already sent this level today
+    # Find a tenant admin email to notify
+    notify_email = (tenant.get("notify_email") or tenant.get("billing_email") or "").strip()
+    if not notify_email:
+        # Fall back to the first tenant-admin user's username if it looks like an email
+        try:
+            users = _load_users().get("users") or {}
+            for uname, u in users.items():
+                if u.get("tenant_id") == tenant.get("id") and "@" in (uname or ""):
+                    notify_email = uname
+                    break
+        except Exception:
+            pass
+    if not notify_email:
+        logger.info("Low-balance alert for %s skipped — no notify_email", tenant.get("id"))
+        return
+    cfgs = {
+        "depleted": ("🚫 Calling Balance Depleted",
+                     f"Your AI-SDR calling balance is <b>$0.00</b>. Outbound calls are now blocked. "
+                     f"Top up to resume calling."),
+        "critical": ("⚠️ Critical: Less Than 10 Minutes Remaining",
+                     f"You have only <b>{minutes:.1f} minutes</b> remaining (${dollars:.2f}). "
+                     f"Top up soon to avoid service interruption."),
+        "low":      ("⏰ Low Balance Warning",
+                     f"You have <b>{minutes:.0f} minutes</b> remaining (${dollars:.2f}). "
+                     f"Consider topping up to maintain uninterrupted calling."),
+    }
+    subject_prefix, body_html = cfgs[level]
+    subject = f"{subject_prefix} — AI-SDR ({tenant.get('name') or tenant.get('id')})"
+    body = (f"<p>Hi,</p><p>{body_html}</p>"
+            f"<p>Current rate: <b>${view.get('customer_per_min', 0):.4f}/min</b><br>"
+            f"Balance: <b>${dollars:.2f}</b> · Minutes: <b>{minutes:.1f}</b></p>"
+            f"<p>Log in to top up: <a href='{config.APP_BASE_URL}'>{config.APP_BASE_URL}</a></p>"
+            f"<p>— AI-SDR</p>")
+    try:
+        from email_sequences import send_email_async, smtp_ready
+        if not smtp_ready():
+            logger.info("SMTP not configured; skipping low-balance email for %s", tenant.get("id"))
+            return
+        asyncio.create_task(send_email_async(notify_email, subject, body))
+        # Mark as sent for this level today
+        last_alerts[level] = today
+        tenant["low_balance_alerts_sent"] = last_alerts
+        # Persist (caller already saved tenants; do another save to capture the alert flag)
+        all_tenants = _load_tenants()
+        for t in all_tenants:
+            if t.get("id") == tenant.get("id"):
+                t["low_balance_alerts_sent"] = last_alerts
+        _save_tenants(all_tenants)
+        logger.info("Low-balance %s alert queued for tenant=%s → %s", level, tenant.get("id"), notify_email)
+    except Exception:
+        logger.exception("Failed to send low-balance alert for %s", tenant.get("id"))
 
 
 @app.post("/api/admin/tenants/{tenant_id}/adjust-balance")

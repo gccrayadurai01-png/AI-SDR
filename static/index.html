@@ -534,6 +534,8 @@ tbody tr.clickable { cursor: pointer; }
             </div>
           </div>
           <button onclick="tenantTopUp()" title="Top up balance" style="background:#6366f1;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">+ Top Up</button>
+          <button onclick="tenantViewLedger()" title="Usage history" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;">📒 History</button>
+          <button onclick="tenantViewStatement()" title="Monthly statement" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;">📄 Statement</button>
         </div>
       </div>
     </div>
@@ -3487,6 +3489,7 @@ async function loadAdminTenantsPage() {
         '<td style="white-space:nowrap;">' +
           '<button class="btn btn-secondary btn-sm" onclick="topUpTenant(\''+t.id+'\')" title="Top up balance"><i data-lucide="dollar-sign"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="viewLedger(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="View usage ledger"><i data-lucide="list"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="viewStatement(\''+t.id+'\')" title="Monthly statement / invoice"><i data-lucide="file-text"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')" title="Edit"><i data-lucide="edit-2"></i></button> ' +
           (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Delete"><i data-lucide="trash-2"></i></button>') +
         '</td>' +
@@ -3534,13 +3537,36 @@ async function editTenant(tid) {
   if (newBal.trim() !== '') payload.dollar_balance = parseFloat(newBal) || 0;
   const newMargin = prompt('Margin % (e.g. 80 for 80% markup; blank to skip):');
   if (newMargin && newMargin.trim() !== '') payload.margin_pct = parseFloat(newMargin) || 80;
-  const newPhone = prompt('Assigned phone number (blank to skip):');
+  const newPhone = prompt('Assigned phone number / Telnyx FROM (blank to skip):');
   if (newPhone && newPhone.trim()) payload.phone_number = newPhone.trim();
+  const newConn = prompt('Telnyx Connection ID for outbound (blank to skip / use default):');
+  if (newConn && newConn.trim()) payload.telnyx_connection_id = newConn.trim();
+  const newNotify = prompt('Notification email for low-balance alerts (blank to skip):');
+  if (newNotify && newNotify.trim()) payload.notify_email = newNotify.trim();
   if (!Object.keys(payload).length) return;
   const r = await api('PATCH', '/api/admin/tenants/'+encodeURIComponent(tid), payload);
   if (r._error) return toast('Update failed: '+r.detail, 'error');
   toast('Tenant updated', 'success');
   loadAdminTenantsPage();
+}
+
+function viewStatement(tid) {
+  const now = new Date();
+  const ym = prompt('Statement period (YYYY-MM):', now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+  if (!ym) return;
+  const m = ym.match(/^(\d{4})-(\d{1,2})$/);
+  if (!m) return toast('Use format YYYY-MM, e.g. 2026-04', 'error');
+  const year = m[1], month = parseInt(m[2], 10);
+  const tok = sessionStorage.getItem('cloudfuze_token') || '';
+  // Open authenticated invoice in a new tab via temp form (so Authorization header isn't needed in URL)
+  const url = '/api/admin/tenants/'+encodeURIComponent(tid)+'/statement/'+year+'/'+month+'/html';
+  fetch(url, { headers: { 'Authorization': 'Bearer '+tok } })
+    .then(r => r.text())
+    .then(html => {
+      const w = window.open('', '_blank');
+      if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+    })
+    .catch(e => toast('Statement load failed: '+e, 'error'));
 }
 
 async function viewLedger(tid, tname) {
@@ -3723,6 +3749,61 @@ function applyRoleVisibility() {
   } else {
     if (window._tbInterval) { clearInterval(window._tbInterval); window._tbInterval = null; }
   }
+}
+
+async function tenantViewLedger() {
+  const r = await GET('/api/tenant/usage-ledger?limit=200');
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  const rows = r.ledger || [];
+  let modal = document.getElementById('tenantLedgerModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'tenantLedgerModal';
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+  }
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(4);
+  modal.innerHTML = '<div class="modal-content" style="max-width:760px;">'
+    + '<div class="modal-header"><h3>📒 Your Usage History</h3>'
+    + '<button class="modal-close" onclick="document.getElementById(\'tenantLedgerModal\').style.display=\'none\'">&times;</button></div>'
+    + '<div class="modal-body" style="max-height:60vh;overflow:auto;">'
+    + (rows.length === 0
+        ? '<div class="empty-state"><p>No charges or top-ups yet.</p></div>'
+        : '<div class="table-wrap"><table><thead><tr>'
+          + '<th>When</th><th>Type</th><th>Duration</th><th>Rate</th><th>Amount</th><th>Balance After</th>'
+          + '</tr></thead><tbody>'
+          + rows.map(row => {
+              const charge = Number(row.charge_usd||0);
+              const isTopUp = charge < 0;
+              return '<tr>'
+                + '<td>'+escHtml((row.ts||'').slice(0,19).replace('T',' '))+'</td>'
+                + '<td>'+(isTopUp ? '<span style="color:#10b981;">↑ Top-up</span>' : '<span style="color:#94A3B8;">Call</span>')+'</td>'
+                + '<td>'+(row.duration_seconds||0)+'s</td>'
+                + '<td>'+(row.rate_per_min ? fmt$(row.rate_per_min) : '—')+'</td>'
+                + '<td><b>'+(isTopUp ? '+'+fmt$(-charge) : fmt$(charge))+'</b></td>'
+                + '<td>$'+(Number(row.balance_after||0)).toFixed(2)+'</td>'
+                + '</tr>';
+            }).join('')
+          + '</tbody></table></div>')
+    + '</div></div>';
+  modal.style.display = 'flex';
+}
+
+function tenantViewStatement() {
+  const now = new Date();
+  const ym = prompt('Statement period (YYYY-MM):', now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+  if (!ym) return;
+  const m = ym.match(/^(\d{4})-(\d{1,2})$/);
+  if (!m) return toast('Use format YYYY-MM, e.g. 2026-04', 'error');
+  const year = m[1], month = parseInt(m[2], 10);
+  const tok = sessionStorage.getItem('cloudfuze_token') || '';
+  fetch('/api/tenant/statement/'+year+'/'+month+'/html', { headers: { 'Authorization': 'Bearer '+tok } })
+    .then(r => r.text())
+    .then(html => {
+      const w = window.open('', '_blank');
+      if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+    })
+    .catch(e => toast('Statement load failed: '+e, 'error'));
 }
 
 async function tenantTopUp() {
