@@ -2546,8 +2546,12 @@ def _bootstrap_multitenant():
         logger.info("Seeded admin / knight2024! (tenant_default tenant_admin)")
 
     # 'owner' is the only super-user — sees oversight dashboard only.
+    # If env OWNER_PASSWORD is set, force-reset the owner password on every
+    # boot. Useful for unlocking after a stale users.json or forgotten pw.
+    forced_owner_pw = (os.environ.get("OWNER_PASSWORD") or "").strip()
     if "owner" not in users:
-        h, salt = _hash_pw("Knight2026!")
+        seed_pw = forced_owner_pw or "Knight2026!"
+        h, salt = _hash_pw(seed_pw)
         users["owner"] = {
             "username":   "owner",
             "pw_hash":    h,
@@ -2557,7 +2561,16 @@ def _bootstrap_multitenant():
             "created_at": datetime.utcnow().isoformat(),
         }
         changed = True
-        logger.info("Seeded owner / Knight2026! (super-admin)")
+        logger.info("Seeded owner with %s password",
+                    "OWNER_PASSWORD env" if forced_owner_pw else "default Knight2026!")
+    elif forced_owner_pw:
+        # Re-seed the password on every boot when env override is present.
+        h, salt = _hash_pw(forced_owner_pw)
+        users["owner"]["pw_hash"]    = h
+        users["owner"]["salt"]       = salt
+        users["owner"]["updated_at"] = datetime.utcnow().isoformat()
+        changed = True
+        logger.info("Reset owner password from OWNER_PASSWORD env")
 
     if changed:
         _save_users(users)
