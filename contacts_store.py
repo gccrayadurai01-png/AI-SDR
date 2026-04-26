@@ -9,8 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-DATA_DIR = Path(__file__).parent / "data"
-CONTACTS_FILE = DATA_DIR / "contacts.json"
+from tenant_ctx import DATA_DIR, tenant_data_path
+
+def _contacts_file() -> Path:
+    return tenant_data_path("contacts.json")
 
 
 def _now_iso() -> str:
@@ -139,12 +141,12 @@ def _default_file() -> dict[str, Any]:
 
 def _load() -> dict[str, Any]:
     DATA_DIR.mkdir(exist_ok=True)
-    if not CONTACTS_FILE.exists():
+    if not _contacts_file().exists():
         data = _default_file()
         _save(data)
         return data
     try:
-        return json.loads(CONTACTS_FILE.read_text(encoding="utf-8"))
+        return json.loads(_contacts_file().read_text(encoding="utf-8"))
     except Exception:
         data = _default_file()
         _save(data)
@@ -153,7 +155,7 @@ def _load() -> dict[str, Any]:
 
 def _save(data: dict[str, Any]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
-    CONTACTS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    _contacts_file().write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def list_contacts() -> list[dict[str, Any]]:

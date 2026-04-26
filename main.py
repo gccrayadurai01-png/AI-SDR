@@ -67,6 +67,7 @@ from telnyx_handler import (
     estimate_tts_playback_seconds,
 )
 import contacts_store
+from tenant_ctx import tenant_data_path, tenant_dir, set_tenant, reset_tenant
 from storage import (
     load_calls,
     save_call,
@@ -1345,18 +1346,20 @@ Return ONLY valid JSON, no markdown."""
 # ════════════════════════════════════════════════════════════
 #  API — MULTI-AGENT MANAGEMENT
 # ════════════════════════════════════════════════════════════
-AGENTS_FILE = Path(__file__).parent / "data" / "agents.json"
+def _agents_file() -> Path:
+    return tenant_data_path("agents.json")
 
 def _load_agents() -> list[dict]:
-    if AGENTS_FILE.exists():
+    p = _agents_file()
+    if p.exists():
         try:
-            return json.loads(AGENTS_FILE.read_text(encoding="utf-8"))
+            return json.loads(p.read_text(encoding="utf-8"))
         except Exception:
             pass
     return []
 
 def _save_agents(agents: list[dict]) -> None:
-    AGENTS_FILE.write_text(json.dumps(agents, indent=2, default=str), encoding="utf-8")
+    _agents_file().write_text(json.dumps(agents, indent=2, default=str), encoding="utf-8")
 
 @app.get("/api/sales-techniques")
 async def list_sales_techniques():
@@ -1660,14 +1663,16 @@ async def refresh_recording_endpoint(call_control_id: str):
 # ── Recording disk cache ─────────────────────────────────────
 # Local persistent store for MP3 audio so playback never breaks when Telnyx
 # pre-signed S3 URLs expire (~10 min). Files keyed by sanitized cc_id.
-_RECORDINGS_DIR = Path(__file__).parent / "data" / "recordings"
-_RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+def _recordings_dir() -> Path:
+    p = tenant_dir() / "recordings"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def _recording_disk_path(call_control_id: str) -> Path:
     # cc_ids contain ':' and '/' — sanitize for FS safety
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in call_control_id)
-    return _RECORDINGS_DIR / f"{safe}.mp3"
+    return _recordings_dir() / f"{safe}.mp3"
 
 
 async def _persist_recording_to_disk(call_control_id: str, url: str) -> None:
@@ -2046,7 +2051,8 @@ async def campaign_stop():
 # ════════════════════════════════════════════════════════════
 #  NAMED CAMPAIGNS CRUD
 # ════════════════════════════════════════════════════════════
-_CAMPAIGNS_FILE = Path(__file__).parent / "data" / "campaigns.json"
+def _campaigns_file() -> Path:
+    return tenant_data_path("campaigns.json")
 _active_campaign_id: str | None = None
 _campaign_start_lock: asyncio.Lock = asyncio.Lock()
 
@@ -2066,15 +2072,15 @@ async def campaign_status():
     }
 
 def _load_campaigns() -> list[dict]:
-    if _CAMPAIGNS_FILE.exists():
+    if _campaigns_file().exists():
         try:
-            return json.loads(_CAMPAIGNS_FILE.read_text(encoding="utf-8"))
+            return json.loads(_campaigns_file().read_text(encoding="utf-8"))
         except Exception:
             pass
     return []
 
 def _save_campaigns(data: list[dict]) -> None:
-    _CAMPAIGNS_FILE.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+    _campaigns_file().write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
 
 def _get_campaign(camp_id: str) -> dict | None:
     return next((c for c in _load_campaigns() if c.get("id") == camp_id), None)
@@ -2568,6 +2574,27 @@ except Exception:
 
 # ── Sessions (in-memory; reset on redeploy is fine for Phase 1) ──
 _SESSIONS: dict[str, dict] = {}
+
+
+# ── Tenant-scoping middleware ──
+# For every request that carries a Bearer session token, set the per-request
+# tenant ContextVar so storage modules (storage.py, contacts_store.py, qa_kb.py)
+# transparently read/write data/tenants/{tenant_id}/<file>.json instead of the
+# shared root. Owner / unauthenticated requests get the legacy DATA_DIR.
+@app.middleware("http")
+async def _tenant_scoping_middleware(request: Request, call_next):
+    tok_handle = None
+    try:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            sess = _SESSIONS.get(auth[7:].strip())
+            if sess and sess.get("tenant_id") and sess.get("role") != "owner":
+                tok_handle = set_tenant(sess["tenant_id"])
+        response = await call_next(request)
+        return response
+    finally:
+        if tok_handle is not None:
+            reset_tenant(tok_handle)
 
 
 def _make_session(user: dict) -> str:
@@ -3514,14 +3541,15 @@ async def list_timezones():
 # ──────────────────────────────────────────────────────────────
 # Email (SMTP) — used for meeting invites + SDR notifications
 # ──────────────────────────────────────────────────────────────
-SMTP_CONFIG_FILE = Path(__file__).parent / "data" / "smtp_config.json"
+def _smtp_config_file() -> Path:
+    return tenant_data_path("smtp_config.json")
 
 
 def _load_smtp_json() -> dict:
     """User-saved SMTP config (overrides env when present)."""
     try:
-        if SMTP_CONFIG_FILE.exists():
-            d = json.loads(SMTP_CONFIG_FILE.read_text(encoding="utf-8"))
+        if _smtp_config_file().exists():
+            d = json.loads(_smtp_config_file().read_text(encoding="utf-8"))
             if isinstance(d, dict):
                 return d
     except Exception:
@@ -3535,8 +3563,8 @@ def _save_smtp_json(d: dict) -> dict:
     )}
     keep["port"] = int(str(keep["port"]).strip() or 587) if str(keep["port"]).strip() else 587
     keep["use_tls"] = bool(d.get("use_tls", True))
-    SMTP_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SMTP_CONFIG_FILE.write_text(json.dumps(keep, indent=2), encoding="utf-8")
+    _smtp_config_file().parent.mkdir(parents=True, exist_ok=True)
+    _smtp_config_file().write_text(json.dumps(keep, indent=2), encoding="utf-8")
     return keep
 
 
@@ -3784,7 +3812,7 @@ def _mark_task_field(task_id: str, **fields) -> None:
                 break
         if changed:
             from json import dumps as _dumps
-            (Path(__file__).parent / "data" / "tasks.json").write_text(
+            tenant_data_path("tasks.json").write_text(
                 _dumps(ts, indent=2, default=str), encoding="utf-8")
     except Exception:
         logger.exception("_mark_task_field failed for %s", task_id)
@@ -4311,7 +4339,8 @@ async def smtp_test(request: Request):
 # ════════════════════════════════════════════════════════════
 #  EMAIL AGENT — persona + Claude drafter + auto-send pipeline
 # ════════════════════════════════════════════════════════════
-EMAIL_AGENT_FILE = Path(__file__).parent / "data" / "email_agent.json"
+def _email_agent_file() -> Path:
+    return tenant_data_path("email_agent.json")
 
 
 _EMAIL_AGENT_DEFAULTS = {
@@ -4342,9 +4371,9 @@ _EMAIL_AGENT_DEFAULTS = {
 
 
 def _load_email_agent() -> dict:
-    if EMAIL_AGENT_FILE.exists():
+    if _email_agent_file().exists():
         try:
-            data = json.loads(EMAIL_AGENT_FILE.read_text(encoding="utf-8"))
+            data = json.loads(_email_agent_file().read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 merged = dict(_EMAIL_AGENT_DEFAULTS)
                 merged.update(data)
@@ -4358,8 +4387,8 @@ def _save_email_agent(data: dict) -> dict:
     merged = dict(_EMAIL_AGENT_DEFAULTS)
     merged.update({k: v for k, v in (data or {}).items() if k in _EMAIL_AGENT_DEFAULTS})
     merged["updated_at"] = datetime.utcnow().isoformat()
-    EMAIL_AGENT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    EMAIL_AGENT_FILE.write_text(json.dumps(merged, indent=2, default=str), encoding="utf-8")
+    _email_agent_file().parent.mkdir(parents=True, exist_ok=True)
+    _email_agent_file().write_text(json.dumps(merged, indent=2, default=str), encoding="utf-8")
     return merged
 
 

@@ -9,11 +9,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-DATA_DIR   = Path(__file__).parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+from tenant_ctx import DATA_DIR as _ROOT, tenant_data_path
 
-CALLS_FILE  = DATA_DIR / "calls.json"
-SCRIPT_FILE = DATA_DIR / "script.json"
+DATA_DIR = _ROOT  # legacy export (kept for qa_kb.py and any external imports)
+
+# Tenant-aware path helpers — resolve at call time so the same loader
+# transparently reads/writes data/tenants/{tenant_id}/<file>.json when a
+# request context has set the current tenant.
+def _calls_path()  : return tenant_data_path("calls.json")
+def _script_path() : return tenant_data_path("script.json")
+def _tasks_path()  : return tenant_data_path("tasks.json")
+
 
 DEFAULT_SCRIPT: dict[str, Any] = {
     "sdr_name":                "Alex",
@@ -51,25 +57,25 @@ def _save(path: Path, data: Any) -> None:
 
 # ─── calls ──────────────────────────────────────────────────
 def load_calls() -> list[dict]:
-    return _load(CALLS_FILE, [])
+    return _load(_calls_path(), [])
 
 def save_call(call: dict) -> None:
     calls = load_calls()
     for i, c in enumerate(calls):
         if c.get("call_control_id") == call.get("call_control_id"):
             calls[i] = call
-            _save(CALLS_FILE, calls)
+            _save(_calls_path(), calls)
             return
     call.setdefault("started_at", datetime.utcnow().isoformat())
     calls.insert(0, call)
-    _save(CALLS_FILE, calls)
+    _save(_calls_path(), calls)
 
 def update_call(call_control_id: str, **kwargs: Any) -> None:
     calls = load_calls()
     for c in calls:
         if c.get("call_control_id") == call_control_id:
             c.update(kwargs)
-            _save(CALLS_FILE, calls)
+            _save(_calls_path(), calls)
             return
 
 
@@ -94,7 +100,7 @@ def finalize_call_end(call_control_id: str, **kwargs: Any) -> bool:
     for c in calls:
         if c.get("call_control_id") == call_control_id:
             c.update(kwargs)
-            _save(CALLS_FILE, calls)
+            _save(_calls_path(), calls)
             return True
     return False
 
@@ -132,7 +138,7 @@ def mark_stale_initiated_calls(max_age_hours: float = 1.0) -> list[str]:
         c["ended_reason"] = "stale_no_webhook"
         updated.append(cid)
     if updated:
-        _save(CALLS_FILE, calls)
+        _save(_calls_path(), calls)
     return updated
 
 
@@ -140,7 +146,7 @@ def mark_stale_initiated_calls(max_age_hours: float = 1.0) -> list[str]:
 def load_script() -> dict[str, Any]:
     # Merge with DEFAULT_SCRIPT so newly-added fields always surface with
     # defaults even if the on-disk file was saved before they existed.
-    saved = _load(SCRIPT_FILE, {})
+    saved = _load(_script_path(), {})
     merged = DEFAULT_SCRIPT.copy()
     if isinstance(saved, dict):
         merged.update(saved)
@@ -149,40 +155,38 @@ def load_script() -> dict[str, Any]:
 def save_script(script: dict[str, Any]) -> None:
     # Merge with existing on-disk script so partial payloads never wipe
     # previously-saved fields.
-    existing = _load(SCRIPT_FILE, {})
+    existing = _load(_script_path(), {})
     if not isinstance(existing, dict):
         existing = {}
     merged = DEFAULT_SCRIPT.copy()
     merged.update(existing)
     merged.update(script)
-    _save(SCRIPT_FILE, merged)
+    _save(_script_path(), merged)
 
 
 # ─── tasks ─────────────────────────────────────────────────
-TASKS_FILE = DATA_DIR / "tasks.json"
-
 def load_tasks() -> list[dict]:
-    return _load(TASKS_FILE, [])
+    return _load(_tasks_path(), [])
 
 def save_task(task: dict) -> None:
     tasks = load_tasks()
     for i, t in enumerate(tasks):
         if t.get("id") == task.get("id"):
             tasks[i] = task
-            _save(TASKS_FILE, tasks)
+            _save(_tasks_path(), tasks)
             return
     tasks.insert(0, task)
-    _save(TASKS_FILE, tasks)
+    _save(_tasks_path(), tasks)
 
 def delete_task(task_id: str) -> None:
     tasks = load_tasks()
     tasks = [t for t in tasks if t.get("id") != task_id]
-    _save(TASKS_FILE, tasks)
+    _save(_tasks_path(), tasks)
 
 def update_task(task_id: str, **kwargs: Any) -> None:
     tasks = load_tasks()
     for t in tasks:
         if t.get("id") == task_id:
             t.update(kwargs)
-            _save(TASKS_FILE, tasks)
+            _save(_tasks_path(), tasks)
             return

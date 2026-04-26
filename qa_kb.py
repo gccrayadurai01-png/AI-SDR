@@ -18,11 +18,12 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
-from storage import DATA_DIR
+from tenant_ctx import DATA_DIR, tenant_data_path
 
 logger = logging.getLogger(__name__)
 
-KB_FILE = DATA_DIR / "qa_kb.json"
+def _kb_file() -> Path:
+    return tenant_data_path("qa_kb.json")
 
 
 def _utcnow_iso() -> str:
@@ -30,10 +31,10 @@ def _utcnow_iso() -> str:
 
 
 def _load() -> dict[str, Any]:
-    if not KB_FILE.exists():
+    if not _kb_file().exists():
         return {"items": []}
     try:
-        raw = json.loads(KB_FILE.read_text(encoding="utf-8"))
+        raw = json.loads(_kb_file().read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             return {"items": []}
         raw.setdefault("items", [])
@@ -41,13 +42,13 @@ def _load() -> dict[str, Any]:
             raw["items"] = []
         return raw
     except Exception:
-        logger.exception("qa_kb: failed to read %s", KB_FILE)
+        logger.exception("qa_kb: failed to read %s", _kb_file())
         return {"items": []}
 
 
 def _save(store: dict[str, Any]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
-    KB_FILE.write_text(json.dumps(store, indent=2, ensure_ascii=False), encoding="utf-8")
+    _kb_file().write_text(json.dumps(store, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 _STOP = {
@@ -233,7 +234,7 @@ def stats() -> dict[str, Any]:
     items = store.get("items") or []
     return {
         "total_items": len(items),
-        "file": str(KB_FILE),
+        "file": str(_kb_file()),
     }
 
 
