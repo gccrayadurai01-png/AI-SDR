@@ -67,7 +67,7 @@ from telnyx_handler import (
     estimate_tts_playback_seconds,
 )
 import contacts_store
-from tenant_ctx import tenant_data_path, tenant_dir, set_tenant, reset_tenant
+from tenant_ctx import tenant_data_path, tenant_dir, set_tenant, reset_tenant, current_tenant
 from storage import (
     load_calls,
     save_call,
@@ -3105,6 +3105,54 @@ PRICE_EL_PER_1K_CHARS    = float(os.environ.get("PRICE_EL_PER_1K_CHARS",    "0.1
 PRICE_CLAUDE_IN_PER_MTOK  = float(os.environ.get("PRICE_CLAUDE_IN_PER_MTOK",  "1.00"))   # Haiku 4.5 input
 PRICE_CLAUDE_OUT_PER_MTOK = float(os.environ.get("PRICE_CLAUDE_OUT_PER_MTOK", "5.00"))   # Haiku 4.5 output
 
+# ── Real provider top-up ledger ────────────────────────────────
+# Tracks money actually spent on provider accounts (Telnyx top-ups, ElevenLabs
+# credit purchases). Used to compute the TRUE blended cost-per-min of running
+# the platform, so customer rate (with margin) reflects real spend, not list
+# pricing estimates. Persisted to data/provider_topups.json.
+PROVIDER_TOPUPS_FILE = Path(__file__).parent / "data" / "provider_topups.json"
+
+def _load_provider_topups() -> dict:
+    try:
+        if PROVIDER_TOPUPS_FILE.exists():
+            return json.loads(PROVIDER_TOPUPS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("provider_topups: load failed")
+    # Defaults seeded from user-reported actual spend.
+    return {
+        "telnyx":     [{"amount": 30.0,  "ts": "2026-04-01T00:00:00Z", "note": "initial spend (depleted)"}],
+        "elevenlabs": [{"amount": 5.0,   "ts": "2026-01-15T00:00:00Z", "note": "starter"},
+                       {"amount": 22.0,  "ts": "2026-02-20T00:00:00Z", "note": "extra credits"},
+                       {"amount": 100.0, "ts": "2026-04-15T00:00:00Z", "note": "Pro tier"}],
+        "claude":     [],
+    }
+
+def _save_provider_topups(data: dict) -> None:
+    PROVIDER_TOPUPS_FILE.parent.mkdir(exist_ok=True)
+    PROVIDER_TOPUPS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def _provider_total_spent(provider: str) -> float:
+    data = _load_provider_topups()
+    rows = data.get(provider) or []
+    return float(sum(float(r.get("amount", 0) or 0) for r in rows if isinstance(r, dict)))
+
+def _real_blended_cost_per_min() -> float:
+    """Blended cost-per-min based on REAL money spent on providers
+    divided by total platform call minutes. This is what customers actually
+    cost us — used to compute customer_per_min via margin."""
+    calls = _all_calls_across_tenants()
+    total_minutes = 0.0
+    for c in calls:
+        if not isinstance(c, dict): continue
+        secs = float(c.get("duration_seconds", 0) or 0)
+        total_minutes += secs / 60.0
+    if total_minutes <= 0:
+        return 0.07  # fallback estimate
+    total_spend = (_provider_total_spent("telnyx")
+                  + _provider_total_spent("elevenlabs")
+                  + _provider_total_spent("claude"))
+    return round(total_spend / total_minutes, 6) if total_spend > 0 else 0.0
+
 
 def _all_calls_across_tenants() -> list[dict]:
     """Aggregate every call record across every tenant folder (+ legacy DATA_DIR/calls.json)."""
@@ -3325,15 +3373,18 @@ DEFAULT_MARGIN_PCT = float(os.environ.get("DEFAULT_MARGIN_PCT", "80"))
 
 
 def _global_avg_cost_per_min() -> float:
-    """Cost-per-min computed from ALL historical calls. Used as the rate basis
-    for billing tenants (so all tenants pay the same blended rate, scaled by
-    their margin %)."""
+    """Cost-per-min for billing tenants. Prefers REAL provider spend (top-up
+    ledger ÷ total minutes); falls back to estimated cost from per-unit prices.
+    Real spend is more accurate because it includes account fees, taxes, and
+    any per-call overhead that public list prices don't reflect."""
+    real = _real_blended_cost_per_min()
+    if real > 0:
+        return real
     calls = _all_calls_across_tenants()
     cons = _estimate_call_consumption(calls)
     minutes = cons["total_minutes"]
     if minutes <= 0:
-        # Fall back to public list rates (rough estimate)
-        return PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN + 0.05  # ~$0.07/min
+        return PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN + 0.05
     telnyx_cost = minutes * (PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN)
     el_cost     = (cons["el_chars"] / 1000.0) * PRICE_EL_PER_1K_CHARS
     claude_cost = ((cons["claude_in_tokens"]  / 1_000_000.0) * PRICE_CLAUDE_IN_PER_MTOK
@@ -3371,6 +3422,85 @@ async def tenant_balance(request: Request):
     if not tenant:
         raise HTTPException(404, "Tenant not found")
     return _tenant_balance_view(tenant)
+
+
+@app.get("/api/admin/provider-topups")
+async def admin_provider_topups(request: Request):
+    """Owner: list provider top-ups (real money spent on Telnyx, ElevenLabs, Claude)."""
+    _require_owner(request)
+    data = _load_provider_topups()
+    return {
+        "topups": data,
+        "totals": {
+            "telnyx":     round(_provider_total_spent("telnyx"), 2),
+            "elevenlabs": round(_provider_total_spent("elevenlabs"), 2),
+            "claude":     round(_provider_total_spent("claude"), 2),
+            "all":        round(_provider_total_spent("telnyx")
+                                + _provider_total_spent("elevenlabs")
+                                + _provider_total_spent("claude"), 2),
+        },
+        "real_blended_cost_per_min": round(_real_blended_cost_per_min(), 6),
+    }
+
+
+@app.post("/api/admin/provider-topups")
+async def admin_add_provider_topup(request: Request):
+    """Owner: log a new provider top-up. Body: {provider, amount, note?}."""
+    _require_owner(request)
+    body = await request.json() or {}
+    provider = (body.get("provider") or "").strip().lower()
+    if provider not in ("telnyx", "elevenlabs", "claude"):
+        raise HTTPException(400, "provider must be telnyx|elevenlabs|claude")
+    amount = float(body.get("amount", 0) or 0)
+    if amount <= 0:
+        raise HTTPException(400, "amount must be > 0")
+    data = _load_provider_topups()
+    data.setdefault(provider, []).append({
+        "amount": round(amount, 2),
+        "ts": datetime.utcnow().isoformat() + "Z",
+        "note": (body.get("note") or "").strip(),
+    })
+    _save_provider_topups(data)
+    return {"ok": True, "provider": provider, "total": _provider_total_spent(provider)}
+
+
+def _decrement_tenant_balance_for_call(tenant_id: str, duration_seconds: int) -> dict | None:
+    """After a call hangs up, charge the tenant's dollar_balance based on
+    customer_per_min × duration. Returns the new balance view, or None on error."""
+    if not tenant_id or duration_seconds <= 0:
+        return None
+    try:
+        tenants = _load_tenants()
+        for t in tenants:
+            if t.get("id") != tenant_id:
+                continue
+            view = _tenant_balance_view(t)
+            customer_per_min = view["customer_per_min"]
+            minutes = duration_seconds / 60.0
+            charge = round(customer_per_min * minutes, 4)
+            cur = float(t.get("dollar_balance", 0) or 0)
+            new_balance = max(0.0, round(cur - charge, 4))
+            t["dollar_balance"] = new_balance
+            t["updated_at"] = datetime.utcnow().isoformat()
+            # Append to per-tenant usage ledger for audit trail.
+            ledger = t.setdefault("usage_ledger", [])
+            if isinstance(ledger, list):
+                ledger.insert(0, {
+                    "ts": datetime.utcnow().isoformat() + "Z",
+                    "duration_seconds": int(duration_seconds),
+                    "charge_usd": charge,
+                    "rate_per_min": customer_per_min,
+                    "balance_after": new_balance,
+                })
+                # Keep last 500 entries.
+                t["usage_ledger"] = ledger[:500]
+            _save_tenants(tenants)
+            logger.info("Charged tenant %s $%.4f for %ds call (rate $%.4f/min). New balance: $%.2f",
+                        tenant_id, charge, duration_seconds, customer_per_min, new_balance)
+            return _tenant_balance_view(t)
+    except Exception:
+        logger.exception("decrement_tenant_balance failed for tenant %s", tenant_id)
+    return None
 
 
 @app.post("/api/admin/tenants/{tenant_id}/adjust-balance")
@@ -4871,11 +5001,28 @@ async def place_outbound_call(req: CallRequest) -> dict:
     voice_id = (req.voice_id or "").strip()
     if voice_id:
         logger.info("Voice override requested for call: %s (call-local only)", voice_id)
-    logger.info(f"Dialing {to} ({req.prospect_name})")
+    # ── Phase 3: per-tenant outbound number routing ──
+    # If the tenant has its own assigned phone_number / telnyx_connection_id, use them.
+    # Otherwise fall back to the global config defaults.
+    tenant_from_number: str | None = None
+    tenant_connection_id: str | None = None
+    try:
+        tid_for_dial = current_tenant()
+        if tid_for_dial:
+            for t in _load_tenants():
+                if t.get("id") == tid_for_dial:
+                    pn = (t.get("phone_number") or "").strip()
+                    cid = (t.get("telnyx_connection_id") or "").strip()
+                    if pn: tenant_from_number = pn
+                    if cid: tenant_connection_id = cid
+                    break
+    except Exception:
+        logger.exception("Phase 3 per-tenant routing lookup failed; using defaults")
+    logger.info(f"Dialing {to} ({req.prospect_name}) from={tenant_from_number or config.TELNYX_PHONE_NUMBER}")
     # Fire research in background — don't wait for it before dialing
     if req.prospect_name or req.company:
         asyncio.create_task(research_prospect(req.prospect_name, "", req.company))
-    result = await make_outbound_call(to)
+    result = await make_outbound_call(to, from_number=tenant_from_number, connection_id=tenant_connection_id)
     em = (req.prospect_email or "").strip()
     rec = {
         "call_control_id": result["call_control_id"],
@@ -5440,6 +5587,16 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
                     "call.hangup: no calls.json row for %s — check dial save_call / call_control_id",
                     hang_cc,
                 )
+
+            # ── Phase 4: decrement tenant balance based on actual call duration ──
+            try:
+                call_row = get_call_by_control_id(hang_cc) or {}
+                tid_for_call = call_row.get("tenant_id") or (rec or {}).get("tenant_id")
+                dur_for_charge = duration_seconds if duration_seconds is not None else int(call_row.get("duration_seconds") or 0)
+                if tid_for_call and dur_for_charge > 0:
+                    _decrement_tenant_balance_for_call(tid_for_call, dur_for_charge)
+            except Exception:
+                logger.exception("Tenant balance decrement failed for %s", hang_cc)
             if rec and (rec.get("prospect_email") or "").strip():
                 update_call(hang_cc, prospect_email=(rec.get("prospect_email") or "").strip())
 

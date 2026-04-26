@@ -203,12 +203,14 @@ def _client() -> telnyx.Telnyx:
 # ─────────────────────────────────────────────
 # 1. OUTBOUND CALL (no stream_url — we use transcription instead)
 # ─────────────────────────────────────────────
-async def make_outbound_call(to_number: str) -> dict:
+async def make_outbound_call(to_number: str, from_number: str | None = None, connection_id: str | None = None) -> dict:
+    """Place outbound call. Optional `from_number` and `connection_id` override
+    config defaults — used for per-tenant phone routing in Phase 3."""
     try:
         result = _client().calls.dial(
-            connection_id=config.TELNYX_CONNECTION_ID,
+            connection_id=connection_id or config.TELNYX_CONNECTION_ID,
             to=to_number,
-            from_=config.TELNYX_PHONE_NUMBER,
+            from_=from_number or config.TELNYX_PHONE_NUMBER,
             webhook_url=f"{config.APP_BASE_URL}/webhooks/telnyx",
             webhook_url_method="POST",
             answering_machine_detection="disabled",

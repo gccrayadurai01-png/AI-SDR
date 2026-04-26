@@ -513,13 +513,8 @@ tbody tr.clickable { cursor: pointer; }
       <button onclick="stopCampaign()" style="background:rgba(239,68,68,0.3); border:1px solid rgba(239,68,68,0.5); color:#fff; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:inherit;">Stop</button>
     </div>
 
-    <!-- ── Global SMTP / Email status banner — owner-only (tenants don't see SMTP) ── -->
-    <div id="topStatusBanner" class="owner-only" style="display:none;padding:8px 20px;font-size:12px;align-items:center;gap:14px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:80;background:var(--bg);">
-      <span id="topEmailStatus" style="display:flex;align-items:center;gap:6px;"></span>
-      <span id="topQueuedCount" style="display:flex;align-items:center;gap:6px;color:var(--text-muted);"></span>
-      <span style="flex:1;"></span>
-      <a onclick="navigate('email-agent')" style="cursor:pointer;color:var(--primary);font-weight:600;">Open Email Agent →</a>
-    </div>
+    <!-- ── SMTP/Email banner removed per product decision; users open Email Agent panel directly. ── -->
+    <div id="topStatusBanner" style="display:none !important;"></div>
 
     <!-- ── Tenant calling balance pill (ElevenLabs-style; tenant-only) ── -->
     <div id="tenantBalancePill" class="tenant-only"
