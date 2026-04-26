@@ -1105,6 +1105,10 @@ tbody tr.clickable { cursor: pointer; }
           <div id="usageProviders" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
             <div class="empty-state"><p>Loading provider usage…</p></div>
           </div>
+          <div style="margin-top:18px;">
+            <div style="font-size:13px;font-weight:600;color:#94A3B8;margin-bottom:8px;">Per-tenant cost breakdown</div>
+            <div id="usagePerTenant"><div class="empty-state"><p>Loading…</p></div></div>
+          </div>
           <div style="margin-top:14px;font-size:12px;color:var(--text-muted);">
             Pricing model — Telnyx: <span id="prTelnyx">—</span>/min · ElevenLabs: <span id="prEL">—</span>/1k chars · Claude: <span id="prClaudeIn">—</span>/MTok in · <span id="prClaudeOut">—</span>/MTok out
           </div>
@@ -3433,47 +3437,95 @@ async function loadOwnerUsage() {
     return;
   }
   const fmt$ = n => '$' + (Number(n||0)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:4});
+  const fmtN = n => (Number(n||0)).toLocaleString();
   const c = u.costs || {}, cons = u.consumption || {}, p = u.pricing || {}, live = u.live || {};
 
-  document.getElementById('useTotalMin').textContent   = (cons.total_minutes||0).toLocaleString();
+  document.getElementById('useTotalMin').textContent   = fmtN(cons.total_minutes);
   document.getElementById('useTotalCost').textContent  = fmt$(c.total);
   document.getElementById('useAvgMin').textContent     = fmt$(c.avg_per_min);
-  document.getElementById('useTotalCalls').textContent = (cons.total_calls||0).toLocaleString();
+  document.getElementById('useTotalCalls').textContent = fmtN(cons.total_calls);
 
   document.getElementById('prTelnyx').textContent    = fmt$(p.telnyx_per_min);
   document.getElementById('prEL').textContent        = fmt$(p.elevenlabs_per_1k);
   document.getElementById('prClaudeIn').textContent  = fmt$(p.claude_in_per_mtok);
   document.getElementById('prClaudeOut').textContent = fmt$(p.claude_out_per_mtok);
 
-  const elDot   = live.elevenlabs && live.elevenlabs.connected ? '#10B981' : '#EF4444';
-  const tnDot   = live.telnyx     && live.telnyx.connected     ? '#10B981' : '#EF4444';
-  const elLeft  = live.elevenlabs && live.elevenlabs.connected
-    ? ((live.elevenlabs.character_remaining||0).toLocaleString() + ' chars left of ' + (live.elevenlabs.character_limit||0).toLocaleString())
-    : 'Not connected';
-  const tnBal   = live.telnyx && live.telnyx.connected
-    ? fmt$(live.telnyx.balance) + ' balance'
-    : 'Not connected';
+  const elOK = live.elevenlabs && live.elevenlabs.connected;
+  const tnOK = live.telnyx     && live.telnyx.connected;
+  const elDot = elOK ? '#10B981' : '#EF4444';
+  const tnDot = tnOK ? '#10B981' : '#EF4444';
 
-  const card = (title, dotColor, big, sub, extra) =>
+  const liveBadge  = '<span style="display:inline-block;background:rgba(16,185,129,0.15);color:#10B981;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:6px;letter-spacing:0.5px;">LIVE</span>';
+  const estBadge   = '<span style="display:inline-block;background:rgba(245,158,11,0.15);color:#F59E0B;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:6px;letter-spacing:0.5px;">ESTIMATED</span>';
+
+  // Telnyx card — balance is LIVE, voice spend is ESTIMATED from logs
+  const tnBalanceBlock = tnOK
+    ? `<div style="font-size:22px;font-weight:700;color:#22C55E;margin-bottom:2px;">${fmt$(live.telnyx.balance)}</div>
+       <div style="font-size:11px;color:var(--text-muted);">API balance ${liveBadge}</div>`
+    : `<div style="font-size:14px;color:#EF4444;">Not connected</div>`;
+
+  // ElevenLabs card — character usage + remaining is LIVE
+  const elBalanceBlock = elOK
+    ? `<div style="font-size:22px;font-weight:700;color:#22C55E;margin-bottom:2px;">${fmtN(live.elevenlabs.character_remaining)} <small style="font-size:11px;color:var(--text-muted);font-weight:400;">chars left</small></div>
+       <div style="font-size:11px;color:var(--text-muted);">${fmtN(live.elevenlabs.character_used)} / ${fmtN(live.elevenlabs.character_limit)} on <b>${escHtml(live.elevenlabs.tier||'?')}</b> ${liveBadge}</div>`
+    : `<div style="font-size:14px;color:#EF4444;">Not connected</div>`;
+
+  const card = (title, dotColor, balanceBlock, spendLabel, spendValue, breakdown, badge) =>
     `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
-       <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:6px;"></span>${title}
        </div>
-       <div style="font-size:20px;font-weight:700;color:#F1F5F9;">${big}</div>
-       <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${sub}</div>
-       ${extra ? `<div style="font-size:11px;color:#94A3B8;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">${extra}</div>` : ''}
+       ${balanceBlock}
+       <div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:10px;padding-top:10px;">
+         <div style="font-size:11px;color:var(--text-muted);">${spendLabel}${badge||''}</div>
+         <div style="font-size:18px;font-weight:600;color:#F1F5F9;">${spendValue}</div>
+         <div style="font-size:11px;color:#94A3B8;margin-top:4px;">${breakdown}</div>
+       </div>
      </div>`;
 
   document.getElementById('usageProviders').innerHTML =
-    card('Telnyx · Voice', tnDot, fmt$(c.telnyx),
-         (cons.total_minutes||0) + ' min × ' + fmt$(p.telnyx_per_min) + '/min',
-         tnBal) +
-    card('ElevenLabs · TTS', elDot, fmt$(c.elevenlabs),
-         (cons.elevenlabs_chars||0).toLocaleString() + ' chars',
-         elLeft) +
-    card('Claude · Reasoning', '#10B981', fmt$(c.claude),
-         (cons.claude_in_tokens||0).toLocaleString() + ' in / ' + (cons.claude_out_tokens||0).toLocaleString() + ' out tokens',
-         'In: ' + fmt$(c.claude_in) + ' · Out: ' + fmt$(c.claude_out));
+    card('Telnyx · Voice', tnDot, tnBalanceBlock,
+         'Spent on calls', fmt$(c.telnyx),
+         fmtN(cons.total_minutes) + ' min × ' + fmt$(p.telnyx_per_min) + '/min',
+         estBadge) +
+    card('ElevenLabs · TTS', elDot, elBalanceBlock,
+         'Spent on TTS', fmt$(c.elevenlabs),
+         fmtN(cons.elevenlabs_chars) + ' chars × ' + fmt$(p.elevenlabs_per_1k) + '/1k',
+         liveBadge) +
+    card('Claude · Reasoning', '#10B981',
+         '<div style="font-size:14px;color:#94A3B8;">No public balance API<br><small style="font-size:11px;">(usage measured from logs)</small></div>',
+         'Spent on reasoning', fmt$(c.claude),
+         'In: ' + fmt$(c.claude_in) + ' · Out: ' + fmt$(c.claude_out) + '<br>' +
+         fmtN(cons.claude_in_tokens) + ' in / ' + fmtN(cons.claude_out_tokens) + ' out tokens',
+         estBadge);
+
+  // Per-tenant table (rendered below provider cards)
+  const wrap = document.getElementById('usagePerTenant');
+  if (wrap) {
+    const rows = u.by_tenant || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty-state"><p>No tenants with usage yet.</p></div>';
+    } else {
+      wrap.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+        '<th>Tenant</th><th>Calls</th><th>Minutes</th>' +
+        '<th>Telnyx $</th><th>ElevenLabs $</th><th>Claude $</th>' +
+        '<th>Total $</th><th>$ / min</th>' +
+        '</tr></thead><tbody>' +
+        rows.map(r =>
+          '<tr>' +
+            '<td><b>'+escHtml(r.tenant_name)+'</b><br><span style="font-size:10px;color:var(--text-muted);">'+escHtml(r.tenant_id)+'</span></td>' +
+            '<td>'+fmtN(r.calls)+'</td>' +
+            '<td>'+fmtN(r.minutes)+'</td>' +
+            '<td>'+fmt$(r.telnyx_cost)+'</td>' +
+            '<td>'+fmt$(r.elevenlabs_cost)+'</td>' +
+            '<td>'+fmt$(r.claude_cost)+'</td>' +
+            '<td><b style="color:#22C55E;">'+fmt$(r.total_cost)+'</b></td>' +
+            '<td>'+fmt$(r.cost_per_min)+'</td>' +
+          '</tr>'
+        ).join('') + '</tbody></table></div>';
+    }
+  }
+  if (window.lucide) lucide.createIcons();
 }
 
 async function ownerDrillIn(tid) {
