@@ -1086,6 +1086,30 @@ tbody tr.clickable { cursor: pointer; }
           </div>
         </div>
 
+        <!-- Usage & Costs (live API consumption) -->
+        <div class="card" style="border-left:4px solid #10B981;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">💸 Usage & Costs — live across providers</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadOwnerUsage()"><i data-lucide="refresh-cw"></i> Refresh</button>
+          </div>
+          <div class="stats-grid" id="usageKpis" style="margin-bottom:14px;">
+            <div class="stat-card"><div class="stat-icon" style="background:#0EA5E9;"><i data-lucide="phone-call"></i></div>
+              <div><div class="stat-value" id="useTotalMin">—</div><div class="stat-label">Total minutes used</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#22C55E;"><i data-lucide="dollar-sign"></i></div>
+              <div><div class="stat-value" id="useTotalCost">—</div><div class="stat-label">Total cost (USD)</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#F59E0B;"><i data-lucide="trending-up"></i></div>
+              <div><div class="stat-value" id="useAvgMin">—</div><div class="stat-label">Avg cost / minute</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#EF4444;"><i data-lucide="zap"></i></div>
+              <div><div class="stat-value" id="useTotalCalls">—</div><div class="stat-label">Calls metered</div></div></div>
+          </div>
+          <div id="usageProviders" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+            <div class="empty-state"><p>Loading provider usage…</p></div>
+          </div>
+          <div style="margin-top:14px;font-size:12px;color:var(--text-muted);">
+            Pricing model — Telnyx: <span id="prTelnyx">—</span>/min · ElevenLabs: <span id="prEL">—</span>/1k chars · Claude: <span id="prClaudeIn">—</span>/MTok in · <span id="prClaudeOut">—</span>/MTok out
+          </div>
+        </div>
+
         <!-- Per-tenant breakdown -->
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -3398,6 +3422,58 @@ async function loadOwnerDashboard() {
       }).join('') + '</tbody></table></div>';
   }
   if (window.lucide) lucide.createIcons();
+  loadOwnerUsage();
+}
+
+async function loadOwnerUsage() {
+  const u = await GET('/api/admin/usage');
+  if (u._error) {
+    document.getElementById('usageProviders').innerHTML =
+      '<div class="empty-state"><p style="color:#EF4444;">Usage fetch failed: '+escHtml(u.detail||'')+'</p></div>';
+    return;
+  }
+  const fmt$ = n => '$' + (Number(n||0)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:4});
+  const c = u.costs || {}, cons = u.consumption || {}, p = u.pricing || {}, live = u.live || {};
+
+  document.getElementById('useTotalMin').textContent   = (cons.total_minutes||0).toLocaleString();
+  document.getElementById('useTotalCost').textContent  = fmt$(c.total);
+  document.getElementById('useAvgMin').textContent     = fmt$(c.avg_per_min);
+  document.getElementById('useTotalCalls').textContent = (cons.total_calls||0).toLocaleString();
+
+  document.getElementById('prTelnyx').textContent    = fmt$(p.telnyx_per_min);
+  document.getElementById('prEL').textContent        = fmt$(p.elevenlabs_per_1k);
+  document.getElementById('prClaudeIn').textContent  = fmt$(p.claude_in_per_mtok);
+  document.getElementById('prClaudeOut').textContent = fmt$(p.claude_out_per_mtok);
+
+  const elDot   = live.elevenlabs && live.elevenlabs.connected ? '#10B981' : '#EF4444';
+  const tnDot   = live.telnyx     && live.telnyx.connected     ? '#10B981' : '#EF4444';
+  const elLeft  = live.elevenlabs && live.elevenlabs.connected
+    ? ((live.elevenlabs.character_remaining||0).toLocaleString() + ' chars left of ' + (live.elevenlabs.character_limit||0).toLocaleString())
+    : 'Not connected';
+  const tnBal   = live.telnyx && live.telnyx.connected
+    ? fmt$(live.telnyx.balance) + ' balance'
+    : 'Not connected';
+
+  const card = (title, dotColor, big, sub, extra) =>
+    `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;">
+       <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:6px;"></span>${title}
+       </div>
+       <div style="font-size:20px;font-weight:700;color:#F1F5F9;">${big}</div>
+       <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${sub}</div>
+       ${extra ? `<div style="font-size:11px;color:#94A3B8;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">${extra}</div>` : ''}
+     </div>`;
+
+  document.getElementById('usageProviders').innerHTML =
+    card('Telnyx · Voice', tnDot, fmt$(c.telnyx),
+         (cons.total_minutes||0) + ' min × ' + fmt$(p.telnyx_per_min) + '/min',
+         tnBal) +
+    card('ElevenLabs · TTS', elDot, fmt$(c.elevenlabs),
+         (cons.elevenlabs_chars||0).toLocaleString() + ' chars',
+         elLeft) +
+    card('Claude · Reasoning', '#10B981', fmt$(c.claude),
+         (cons.claude_in_tokens||0).toLocaleString() + ' in / ' + (cons.claude_out_tokens||0).toLocaleString() + ' out tokens',
+         'In: ' + fmt$(c.claude_in) + ' · Out: ' + fmt$(c.claude_out));
 }
 
 async function ownerDrillIn(tid) {

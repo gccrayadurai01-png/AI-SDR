@@ -3031,6 +3031,226 @@ async def admin_tenant_stats(tenant_id: str, request: Request):
 
 
 # ════════════════════════════════════════════════════════════
+#  USAGE & COST METERING (Owner)
+# ════════════════════════════════════════════════════════════
+# Public per-unit pricing (USD). Tweak via env if needed.
+PRICE_TELNYX_PER_MIN     = float(os.environ.get("PRICE_TELNYX_PER_MIN",     "0.0070"))   # outbound US voice
+PRICE_TELNYX_TTS_PER_MIN = float(os.environ.get("PRICE_TELNYX_TTS_PER_MIN", "0.0050"))   # speak/transcribe blended
+PRICE_EL_PER_1K_CHARS    = float(os.environ.get("PRICE_EL_PER_1K_CHARS",    "0.30"))     # ElevenLabs Creator/Pro avg
+PRICE_CLAUDE_IN_PER_MTOK  = float(os.environ.get("PRICE_CLAUDE_IN_PER_MTOK",  "1.00"))   # Haiku 4.5 input
+PRICE_CLAUDE_OUT_PER_MTOK = float(os.environ.get("PRICE_CLAUDE_OUT_PER_MTOK", "5.00"))   # Haiku 4.5 output
+
+
+def _all_calls_across_tenants() -> list[dict]:
+    """Aggregate every call record across every tenant folder (+ legacy DATA_DIR/calls.json)."""
+    out: list[dict] = []
+    seen_paths: set[str] = set()
+    paths: list[Path] = []
+    if TENANTS_DIR.exists():
+        for td in TENANTS_DIR.iterdir():
+            if td.is_dir():
+                paths.append(td / "calls.json")
+    paths.append(DATA_DIR / "calls.json")  # legacy fallback
+    for p in paths:
+        try:
+            sp = str(p.resolve())
+            if sp in seen_paths or not p.exists():
+                continue
+            seen_paths.add(sp)
+            d = json.loads(p.read_text(encoding="utf-8"))
+            rows = d if isinstance(d, list) else d.get("calls", [])
+            for c in rows:
+                if isinstance(c, dict):
+                    out.append(c)
+        except Exception:
+            continue
+    return out
+
+
+def _estimate_call_consumption(calls: list[dict]) -> dict:
+    """Compute minutes / EL chars / Claude tokens from local call logs."""
+    total_seconds = 0
+    el_chars      = 0
+    claude_in_chars  = 0
+    claude_out_chars = 0
+    for c in calls:
+        dur = c.get("duration_seconds") or c.get("duration") or c.get("duration_sec") or 0
+        try:
+            total_seconds += int(dur or 0)
+        except Exception:
+            pass
+        tr = c.get("transcript") or []
+        if isinstance(tr, list):
+            for turn in tr:
+                if not isinstance(turn, dict):
+                    continue
+                text = str(turn.get("text") or "")
+                role = (turn.get("role") or turn.get("speaker") or "").lower()
+                # ElevenLabs chars: only assistant/agent spoken text
+                if role in ("assistant", "agent", "ai", "knight", "bot"):
+                    el_chars += len(text)
+                    claude_out_chars += len(text)
+                else:
+                    claude_in_chars += len(text)
+    minutes = total_seconds / 60.0
+    # rough chars→tokens: ~4 chars per token
+    claude_in_tokens  = claude_in_chars  / 4.0
+    claude_out_tokens = claude_out_chars / 4.0
+    return {
+        "total_seconds":     total_seconds,
+        "total_minutes":     round(minutes, 2),
+        "el_chars":          el_chars,
+        "claude_in_tokens":  int(claude_in_tokens),
+        "claude_out_tokens": int(claude_out_tokens),
+    }
+
+
+async def _fetch_elevenlabs_subscription() -> dict:
+    key = (os.environ.get("ELEVENLABS_API_KEY") or "").strip()
+    if not key:
+        return {"connected": False, "error": "no api key"}
+    try:
+        async with _httpx.AsyncClient(timeout=10.0) as ac:
+            r = await ac.get(
+                "https://api.elevenlabs.io/v1/user/subscription",
+                headers={"xi-api-key": key},
+            )
+            if r.status_code != 200:
+                return {"connected": False, "error": f"http {r.status_code}"}
+            d = r.json() or {}
+            used = int(d.get("character_count") or 0)
+            limit = int(d.get("character_limit") or 0)
+            return {
+                "connected":       True,
+                "tier":            d.get("tier"),
+                "character_used":  used,
+                "character_limit": limit,
+                "character_remaining": max(limit - used, 0),
+                "next_reset_unix": d.get("next_character_count_reset_unix"),
+            }
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+async def _fetch_telnyx_balance() -> dict:
+    key = (os.environ.get("TELNYX_API_KEY") or "").strip()
+    if not key:
+        return {"connected": False, "error": "no api key"}
+    try:
+        async with _httpx.AsyncClient(timeout=10.0) as ac:
+            r = await ac.get(
+                "https://api.telnyx.com/v2/balance",
+                headers={"Authorization": f"Bearer {key}"},
+            )
+            if r.status_code != 200:
+                return {"connected": False, "error": f"http {r.status_code}"}
+            d = (r.json() or {}).get("data") or {}
+            return {
+                "connected":      True,
+                "balance":        float(d.get("balance") or 0),
+                "credit_limit":   float(d.get("credit_limit") or 0),
+                "currency":       d.get("currency") or "USD",
+            }
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+@app.get("/api/admin/usage")
+async def admin_usage(request: Request):
+    """Owner-only: live + computed credit consumption across all providers."""
+    _require_owner(request)
+
+    # 1) Local consumption from call transcripts
+    all_calls = _all_calls_across_tenants()
+    cons = _estimate_call_consumption(all_calls)
+
+    # 2) Provider live balances (parallel)
+    el_live, telnyx_live = await asyncio.gather(
+        _fetch_elevenlabs_subscription(),
+        _fetch_telnyx_balance(),
+    )
+
+    # 3) Cost calculations
+    minutes = cons["total_minutes"]
+
+    telnyx_cost = round(minutes * (PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN), 4)
+
+    # ElevenLabs: prefer the LIVE chars from the API (true billed usage).
+    el_chars_billed = el_live.get("character_used") if el_live.get("connected") else cons["el_chars"]
+    el_cost = round((el_chars_billed / 1000.0) * PRICE_EL_PER_1K_CHARS, 4)
+
+    claude_in_cost  = round((cons["claude_in_tokens"]  / 1_000_000.0) * PRICE_CLAUDE_IN_PER_MTOK,  4)
+    claude_out_cost = round((cons["claude_out_tokens"] / 1_000_000.0) * PRICE_CLAUDE_OUT_PER_MTOK, 4)
+    claude_cost     = round(claude_in_cost + claude_out_cost, 4)
+
+    total_cost = round(telnyx_cost + el_cost + claude_cost, 4)
+    avg_per_min = round(total_cost / minutes, 4) if minutes > 0 else 0.0
+
+    # 4) Per-tenant breakdown
+    tenants = _load_tenants()
+    by_tenant = []
+    for t in tenants:
+        tid = t["id"]
+        tcalls = []
+        for p in (_tenant_calls_path(tid),
+                  DATA_DIR / "calls.json" if tid == "tenant_default" else None):
+            if p and p.exists():
+                try:
+                    d = json.loads(p.read_text(encoding="utf-8"))
+                    tcalls = d if isinstance(d, list) else d.get("calls", [])
+                    break
+                except Exception:
+                    pass
+        tc = _estimate_call_consumption([c for c in tcalls if isinstance(c, dict)])
+        t_telnyx = round(tc["total_minutes"] * (PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN), 4)
+        t_el     = round((tc["el_chars"] / 1000.0) * PRICE_EL_PER_1K_CHARS, 4)
+        t_cla    = round((tc["claude_in_tokens"]  / 1_000_000.0) * PRICE_CLAUDE_IN_PER_MTOK
+                       + (tc["claude_out_tokens"] / 1_000_000.0) * PRICE_CLAUDE_OUT_PER_MTOK, 4)
+        t_total  = round(t_telnyx + t_el + t_cla, 4)
+        by_tenant.append({
+            "tenant_id":    tid,
+            "tenant_name":  t.get("name") or tid,
+            "calls":        len(tcalls),
+            "minutes":      tc["total_minutes"],
+            "telnyx_cost":  t_telnyx,
+            "elevenlabs_cost": t_el,
+            "claude_cost":  t_cla,
+            "total_cost":   t_total,
+            "cost_per_min": round(t_total / tc["total_minutes"], 4) if tc["total_minutes"] > 0 else 0.0,
+        })
+
+    return {
+        "pricing": {
+            "telnyx_per_min":      PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN,
+            "elevenlabs_per_1k":   PRICE_EL_PER_1K_CHARS,
+            "claude_in_per_mtok":  PRICE_CLAUDE_IN_PER_MTOK,
+            "claude_out_per_mtok": PRICE_CLAUDE_OUT_PER_MTOK,
+        },
+        "consumption": {
+            "total_calls":       len(all_calls),
+            "total_minutes":     minutes,
+            "elevenlabs_chars":  el_chars_billed,
+            "claude_in_tokens":  cons["claude_in_tokens"],
+            "claude_out_tokens": cons["claude_out_tokens"],
+        },
+        "costs": {
+            "telnyx":      telnyx_cost,
+            "elevenlabs":  el_cost,
+            "claude":      claude_cost,
+            "claude_in":   claude_in_cost,
+            "claude_out":  claude_out_cost,
+            "total":       total_cost,
+            "avg_per_min": avg_per_min,
+        },
+        "live": {
+            "elevenlabs": el_live,
+            "telnyx":     telnyx_live,
+        },
+        "by_tenant": by_tenant,
+    }
+
+
+# ════════════════════════════════════════════════════════════
 #  DATABASE RESET
 # ════════════════════════════════════════════════════════════
 @app.post("/api/admin/reset-db")
