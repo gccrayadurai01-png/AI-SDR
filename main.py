@@ -3424,6 +3424,429 @@ async def tenant_balance(request: Request):
     return _tenant_balance_view(tenant)
 
 
+@app.get("/api/tenant/usage-ledger")
+async def tenant_usage_ledger(request: Request, limit: int = 100):
+    """Tenant: see audit trail of charges (each call's $ deducted from balance)."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        return {"ledger": []}
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    ledger = tenant.get("usage_ledger") or []
+    return {"ledger": ledger[: max(1, min(500, int(limit)))]}
+
+
+@app.get("/api/admin/tenants/{tenant_id}/usage-ledger")
+async def admin_tenant_usage_ledger(tenant_id: str, request: Request, limit: int = 200):
+    """Owner: see any tenant's usage ledger."""
+    _require_owner(request)
+    tenant = next((t for t in _load_tenants() if t.get("id") == tenant_id), None)
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    ledger = tenant.get("usage_ledger") or []
+    return {"tenant_id": tenant_id, "ledger": ledger[: max(1, min(500, int(limit)))]}
+
+
+# ─── Phase 6: Stripe self-service tenant top-up ──────────────
+# Tenants can top up their own balance via Stripe Checkout. Requires env vars:
+#   STRIPE_SECRET_KEY    (sk_test_... or sk_live_...)
+#   STRIPE_WEBHOOK_SECRET (whsec_... — for /webhooks/stripe verification)
+#   APP_BASE_URL         (used to build success/cancel URLs)
+STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+
+
+@app.post("/api/tenant/topup-checkout")
+async def tenant_topup_checkout(request: Request):
+    """Tenant: create a Stripe Checkout session for self-service top-up.
+    Body: {"amount": 50}  (USD; min $10, max $5000).
+    Returns: {"checkout_url": "https://checkout.stripe.com/..."}.
+    Requires STRIPE_SECRET_KEY env var. If unset, returns 503 with manual top-up
+    instructions."""
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(503, "Stripe is not configured. Contact admin to top up manually.")
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        raise HTTPException(400, "No tenant context")
+    body = await request.json() or {}
+    amount = float(body.get("amount", 0) or 0)
+    if amount < 10 or amount > 5000:
+        raise HTTPException(400, "Amount must be between $10 and $5000")
+    try:
+        import stripe
+        stripe.api_key = STRIPE_SECRET_KEY
+        cs = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": f"AI-SDR Calling Balance Top-up — {tid}"},
+                    "unit_amount": int(round(amount * 100)),
+                },
+                "quantity": 1,
+            }],
+            client_reference_id=tid,
+            metadata={"tenant_id": tid, "amount_usd": str(amount)},
+            success_url=f"{config.APP_BASE_URL}/?topup=success",
+            cancel_url=f"{config.APP_BASE_URL}/?topup=canceled",
+        )
+        return {"checkout_url": cs.url, "session_id": cs.id}
+    except Exception as e:
+        logger.exception("Stripe Checkout create failed")
+        raise HTTPException(502, f"Stripe error: {e}") from e
+
+
+@app.post("/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    """Stripe webhook → on checkout.session.completed, credit the tenant balance."""
+    if not STRIPE_WEBHOOK_SECRET:
+        return JSONResponse({"ok": True, "note": "STRIPE_WEBHOOK_SECRET not set; skipping"}, status_code=200)
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        import stripe
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except Exception as e:
+        logger.error("Stripe webhook signature verify failed: %s", e)
+        raise HTTPException(400, "Invalid signature")
+    if event.get("type") == "checkout.session.completed":
+        session = event["data"]["object"]
+        tid = (session.get("metadata") or {}).get("tenant_id") or session.get("client_reference_id")
+        amount_total = float((session.get("amount_total") or 0)) / 100.0
+        if tid and amount_total > 0:
+            tenants = _load_tenants()
+            for t in tenants:
+                if t.get("id") == tid:
+                    cur = float(t.get("dollar_balance", 0) or 0)
+                    t["dollar_balance"] = round(cur + amount_total, 2)
+                    t["updated_at"] = datetime.utcnow().isoformat()
+                    ledger = t.setdefault("usage_ledger", [])
+                    if isinstance(ledger, list):
+                        ledger.insert(0, {
+                            "ts": datetime.utcnow().isoformat() + "Z",
+                            "duration_seconds": 0,
+                            "charge_usd": -amount_total,  # negative = top-up
+                            "rate_per_min": 0,
+                            "balance_after": t["dollar_balance"],
+                            "note": f"Stripe top-up (session {session.get('id')})",
+                        })
+                        t["usage_ledger"] = ledger[:500]
+                    _save_tenants(tenants)
+                    logger.info("Stripe top-up applied: tenant=%s +$%.2f new_balance=$%.2f",
+                                tid, amount_total, t["dollar_balance"])
+                    break
+    return {"ok": True}
+
+
+# ─── Cost Measurement Timer ───────────────────────────────────
+# Owner can start named measurement windows ("timers"). Each timer snapshots
+# call-count, minutes, and provider-spend at start. Live stats show the DELTA
+# since start, so you can answer: "after 100 calls, what was the avg $/min?"
+# Timers can be paused/resumed/stopped and multiple can run in parallel
+# (per-tenant or global).
+COST_MEAS_FILE = Path(__file__).parent / "data" / "cost_measurements.json"
+
+
+def _load_measurements() -> dict:
+    try:
+        if COST_MEAS_FILE.exists():
+            return json.loads(COST_MEAS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("cost_measurements: load failed")
+    return {"measurements": []}
+
+
+def _save_measurements(data: dict) -> None:
+    COST_MEAS_FILE.parent.mkdir(exist_ok=True)
+    COST_MEAS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _measurement_snapshot(tenant_id: str | None) -> dict:
+    """Snapshot of current totals; used as baseline for delta calculations."""
+    if tenant_id:
+        calls = [c for c in _all_calls_across_tenants() if isinstance(c, dict) and c.get("tenant_id") == tenant_id]
+    else:
+        calls = [c for c in _all_calls_across_tenants() if isinstance(c, dict)]
+    cons = _estimate_call_consumption(calls)
+    return {
+        "ts":              datetime.utcnow().isoformat() + "Z",
+        "call_count":      len(calls),
+        "total_minutes":   round(cons["total_minutes"], 2),
+        "el_chars":        cons["el_chars"],
+        "claude_in_tokens":  cons["claude_in_tokens"],
+        "claude_out_tokens": cons["claude_out_tokens"],
+        "telnyx_total":      _provider_total_spent("telnyx"),
+        "elevenlabs_total":  _provider_total_spent("elevenlabs"),
+        "claude_total":      _provider_total_spent("claude"),
+    }
+
+
+def _measurement_compute(m: dict) -> dict:
+    """Given a measurement record, compute current stats (delta from snapshot)."""
+    snap = m.get("snapshot") or {}
+    cur = _measurement_snapshot(m.get("tenant_id"))
+    d_calls   = max(0, cur["call_count"] - snap.get("call_count", 0))
+    d_minutes = max(0.0, cur["total_minutes"] - snap.get("total_minutes", 0.0))
+    d_chars   = max(0, cur["el_chars"]   - snap.get("el_chars", 0))
+    d_in_tok  = max(0, cur["claude_in_tokens"]  - snap.get("claude_in_tokens", 0))
+    d_out_tok = max(0, cur["claude_out_tokens"] - snap.get("claude_out_tokens", 0))
+    # Provider spend delta (real money topped up during the window)
+    d_telnyx_topup = max(0.0, cur["telnyx_total"]     - snap.get("telnyx_total", 0.0))
+    d_el_topup     = max(0.0, cur["elevenlabs_total"] - snap.get("elevenlabs_total", 0.0))
+    d_claude_topup = max(0.0, cur["claude_total"]     - snap.get("claude_total", 0.0))
+    # Estimated cost during window (using public list pricing)
+    telnyx_cost = d_minutes * (PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN)
+    el_cost     = (d_chars / 1000.0) * PRICE_EL_PER_1K_CHARS
+    claude_cost = (d_in_tok / 1_000_000.0) * PRICE_CLAUDE_IN_PER_MTOK + (d_out_tok / 1_000_000.0) * PRICE_CLAUDE_OUT_PER_MTOK
+    total_cost  = telnyx_cost + el_cost + claude_cost
+    avg_per_min = (total_cost / d_minutes) if d_minutes > 0 else 0.0
+
+    started_at = m.get("started_at")
+    stopped_at = m.get("stopped_at")
+    paused_at  = m.get("paused_at")
+    elapsed = 0.0
+    try:
+        start_dt = datetime.fromisoformat((started_at or "").replace("Z",""))
+        end_dt = datetime.fromisoformat((stopped_at or paused_at or datetime.utcnow().isoformat()).replace("Z",""))
+        elapsed = max(0.0, (end_dt - start_dt).total_seconds() - float(m.get("paused_total_seconds", 0) or 0))
+    except Exception:
+        pass
+
+    state = "stopped" if stopped_at else ("paused" if paused_at else "running")
+    return {
+        "id":           m.get("id"),
+        "name":         m.get("name"),
+        "tenant_id":    m.get("tenant_id"),
+        "state":        state,
+        "started_at":   started_at,
+        "paused_at":    paused_at,
+        "stopped_at":   stopped_at,
+        "elapsed_sec":  round(elapsed, 0),
+        "delta": {
+            "calls":       d_calls,
+            "minutes":     round(d_minutes, 2),
+            "el_chars":    d_chars,
+            "claude_in":   d_in_tok,
+            "claude_out":  d_out_tok,
+            "topups": {
+                "telnyx":     round(d_telnyx_topup, 2),
+                "elevenlabs": round(d_el_topup, 2),
+                "claude":     round(d_claude_topup, 2),
+            },
+        },
+        "cost": {
+            "telnyx":      round(telnyx_cost, 4),
+            "elevenlabs":  round(el_cost, 4),
+            "claude":      round(claude_cost, 4),
+            "total":       round(total_cost, 4),
+            "avg_per_min": round(avg_per_min, 4),
+        },
+    }
+
+
+@app.post("/api/admin/measurements/start")
+async def admin_meas_start(request: Request):
+    """Owner: start a new measurement timer.
+    Body: {"name": "Q2 Test", "tenant_id": "tenant_default" or null}."""
+    _require_owner(request)
+    body = await request.json() or {}
+    name = (body.get("name") or "Untitled").strip()
+    tenant_id = body.get("tenant_id") or None
+    data = _load_measurements()
+    m = {
+        "id":         uuid.uuid4().hex[:12],
+        "name":       name,
+        "tenant_id":  tenant_id,
+        "started_at": datetime.utcnow().isoformat() + "Z",
+        "paused_at":  None,
+        "stopped_at": None,
+        "paused_total_seconds": 0,
+        "snapshot":   _measurement_snapshot(tenant_id),
+    }
+    data.setdefault("measurements", []).insert(0, m)
+    _save_measurements(data)
+    return {"ok": True, "measurement": _measurement_compute(m)}
+
+
+@app.post("/api/admin/measurements/{mid}/pause")
+async def admin_meas_pause(mid: str, request: Request):
+    _require_owner(request)
+    data = _load_measurements()
+    for m in data.get("measurements") or []:
+        if m.get("id") == mid:
+            if m.get("stopped_at") or m.get("paused_at"): return {"ok": True, "measurement": _measurement_compute(m)}
+            m["paused_at"] = datetime.utcnow().isoformat() + "Z"
+            _save_measurements(data)
+            return {"ok": True, "measurement": _measurement_compute(m)}
+    raise HTTPException(404, "Not found")
+
+
+@app.post("/api/admin/measurements/{mid}/resume")
+async def admin_meas_resume(mid: str, request: Request):
+    _require_owner(request)
+    data = _load_measurements()
+    for m in data.get("measurements") or []:
+        if m.get("id") == mid:
+            if not m.get("paused_at"): return {"ok": True, "measurement": _measurement_compute(m)}
+            try:
+                pa = datetime.fromisoformat(m["paused_at"].replace("Z",""))
+                m["paused_total_seconds"] = float(m.get("paused_total_seconds", 0) or 0) + (datetime.utcnow() - pa).total_seconds()
+            except Exception:
+                pass
+            m["paused_at"] = None
+            _save_measurements(data)
+            return {"ok": True, "measurement": _measurement_compute(m)}
+    raise HTTPException(404, "Not found")
+
+
+@app.post("/api/admin/measurements/{mid}/stop")
+async def admin_meas_stop(mid: str, request: Request):
+    _require_owner(request)
+    data = _load_measurements()
+    for m in data.get("measurements") or []:
+        if m.get("id") == mid:
+            if m.get("stopped_at"): return {"ok": True, "measurement": _measurement_compute(m)}
+            m["stopped_at"] = datetime.utcnow().isoformat() + "Z"
+            if m.get("paused_at"):
+                try:
+                    pa = datetime.fromisoformat(m["paused_at"].replace("Z",""))
+                    m["paused_total_seconds"] = float(m.get("paused_total_seconds", 0) or 0) + (datetime.utcnow() - pa).total_seconds()
+                except Exception:
+                    pass
+                m["paused_at"] = None
+            _save_measurements(data)
+            return {"ok": True, "measurement": _measurement_compute(m)}
+    raise HTTPException(404, "Not found")
+
+
+@app.delete("/api/admin/measurements/{mid}")
+async def admin_meas_delete(mid: str, request: Request):
+    _require_owner(request)
+    data = _load_measurements()
+    before = len(data.get("measurements") or [])
+    data["measurements"] = [m for m in (data.get("measurements") or []) if m.get("id") != mid]
+    _save_measurements(data)
+    if len(data["measurements"]) == before:
+        raise HTTPException(404, "Not found")
+    return {"ok": True}
+
+
+@app.get("/api/admin/measurements")
+async def admin_meas_list(request: Request):
+    _require_owner(request)
+    data = _load_measurements()
+    return {"measurements": [_measurement_compute(m) for m in (data.get("measurements") or [])]}
+
+
+@app.get("/api/admin/cost-dashboard")
+async def admin_cost_dashboard(request: Request, days: int = 30):
+    """Owner cost dashboard:
+    - Daily spend buckets (last N days) per provider
+    - Daily revenue (sum of charges to tenants)
+    - Burn forecast: at current rate, when does platform-level provider balance run out?
+    - Per-tenant burn rate ($ / day) and forecasted depletion date.
+    """
+    _require_owner(request)
+    days = max(1, min(180, int(days)))
+
+    # ── Per-day platform call cost (estimated) ──
+    calls = _all_calls_across_tenants()
+    today = datetime.utcnow().date()
+    by_day: dict[str, dict[str, float]] = {}
+    for c in calls:
+        if not isinstance(c, dict): continue
+        ts = c.get("ended_at") or c.get("started_at") or c.get("created_at") or ""
+        try:
+            d = datetime.fromisoformat(ts.replace("Z", "")).date()
+        except Exception:
+            continue
+        if (today - d).days > days: continue
+        key = d.isoformat()
+        secs = float(c.get("duration_seconds", 0) or 0)
+        minutes = secs / 60.0
+        bucket = by_day.setdefault(key, {"minutes": 0.0, "calls": 0, "cost": 0.0})
+        bucket["minutes"] += minutes
+        bucket["calls"]   += 1
+        # Per-call cost estimate: blended × minutes
+        bucket["cost"]    += minutes * _real_blended_cost_per_min()
+
+    # ── Revenue from tenant ledgers (actual billed charges) ──
+    rev_by_day: dict[str, float] = {}
+    for t in _load_tenants():
+        for row in (t.get("usage_ledger") or [])[:1000]:
+            if not isinstance(row, dict): continue
+            ts = row.get("ts") or ""
+            try:
+                d = datetime.fromisoformat(ts.replace("Z","")).date()
+            except Exception:
+                continue
+            if (today - d).days > days: continue
+            rev_by_day[d.isoformat()] = rev_by_day.get(d.isoformat(), 0.0) + float(row.get("charge_usd", 0) or 0)
+
+    # ── Build daily series (most recent N days, oldest first) ──
+    series = []
+    for i in range(days - 1, -1, -1):
+        d = today - timedelta(days=i)
+        k = d.isoformat()
+        b = by_day.get(k, {"minutes": 0.0, "calls": 0, "cost": 0.0})
+        series.append({
+            "date":     k,
+            "minutes":  round(b["minutes"], 1),
+            "calls":    int(b["calls"]),
+            "cost_usd": round(b["cost"], 4),
+            "revenue_usd": round(rev_by_day.get(k, 0.0), 4),
+        })
+
+    # ── Burn forecast ──
+    last7 = series[-7:] if len(series) >= 7 else series
+    avg_daily_cost = (sum(x["cost_usd"] for x in last7) / max(1, len(last7))) if last7 else 0.0
+    total_provider_balance = (
+        _provider_total_spent("telnyx")
+        + _provider_total_spent("elevenlabs")
+        + _provider_total_spent("claude")
+    )
+    days_until_depleted = (total_provider_balance / avg_daily_cost) if avg_daily_cost > 0 else None
+
+    # ── Per-tenant burn rate ──
+    tenant_burn = []
+    for t in _load_tenants():
+        ledger = t.get("usage_ledger") or []
+        last7_charges = []
+        for row in ledger[:200]:
+            if not isinstance(row, dict): continue
+            try:
+                d = datetime.fromisoformat((row.get("ts") or "").replace("Z","")).date()
+                if (today - d).days <= 7:
+                    last7_charges.append(float(row.get("charge_usd", 0) or 0))
+            except Exception:
+                pass
+        avg_per_day = (sum(last7_charges) / 7.0) if last7_charges else 0.0
+        bal = float(t.get("dollar_balance", 0) or 0)
+        days_left = (bal / avg_per_day) if avg_per_day > 0 else None
+        tenant_burn.append({
+            "tenant_id":      t.get("id"),
+            "name":           t.get("name") or t.get("id"),
+            "dollar_balance": round(bal, 2),
+            "burn_per_day":   round(avg_per_day, 4),
+            "days_remaining": round(days_left, 1) if days_left is not None else None,
+        })
+
+    return {
+        "days":   days,
+        "series": series,
+        "burn": {
+            "avg_daily_cost":          round(avg_daily_cost, 4),
+            "total_provider_topups":   round(total_provider_balance, 2),
+            "days_until_depleted":     round(days_until_depleted, 1) if days_until_depleted is not None else None,
+        },
+        "tenants_burn": tenant_burn,
+    }
+
+
 @app.get("/api/admin/provider-topups")
 async def admin_provider_topups(request: Request):
     """Owner: list provider top-ups (real money spent on Telnyx, ElevenLabs, Claude)."""
@@ -4976,6 +5399,7 @@ class CallRequest(BaseModel):
     notes:           str = ""
     prospect_email:  str = ""  # for automatic post-call recap email (SMTP + Claude)
     voice_id:        str = ""  # ElevenLabs voice ID override for this call
+    owner_test:      bool = False  # Owner-only test calls bypass tenant balance gate
 
 
 async def place_outbound_call(req: CallRequest) -> dict:
@@ -5001,21 +5425,38 @@ async def place_outbound_call(req: CallRequest) -> dict:
     voice_id = (req.voice_id or "").strip()
     if voice_id:
         logger.info("Voice override requested for call: %s (call-local only)", voice_id)
-    # ── Phase 3: per-tenant outbound number routing ──
+    # ── Phase 3: per-tenant outbound number routing + zero-balance gate ──
     # If the tenant has its own assigned phone_number / telnyx_connection_id, use them.
     # Otherwise fall back to the global config defaults.
+    # Also block the call if the tenant's dollar_balance is depleted — protects
+    # the platform from giving away free Telnyx/EL minutes.
     tenant_from_number: str | None = None
     tenant_connection_id: str | None = None
+    skip_balance_check = bool(getattr(req, "owner_test", False))
     try:
         tid_for_dial = current_tenant()
         if tid_for_dial:
             for t in _load_tenants():
                 if t.get("id") == tid_for_dial:
+                    # Zero-balance gate (skip for owner test calls).
+                    if not skip_balance_check:
+                        bal = float(t.get("dollar_balance", 0) or 0)
+                        if bal <= 0:
+                            view = _tenant_balance_view(t)
+                            raise HTTPException(
+                                status_code=402,
+                                detail=(f"Calling balance depleted ($"
+                                        f"{view['dollar_balance']:.2f}). "
+                                        f"Top up to resume calls. "
+                                        f"Rate: ${view['customer_per_min']:.4f}/min."),
+                            )
                     pn = (t.get("phone_number") or "").strip()
                     cid = (t.get("telnyx_connection_id") or "").strip()
                     if pn: tenant_from_number = pn
                     if cid: tenant_connection_id = cid
                     break
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("Phase 3 per-tenant routing lookup failed; using defaults")
     logger.info(f"Dialing {to} ({req.prospect_name}) from={tenant_from_number or config.TELNYX_PHONE_NUMBER}")
@@ -5051,6 +5492,33 @@ async def trigger_outbound_call(req: CallRequest):
         raise
     except Exception as e:
         logger.exception("Outbound dial failed")
+        raise HTTPException(status_code=502, detail=format_telnyx_exception(e)) from e
+
+
+@app.post("/api/owner/test-call")
+async def owner_test_call(request: Request):
+    """Owner-only test calling: place a call WITHOUT touching any tenant balance.
+    Used to verify Telnyx + ElevenLabs + Claude wiring end-to-end without billing
+    a customer. Cost is absorbed by the platform (logged separately).
+    Body: {"to_number": "+15551234567", "prospect_name": "Test", "notes": "..."}."""
+    _require_owner(request)
+    body = await request.json() or {}
+    req = CallRequest(
+        to_number=body.get("to_number", ""),
+        prospect_name=body.get("prospect_name") or "Owner Test",
+        company=body.get("company") or "Internal QA",
+        notes=body.get("notes") or "Owner test call — not billed to any tenant",
+        prospect_email="",
+        voice_id=body.get("voice_id") or "",
+        owner_test=True,
+    )
+    try:
+        result = await place_outbound_call(req)
+        return {"ok": True, "test_call": True, **result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Owner test-call failed")
         raise HTTPException(status_code=502, detail=format_telnyx_exception(e)) from e
 
 

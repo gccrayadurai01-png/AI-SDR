@@ -71,6 +71,16 @@ def format_telnyx_exception(e: Exception) -> str:
             "that owns your `from` number; `from` must be E.164 (+country…); "
             "`APP_BASE_URL` must be reachable (HTTPS + /webhooks/telnyx) for call control."
         )
+    # ── D16: Outbound profile / connection disabled (typically zero Telnyx balance) ──
+    low = msg.lower()
+    if "d16" in low or "connection is disabled" in low or "termination call is not active" in low:
+        msg = (
+            "Telnyx outbound is DISABLED (error D16). Most common cause: your Telnyx "
+            "account balance hit zero, so Telnyx auto-disabled your Outbound Voice "
+            "Profile. Fix: (1) Log in to telnyx.com → Billing → Add funds (≥$20). "
+            "(2) Telnyx Portal → Voice → Outbound Voice Profiles → re-enable the profile. "
+            "(3) Retry the call. Original error: " + msg
+        )
     return msg
 
 

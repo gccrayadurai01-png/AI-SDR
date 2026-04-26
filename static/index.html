@@ -533,6 +533,7 @@ tbody tr.clickable { cursor: pointer; }
               <span id="tbDollars">$0.00</span> · <span id="tbRate">—</span>/min
             </div>
           </div>
+          <button onclick="tenantTopUp()" title="Top up balance" style="background:#6366f1;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">+ Top Up</button>
         </div>
       </div>
     </div>
@@ -1154,10 +1155,61 @@ tbody tr.clickable { cursor: pointer; }
         <div class="page-header">
           <div>
             <h2>🏢 Tenants</h2>
-            <p>Each tenant is an isolated workspace — own contacts, calls, agents, email sequence, and credit balance.</p>
+            <p>Each tenant is an isolated workspace — own contacts, calls, agents, email sequence, and dollar balance.</p>
           </div>
           <button class="btn btn-primary" onclick="showCreateTenantModal()"><i data-lucide="plus"></i> New Tenant</button>
         </div>
+
+        <!-- ── Owner Test Call Panel ─────────────────────────────────── -->
+        <div class="card" style="margin-bottom:18px;border:1px solid #f59e0b;background:rgba(245,158,11,0.05);">
+          <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;color:#f59e0b;font-size:14px;">🧪 Owner Test Call (not billed to any tenant)</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Validate Telnyx + ElevenLabs + Claude wiring without charging a tenant balance.</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="ownerTestPhone" placeholder="+15551234567" style="width:180px;"/>
+              <button class="btn btn-primary btn-sm" onclick="ownerTestCall()"><i data-lucide="phone"></i> Test Call</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Cost Measurement Timers (start/stop/pause windows) ── -->
+        <div class="card" style="margin-bottom:18px;border:1px solid #6366f1;background:rgba(99,102,241,0.05);">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#a5b4fc;">⏱ Cost Measurement Timers</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Start a window → make calls → see real $/min for that period. Multiple timers can run in parallel.</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="startMeasurement()"><i data-lucide="play"></i> Start Measuring Cost Now</button>
+          </div>
+          <div id="measurementsBox" style="padding:12px 18px;font-size:13px;">
+            <div class="empty-state"><p>No measurement timers yet. Click "Start Measuring Cost Now".</p></div>
+          </div>
+        </div>
+
+        <!-- ── Cost Dashboard: spend chart + burn forecast ── -->
+        <div class="card" style="margin-bottom:18px;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-weight:700;font-size:14px;">📊 Cost Dashboard (last 30 days)</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadCostDashboard()"><i data-lucide="refresh-cw"></i> Refresh</button>
+          </div>
+          <div id="costDashboardBox" style="padding:14px 18px;font-size:13px;">
+            <div class="empty-state"><p>Loading…</p></div>
+          </div>
+        </div>
+
+        <!-- ── Provider Top-up Ledger (real money spent on Telnyx/EL/Claude) ── -->
+        <div class="card" style="margin-bottom:18px;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-weight:700;font-size:14px;">💳 Provider Top-ups (real spend → cost basis)</div>
+            <button class="btn btn-secondary btn-sm" onclick="addProviderTopup()"><i data-lucide="plus"></i> Log Top-up</button>
+          </div>
+          <div id="providerTopupsBox" style="padding:12px 18px;font-size:13px;">
+            <div class="empty-state"><p>Loading…</p></div>
+          </div>
+        </div>
+
         <div class="card">
           <div id="tenantsTableContainer"><div class="empty-state"><p>Loading…</p></div></div>
         </div>
@@ -3234,8 +3286,172 @@ async function loadEmailHistory() {
     '</tbody></table></div>';
 }
 
+/* ────────── OWNER · TEST CALL ────────── */
+async function ownerTestCall() {
+  const phone = (document.getElementById('ownerTestPhone')||{value:''}).value.trim();
+  if (!phone) return toast('Enter a phone number to test', 'error');
+  const r = await POST('/api/owner/test-call', {to_number: phone, prospect_name:'Owner Test'});
+  if (r._error) return toast('Test call failed: '+r.detail, 'error');
+  toast('Test call placed → '+phone+' (cc_id: '+(r.call_control_id||'')+')', 'success');
+}
+
+/* ────────── OWNER · COST MEASUREMENT TIMERS ────────── */
+async function loadMeasurements() {
+  const box = document.getElementById('measurementsBox');
+  if (!box) return;
+  const r = await GET('/api/admin/measurements');
+  if (r._error) { box.innerHTML = '<div class="empty-state"><p>Failed: '+escHtml(r.detail||'')+'</p></div>'; return; }
+  const list = r.measurements || [];
+  if (!list.length) { box.innerHTML = '<div class="empty-state"><p>No measurement timers yet. Click "Start Measuring Cost Now".</p></div>'; return; }
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(4);
+  const fmtTime = (s) => { s=Math.max(0,Math.round(s||0)); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return (h?h+'h ':'')+(m?m+'m ':'')+sec+'s'; };
+  let html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+  list.forEach(m => {
+    const stateColor = m.state === 'running' ? '#10b981' : (m.state === 'paused' ? '#f59e0b' : '#6b7280');
+    const c = m.cost || {}; const d = m.delta || {};
+    html += '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 14px;background:var(--bg);">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">';
+    html += '<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+stateColor+';margin-right:6px;"></span><b>'+escHtml(m.name||'Untitled')+'</b>';
+    if (m.tenant_id) html += ' <span style="color:var(--text-muted);font-size:11px;">· '+escHtml(m.tenant_id)+'</span>';
+    html += ' <span style="color:'+stateColor+';font-size:11px;text-transform:uppercase;margin-left:6px;">'+m.state+'</span></div>';
+    html += '<div style="display:flex;gap:4px;">';
+    if (m.state === 'running')      html += '<button class="btn btn-secondary btn-sm" onclick="pauseMeasurement(\''+m.id+'\')" title="Pause"><i data-lucide="pause"></i></button>';
+    else if (m.state === 'paused')  html += '<button class="btn btn-secondary btn-sm" onclick="resumeMeasurement(\''+m.id+'\')" title="Resume"><i data-lucide="play"></i></button>';
+    if (m.state !== 'stopped')      html += '<button class="btn btn-secondary btn-sm" onclick="stopMeasurement(\''+m.id+'\')" title="Stop"><i data-lucide="square"></i></button>';
+    html += '<button class="btn btn-secondary btn-sm" onclick="deleteMeasurement(\''+m.id+'\')" title="Delete"><i data-lucide="trash-2"></i></button>';
+    html += '</div></div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px;font-size:12px;">';
+    html += '<div><div style="color:#94A3B8;font-size:10px;">ELAPSED</div><b>'+fmtTime(m.elapsed_sec)+'</b></div>';
+    html += '<div><div style="color:#94A3B8;font-size:10px;">CALLS</div><b>'+(d.calls||0)+'</b></div>';
+    html += '<div><div style="color:#94A3B8;font-size:10px;">MINUTES</div><b>'+(d.minutes||0)+'</b></div>';
+    html += '<div><div style="color:#94A3B8;font-size:10px;">TOTAL COST</div><b>'+fmt$(c.total)+'</b></div>';
+    html += '<div><div style="color:#94A3B8;font-size:10px;">AVG $/MIN</div><b style="color:#10b981;">'+fmt$(c.avg_per_min)+'</b></div>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;font-size:11px;color:#94A3B8;">';
+    html += '<div>Telnyx: '+fmt$(c.telnyx)+'</div>';
+    html += '<div>ElevenLabs: '+fmt$(c.elevenlabs)+'</div>';
+    html += '<div>Claude: '+fmt$(c.claude)+'</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+async function startMeasurement() {
+  const name = prompt('Measurement name (e.g. "Q2 Pricing Test"):', 'Test '+new Date().toISOString().slice(0,16));
+  if (!name) return;
+  const scope = prompt('Tenant ID to scope to (leave blank for ALL tenants):', '') || null;
+  const r = await POST('/api/admin/measurements/start', {name, tenant_id: scope});
+  if (r._error) return toast('Start failed: '+r.detail, 'error');
+  toast('Measurement started: '+name, 'success');
+  loadMeasurements();
+}
+async function pauseMeasurement(id) { const r = await POST('/api/admin/measurements/'+id+'/pause', {}); if (r._error) return toast(r.detail, 'error'); loadMeasurements(); }
+async function resumeMeasurement(id) { const r = await POST('/api/admin/measurements/'+id+'/resume', {}); if (r._error) return toast(r.detail, 'error'); loadMeasurements(); }
+async function stopMeasurement(id) { if (!confirm('Stop this measurement?')) return; const r = await POST('/api/admin/measurements/'+id+'/stop', {}); if (r._error) return toast(r.detail, 'error'); toast('Stopped', 'success'); loadMeasurements(); }
+async function deleteMeasurement(id) { if (!confirm('Delete this measurement?')) return; const r = await api('DELETE','/api/admin/measurements/'+id); if (r._error) return toast(r.detail, 'error'); loadMeasurements(); }
+
+/* ────────── OWNER · COST DASHBOARD (Phase 5) ────────── */
+async function loadCostDashboard() {
+  const box = document.getElementById('costDashboardBox');
+  if (!box) return;
+  const r = await GET('/api/admin/cost-dashboard?days=30');
+  if (r._error) { box.innerHTML = '<div class="empty-state"><p>Failed: '+escHtml(r.detail||'')+'</p></div>'; return; }
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
+  const series = r.series || [];
+  const burn = r.burn || {};
+  // KPI strip
+  let html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">';
+  html += '<div style="padding:10px;background:rgba(59,130,246,0.1);border-radius:6px;"><div style="font-size:11px;color:#94A3B8;">Avg Daily Cost</div><div style="font-size:18px;font-weight:700;">'+fmt$(burn.avg_daily_cost)+'</div></div>';
+  html += '<div style="padding:10px;background:rgba(16,185,129,0.1);border-radius:6px;"><div style="font-size:11px;color:#94A3B8;">Total Provider Top-ups</div><div style="font-size:18px;font-weight:700;">'+fmt$(burn.total_provider_topups)+'</div></div>';
+  html += '<div style="padding:10px;background:rgba(245,158,11,0.1);border-radius:6px;"><div style="font-size:11px;color:#94A3B8;">Days Until Depleted</div><div style="font-size:18px;font-weight:700;">'+(burn.days_until_depleted!=null ? burn.days_until_depleted+' d' : '∞')+'</div></div>';
+  const totalRev = series.reduce((a,x)=>a+(x.revenue_usd||0),0);
+  html += '<div style="padding:10px;background:rgba(168,85,247,0.1);border-radius:6px;"><div style="font-size:11px;color:#94A3B8;">Revenue (30d)</div><div style="font-size:18px;font-weight:700;">'+fmt$(totalRev)+'</div></div>';
+  html += '</div>';
+  // Sparkline-ish bar chart (cost vs revenue)
+  const maxVal = Math.max(0.01, ...series.map(s => Math.max(s.cost_usd||0, s.revenue_usd||0)));
+  html += '<div style="display:flex;align-items:flex-end;gap:2px;height:80px;border-bottom:1px solid var(--border);padding-bottom:4px;">';
+  series.forEach(s => {
+    const ch = Math.max(2, Math.round((s.cost_usd||0)/maxVal*70));
+    const rh = Math.max(2, Math.round((s.revenue_usd||0)/maxVal*70));
+    html += '<div title="'+s.date+'\\nCost: '+fmt$(s.cost_usd)+'\\nRevenue: '+fmt$(s.revenue_usd)+'\\nCalls: '+s.calls+'" style="flex:1;display:flex;flex-direction:column-reverse;align-items:center;gap:1px;cursor:help;">';
+    html += '<div style="width:100%;height:'+rh+'px;background:#10b981;"></div>';
+    html += '<div style="width:100%;height:'+ch+'px;background:#3b82f6;"></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:11px;color:#94A3B8;margin-top:6px;display:flex;gap:14px;"><span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;"></span> Cost</span><span><span style="display:inline-block;width:10px;height:10px;background:#10b981;"></span> Revenue</span><span style="margin-left:auto;">'+series.length+' days · hover bars for detail</span></div>';
+  // Per-tenant burn table
+  const tb = r.tenants_burn || [];
+  if (tb.length) {
+    html += '<div style="margin-top:16px;font-weight:700;font-size:13px;margin-bottom:6px;">Per-Tenant Burn Rate (last 7 days)</div>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Tenant</th><th>Balance</th><th>$/day</th><th>Days Left</th></tr></thead><tbody>';
+    tb.forEach(t => {
+      const days = t.days_remaining;
+      const dlBadge = days==null ? '<span style="color:#94A3B8;">—</span>' : (days < 3 ? '<b style="color:#ef4444;">'+days+' d</b>' : (days < 14 ? '<b style="color:#f59e0b;">'+days+' d</b>' : '<b style="color:#10b981;">'+days+' d</b>'));
+      html += '<tr><td>'+escHtml(t.name)+'</td><td>'+fmt$(t.dollar_balance)+'</td><td>'+fmt$(t.burn_per_day)+'</td><td>'+dlBadge+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  box.innerHTML = html;
+}
+
+/* ────────── OWNER · PROVIDER TOP-UPS ────────── */
+async function loadProviderTopups() {
+  const box = document.getElementById('providerTopupsBox');
+  if (!box) return;
+  const r = await GET('/api/admin/provider-topups');
+  if (r._error) { box.innerHTML = '<div class="empty-state"><p>Failed: '+escHtml(r.detail||'')+'</p></div>'; return; }
+  const t = r.totals || {}; const top = r.topups || {};
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
+  let html = '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">'
+    + '<div><b>Telnyx:</b> '+fmt$(t.telnyx)+' ('+(top.telnyx||[]).length+' top-ups)</div>'
+    + '<div><b>ElevenLabs:</b> '+fmt$(t.elevenlabs)+' ('+(top.elevenlabs||[]).length+' top-ups)</div>'
+    + '<div><b>Claude:</b> '+fmt$(t.claude)+' ('+(top.claude||[]).length+' top-ups)</div>'
+    + '<div style="margin-left:auto;color:var(--text-muted);">Real blended cost: <b>$'+(r.real_blended_cost_per_min||0).toFixed(4)+'/min</b></div>'
+    + '</div>';
+  const allRows = [];
+  for (const provider of ['telnyx','elevenlabs','claude']) {
+    for (const row of (top[provider]||[])) {
+      allRows.push({provider, amount: row.amount, ts: row.ts, note: row.note||''});
+    }
+  }
+  allRows.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  if (allRows.length) {
+    html += '<div class="table-wrap" style="max-height:200px;overflow:auto;"><table><thead><tr>'
+      + '<th>Date</th><th>Provider</th><th>Amount</th><th>Note</th>'
+      + '</tr></thead><tbody>'
+      + allRows.map(r => '<tr>'
+          + '<td>'+escHtml((r.ts||'').slice(0,10))+'</td>'
+          + '<td>'+escHtml(r.provider)+'</td>'
+          + '<td>$'+(Number(r.amount||0)).toFixed(2)+'</td>'
+          + '<td>'+escHtml(r.note)+'</td>'
+          + '</tr>').join('')
+      + '</tbody></table></div>';
+  }
+  box.innerHTML = html;
+}
+async function addProviderTopup() {
+  const provider = (prompt('Provider? telnyx / elevenlabs / claude:')||'').trim().toLowerCase();
+  if (!['telnyx','elevenlabs','claude'].includes(provider)) return toast('Invalid provider', 'error');
+  const amtStr = prompt('Amount in $ (e.g. 30):');
+  const amt = parseFloat(amtStr);
+  if (!amt || amt <= 0) return toast('Invalid amount', 'error');
+  const note = prompt('Note (optional):') || '';
+  const r = await POST('/api/admin/provider-topups', {provider, amount: amt, note});
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  toast('Logged $'+amt+' top-up for '+provider+' (total: $'+r.total.toFixed(2)+')', 'success');
+  loadProviderTopups();
+}
+
 /* ────────── ADMIN · TENANTS ────────── */
 async function loadAdminTenantsPage() {
+  loadMeasurements();
+  loadProviderTopups();
+  loadCostDashboard();
+  // Auto-refresh measurements every 15s while on this page
+  if (!window._measInterval) window._measInterval = setInterval(loadMeasurements, 15000);
   const d = await GET('/api/admin/tenants');
   const c = document.getElementById('tenantsTableContainer');
   if (d._error) { c.innerHTML = '<div class="empty-state"><p>'+escHtml(d.detail || 'Failed to load')+'</p></div>'; return; }
@@ -3270,6 +3486,7 @@ async function loadAdminTenantsPage() {
         '<td><span class="badge badge-'+(t.status==='active'?'green':'gray')+'">'+escHtml(t.status||'')+'</span></td>' +
         '<td style="white-space:nowrap;">' +
           '<button class="btn btn-secondary btn-sm" onclick="topUpTenant(\''+t.id+'\')" title="Top up balance"><i data-lucide="dollar-sign"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="viewLedger(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="View usage ledger"><i data-lucide="list"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')" title="Edit"><i data-lucide="edit-2"></i></button> ' +
           (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Delete"><i data-lucide="trash-2"></i></button>') +
         '</td>' +
@@ -3324,6 +3541,39 @@ async function editTenant(tid) {
   if (r._error) return toast('Update failed: '+r.detail, 'error');
   toast('Tenant updated', 'success');
   loadAdminTenantsPage();
+}
+
+async function viewLedger(tid, tname) {
+  const r = await GET('/api/admin/tenants/'+encodeURIComponent(tid)+'/usage-ledger?limit=200');
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  const rows = r.ledger || [];
+  let modal = document.getElementById('ledgerModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ledgerModal';
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+  }
+  const fmt$ = (v) => '$' + (Number(v||0)).toFixed(4);
+  modal.innerHTML = '<div class="modal-content" style="max-width:760px;">'
+    + '<div class="modal-header"><h3>📒 Usage Ledger — '+escHtml(tname||tid)+'</h3>'
+    + '<button class="modal-close" onclick="document.getElementById(\'ledgerModal\').style.display=\'none\'">&times;</button></div>'
+    + '<div class="modal-body" style="max-height:60vh;overflow:auto;">'
+    + (rows.length === 0
+        ? '<div class="empty-state"><p>No call charges yet. Ledger populates after each completed call.</p></div>'
+        : '<div class="table-wrap"><table><thead><tr>'
+          + '<th>When</th><th>Duration</th><th>Rate / min</th><th>Charged</th><th>Balance After</th>'
+          + '</tr></thead><tbody>'
+          + rows.map(row => '<tr>'
+              + '<td>'+escHtml((row.ts||'').slice(0,19).replace('T',' '))+'</td>'
+              + '<td>'+(row.duration_seconds||0)+'s</td>'
+              + '<td>'+fmt$(row.rate_per_min)+'</td>'
+              + '<td><b>'+fmt$(row.charge_usd)+'</b></td>'
+              + '<td>$'+(Number(row.balance_after||0)).toFixed(2)+'</td>'
+              + '</tr>').join('')
+          + '</tbody></table></div>')
+    + '</div></div>';
+  modal.style.display = 'flex';
 }
 
 async function topUpTenant(tid) {
@@ -3475,14 +3725,61 @@ function applyRoleVisibility() {
   }
 }
 
+async function tenantTopUp() {
+  const amtStr = prompt('Top up balance (USD, min $10, max $5000):', '50');
+  if (!amtStr) return;
+  const amount = parseFloat(amtStr);
+  if (isNaN(amount) || amount < 10 || amount > 5000) return toast('Amount must be $10-$5000', 'error');
+  const r = await POST('/api/tenant/topup-checkout', {amount});
+  if (r._error) {
+    if ((r.detail||'').toLowerCase().includes('not configured')) {
+      return toast('Self-service top-up unavailable. Contact your admin to top up manually.', 'info');
+    }
+    return toast('Top-up failed: '+r.detail, 'error');
+  }
+  if (r.checkout_url) {
+    window.open(r.checkout_url, '_blank');
+    toast('Stripe checkout opened in new tab', 'info');
+  }
+}
+
 async function loadTenantBalance() {
   try {
     const d = await GET('/api/tenant/balance');
     if (!d || d._error) return;
     const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
-    document.getElementById('tbMinutes').textContent = (d.minutes_remaining || 0).toFixed(1);
+    const minutes = Number(d.minutes_remaining || 0);
+    document.getElementById('tbMinutes').textContent = minutes.toFixed(1);
     document.getElementById('tbDollars').textContent = fmt$(d.dollar_balance);
     document.getElementById('tbRate').textContent    = fmt$(d.customer_per_min);
+
+    // ── Low-balance warning banner ──
+    const pill = document.getElementById('tenantBalancePill');
+    let warn = document.getElementById('lowBalanceWarn');
+    const dollars = Number(d.dollar_balance || 0);
+    let level = null;
+    if (dollars <= 0)            level = 'depleted';
+    else if (minutes < 10)       level = 'critical';
+    else if (minutes < 30)       level = 'low';
+    if (level) {
+      if (!warn) {
+        warn = document.createElement('div');
+        warn.id = 'lowBalanceWarn';
+        warn.style.cssText = 'padding:10px 16px;margin:8px 20px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;';
+        if (pill && pill.parentNode) pill.parentNode.insertBefore(warn, pill.nextSibling);
+      }
+      const cfg = {
+        depleted: {bg:'#7f1d1d', color:'#fee2e2', icon:'🚫', msg:'Calling balance depleted. Outbound calls are blocked. Contact your admin to top up.'},
+        critical: {bg:'#9a3412', color:'#fed7aa', icon:'⚠️', msg:'Critical: under 10 minutes remaining. Top up soon to avoid interruption.'},
+        low:      {bg:'#854d0e', color:'#fef3c7', icon:'⏰', msg:'Heads up: balance is running low ('+minutes.toFixed(0)+' min remaining).'},
+      }[level];
+      warn.style.background = cfg.bg;
+      warn.style.color = cfg.color;
+      warn.innerHTML = '<span style="font-size:18px;">'+cfg.icon+'</span><span>'+cfg.msg+'</span>';
+      warn.style.display = 'flex';
+    } else if (warn) {
+      warn.style.display = 'none';
+    }
   } catch (e) { /* ignore */ }
 }
 
