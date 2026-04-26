@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knight AI — The AI BDR that replaces your outbound team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles-v4.css" />
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="k-nav">
+  <div class="k-nav-inner">
+    <a href="#top" class="k-logo">
+      <span class="k-logo-mark" aria-hidden="true">
+        <span class="ring"></span>
+        <span class="bars"><span></span><span></span><span></span><span></span><span></span></span>
+      </span>
+      <span>Knight<span style="color:var(--k-teal-2);">.</span>ai</span>
+    </a>
+    <div class="k-nav-menu">
+      <a href="#roles">One hire, four roles</a>
+      <a href="#human">Sounds human</a>
+      <a href="#savings">Savings</a>
+      <a href="#trial">Try a call</a>
+      <a href="#pricing">Pricing</a>
+    </div>
+    <a class="k-nav-signin" href="/login" style="margin-right:14px;color:#94A3B8;text-decoration:none;font-weight:500;font-size:14px;align-self:center;">Sign in</a>
+    <a class="k-nav-cta" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">Book a demo</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section id="top" class="k-section k-hero">
+  <div class="k-wrap k-hero-grid">
+    <div class="k-hero-copy">
+      <span class="k-hero-pill"><span class="dot"></span>The AI BDR · indistinguishable from human</span>
+      <h1>Hire one Knight. <em>Replace</em> your entire outbound team.</h1>
+      <p class="lead">Knight is a real-voice AI agent that calls, emails, follows up and books meetings — round the clock, in your tone, with full knowledge of your business. It sounds exactly like a human, because it had to.</p>
+      <div class="k-hero-ctas">
+        <a class="k-btn k-btn-primary" href="#trial">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Try a sample call — 60s
+        </a>
+        <a class="k-btn k-btn-ghost" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">
+          Book a demo
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="k-equiv">
+        <span>1 Knight =</span>
+        <span class="k-equiv-tag bdr"><span class="dot"></span>BDR</span>
+        <span class="k-equiv-eq">+</span>
+        <span class="k-equiv-tag ar"><span class="dot"></span>AR Caller</span>
+        <span class="k-equiv-eq">+</span>
+        <span class="k-equiv-tag coll"><span class="dot"></span>Collections</span>
+        <span class="k-equiv-eq">+</span>
+        <span class="k-equiv-tag book"><span class="dot"></span>Unlimited Booking</span>
+      </div>
+    </div>
+
+    <!-- Hero voice card -->
+    <div class="k-voice">
+      <div class="k-voice-head">
+        <div class="k-voice-avatar">K</div>
+        <div class="k-voice-meta">
+          <div class="name">Knight · Voice Agent</div>
+          <div class="role">On a live call</div>
+        </div>
+        <div class="k-voice-live"><span class="dot"></span>LIVE</div>
+      </div>
+      <div class="k-voice-wave" id="hero-wave" aria-hidden="true"></div>
+      <div class="k-voice-caption" id="hero-caption">"Hey Sarah — quick question while I have you. Are you the right person to talk about how your team handles invoice follow-ups?"</div>
+      <div class="k-voice-stats">
+        <div class="k-voice-stat teal"><div class="lbl">Calls now</div><div class="num" id="stat-calls">2,148</div></div>
+        <div class="k-voice-stat teal"><div class="lbl">Booked today</div><div class="num" id="stat-booked">324</div></div>
+        <div class="k-voice-stat teal"><div class="lbl">Languages</div><div class="num">28</div></div>
+      </div>
+      <div class="k-voice-tasks">
+        <span class="k-voice-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Voice calls</span>
+        <span class="k-voice-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v16H4zM4 4l8 8 8-8"/></svg>Email follow-ups</span>
+        <span class="k-voice-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Books meetings</span>
+        <span class="k-voice-task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M12 7v5l3 3"/></svg>24/7</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROLES ============ -->
+<section id="roles" class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>One hire, four roles</span>
+      <h1 class="k-h2">Why hire four people <em>when one Knight does it all?</em></h1>
+      <p class="k-lead">Knight isn't a chatbot or a dialer. It's a complete revenue operations agent — sales, AR, collections, and booking, on one voice.</p>
+    </div>
+
+    <div class="k-roles k-reveal">
+      <div class="k-roles-equation">
+        <div class="k-role-source">
+          <div class="k-role-source-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+          </div>
+          <span class="badge">1 HIRE</span>
+          <div class="name">Knight Agent</div>
+          <div class="sub">$0.18/min · 24/7 · unlimited concurrency</div>
+        </div>
+
+        <div class="k-roles-eq-sign">=</div>
+
+        <div class="k-role-targets">
+          <div class="k-role-target bdr">
+            <div class="head">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <h4>BDR / SDR</h4>
+            </div>
+            <p>Cold calls, discovery, qualifying, objection handling, voicemail, multi-touch follow-ups across email + phone.</p>
+            <span class="save">REPLACES 1 BDR · −$72K/yr</span>
+          </div>
+          <div class="k-role-target ar">
+            <div class="head">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M6 14h4"/></svg></div>
+              <h4>AR Caller</h4>
+            </div>
+            <p>Calls accounts on aging invoices, confirms PO numbers, sends payment links, escalates with empathy and grit.</p>
+            <span class="save">REPLACES 1 AR · −$58K/yr</span>
+          </div>
+          <div class="k-role-target coll">
+            <div class="head">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <h4>Collections</h4>
+            </div>
+            <p>Compliant collections workflows, payment plans, dispute capture. Polite, persistent, never has a bad day.</p>
+            <span class="save">REPLACES 1 COLLECTOR · −$54K/yr</span>
+          </div>
+          <div class="k-role-target book">
+            <div class="head">
+              <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg></div>
+              <h4>Unlimited Booking</h4>
+            </div>
+            <p>Confirms availability across calendars, reschedules, no-show recovery — books while your team sleeps.</p>
+            <span class="save">REPLACES 2 SDRs · −$120K/yr</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HUMAN VOICE ============ -->
+<section id="human" class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>Sounds exactly like a human</span>
+      <h1 class="k-h2">Prospects don't realise <em>they're talking to AI.</em></h1>
+      <p class="k-lead">Real-time voice synthesis with natural pauses, breath, "uh-huh"s, interruption handling and emotional cadence. Backed by a model that knows your product cold.</p>
+    </div>
+
+    <div class="k-human k-reveal">
+      <div class="k-human-side">
+        <h3>Indistinguishable from your best caller — but it never sleeps.</h3>
+        <ul class="k-human-checks">
+          <li><div><b>Natural turn-taking</b><span>Detects when a prospect is about to speak. Pauses, listens, reacts in under 380ms.</span></div></li>
+          <li><div><b>Emotional cadence</b><span>Warmer when the prospect opens up. Tightens up when they're busy. Mirrors energy.</span></div></li>
+          <li><div><b>Knows your product</b><span>Reads your website, docs, decks, FAQs. Handles objections from your own playbook.</span></div></li>
+          <li><div><b>Multi-channel follow-up</b><span>Voicemail → SMS → email → second call. Picks up exactly where it left off.</span></div></li>
+        </ul>
+      </div>
+
+      <div class="k-human-viz">
+        <div class="k-comparison">
+          <div class="k-comp-col human">
+            <h5>Knight Agent <span class="tag">HUMAN</span></h5>
+            <ul class="k-comp-list">
+              <li>"Hey, sorry to catch you mid-week..."</li>
+              <li>Pauses, lets you finish</li>
+              <li>Adapts pitch to your role</li>
+              <li>Books on the call, on your calendar</li>
+              <li>Sends recap email in 30s</li>
+            </ul>
+          </div>
+          <div class="k-comp-col robot">
+            <h5>Old robocallers <span class="tag">BOT</span></h5>
+            <ul class="k-comp-list">
+              <li>"Press 1 to speak with…"</li>
+              <li>Talks over you</li>
+              <li>Same script for everyone</li>
+              <li>Hangs up if you go off-script</li>
+              <li>No memory, no follow-up</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="k-human-bars">
+          <div class="k-human-bars-row"><span class="lbl">Human-likeness</span><span class="bar"><span class="fill" style="--w:97%"></span></span><span class="val">97%</span></div>
+          <div class="k-human-bars-row"><span class="lbl">Latency</span><span class="bar"><span class="fill" style="--w:92%"></span></span><span class="val">380ms</span></div>
+          <div class="k-human-bars-row"><span class="lbl">Connect rate</span><span class="bar"><span class="fill" style="--w:84%"></span></span><span class="val">+38%</span></div>
+          <div class="k-human-bars-row"><span class="lbl">Booking rate</span><span class="bar"><span class="fill" style="--w:78%"></span></span><span class="val">3.2× human</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRAINING ============ -->
+<section class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>30 minutes vs 3 months</span>
+      <h1 class="k-h2">By the time you've onboarded one BDR, <em>Knight has already booked 200 meetings.</em></h1>
+      <p class="k-lead">A human BDR takes weeks of ramp before they sound confident. Knight reads your website, docs and call recordings — and is selling like a senior the same afternoon.</p>
+    </div>
+
+    <div class="k-train k-reveal">
+      <div class="k-train-card bad">
+        <div class="role">Human BDR</div>
+        <h3>~ 90 days to ramp</h3>
+        <div class="k-train-bar">
+          <div class="head"><span>Time to first booked meeting</span><span class="v">14 days</span></div>
+          <div class="track"><span class="fill" style="--w:80%"></span></div>
+        </div>
+        <div class="k-train-bar">
+          <div class="head"><span>Time to quota-attaining</span><span class="v">90+ days</span></div>
+          <div class="track"><span class="fill" style="--w:100%"></span></div>
+        </div>
+        <ul class="k-train-list">
+          <li>Salary, taxes, benefits, comp plan</li>
+          <li>Tools, seats, training material</li>
+          <li>Manager bandwidth coaching them</li>
+          <li>Attrition: 39% leave in year one</li>
+        </ul>
+        <div class="k-train-stat"><div class="l">Loaded cost · year one</div><div class="n">$104,000+</div></div>
+      </div>
+
+      <div class="k-train-card good">
+        <div class="role">Knight Agent</div>
+        <h3>30 min to launch</h3>
+        <div class="k-train-bar">
+          <div class="head"><span>Time to first booked meeting</span><span class="v">Same day</span></div>
+          <div class="track"><span class="fill" style="--w:6%"></span></div>
+        </div>
+        <div class="k-train-bar">
+          <div class="head"><span>Time to fully trained on your business</span><span class="v">30 minutes</span></div>
+          <div class="track"><span class="fill" style="--w:3%"></span></div>
+        </div>
+        <ul class="k-train-list">
+          <li>Reads your site, docs, decks automatically</li>
+          <li>Listens to your past calls, mimics your top reps</li>
+          <li>Updates instantly when your offer changes</li>
+          <li>Never quits. Never has a bad month.</li>
+        </ul>
+        <div class="k-train-stat"><div class="l">All-in cost · year one</div><div class="n">$9,600 → 10×+ ROI</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SAVINGS CALCULATOR ============ -->
+<section id="savings" class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>Savings calculator</span>
+      <h1 class="k-h2">Pick your function. <em>See your savings.</em></h1>
+      <p class="k-lead">Average across 200+ teams that switched to Knight. Drag the sliders for your numbers.</p>
+    </div>
+
+    <div class="k-savings k-reveal">
+      <div class="k-savings-tabs" id="sav-tabs">
+        <button class="k-savings-tab active" data-tab="bdr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>BDR / Sales</button>
+        <button class="k-savings-tab" data-tab="ar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20M6 14h4"/></svg>AR Process</button>
+        <button class="k-savings-tab" data-tab="coll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Collections</button>
+        <button class="k-savings-tab" data-tab="book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>Booking</button>
+      </div>
+
+      <div class="k-savings-body">
+        <div class="k-savings-inputs">
+          <div class="k-savings-input">
+            <label><span id="lbl-team">Team size</span><span class="v" id="v-team">8</span></label>
+            <input type="range" id="sld-team" min="1" max="50" value="8">
+            <div class="help" id="help-team">Number of BDRs you currently have on the team</div>
+          </div>
+          <div class="k-savings-input">
+            <label><span id="lbl-cost">Loaded cost / person / yr</span><span class="v" id="v-cost">$72,000</span></label>
+            <input type="range" id="sld-cost" min="30000" max="180000" value="72000" step="2000">
+            <div class="help">Salary + benefits + tools + management overhead</div>
+          </div>
+          <div class="k-savings-input">
+            <label><span id="lbl-vol">Monthly call / contact volume</span><span class="v" id="v-vol">12,000</span></label>
+            <input type="range" id="sld-vol" min="1000" max="80000" value="12000" step="500">
+            <div class="help" id="help-vol">Outbound dials per month across the team</div>
+          </div>
+        </div>
+
+        <div class="k-savings-out">
+          <span class="label">Annual savings with Knight</span>
+          <div class="big" id="out-big">$345,600</div>
+          <span class="pct" id="out-pct">↓ 60% reduction in <span id="out-pct-fn">BDR</span> cost</span>
+
+          <div style="margin-top:8px;">
+            <div class="row neg"><span class="l" id="out-old-l">Current team cost</span><span class="r" id="out-old">$576,000</span></div>
+            <div class="row"><span class="l">Knight Agent (per year)</span><span class="r" id="out-new">$230,400</span></div>
+            <div class="row pos"><span class="l">You keep</span><span class="r" id="out-keep">$345,600</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRY A CALL ============ -->
+<section id="trial" class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>Free 60-second trial call</span>
+      <h1 class="k-h2">Want Knight to call you <em>in 30 seconds?</em></h1>
+      <p class="k-lead">Drop your URL. Knight reads your site, builds a pitch for your product, and calls you with it. Live. Right now.</p>
+    </div>
+
+    <div class="k-trial k-reveal">
+      <div class="k-trial-info">
+        <span class="badge">⚡ Live demo</span>
+        <h3>How the trial call works</h3>
+        <p>Give us a URL and a phone number. We'll scrape your site, train a quick model, and call you within 30 seconds — pitching your own product back to you.</p>
+        <ol class="k-trial-steps">
+          <li><b>Drop your website URL</b><span>We fetch your homepage, pricing, FAQs.</span></li>
+          <li><b>Add your name + phone + email</b><span>So Knight knows who to call.</span></li>
+          <li><b>We train a quick model</b><span>~30 seconds — pitch is built from your site.</span></li>
+          <li><b>Knight calls you</b><span>You answer. It pitches. You hang up impressed.</span></li>
+        </ol>
+      </div>
+
+      <div class="k-trial-form">
+        <div class="k-trial-form-head"><span class="dot"></span>Your trial call · 60 seconds</div>
+        <form id="trial-form" novalidate>
+          <div class="k-field">
+            <label for="trial-url">Website URL</label>
+            <input id="trial-url" type="url" placeholder="https://yourcompany.com" required>
+          </div>
+          <div class="k-field">
+            <label for="trial-name">Your name</label>
+            <input id="trial-name" type="text" placeholder="Sarah Chen" required>
+          </div>
+          <div class="k-field-row">
+            <div class="k-field">
+              <label for="trial-phone">Phone</label>
+              <input id="trial-phone" type="tel" placeholder="+1 555 123 4567" required>
+            </div>
+            <div class="k-field">
+              <label for="trial-email">Email</label>
+              <input id="trial-email" type="email" placeholder="sarah@company.com" required>
+            </div>
+          </div>
+          <button type="submit" class="k-trial-submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Call me in 30 seconds
+          </button>
+          <div class="k-trial-disclaimer">
+            ⚠ This is a 60-second trial call on an untrained model — pitch is generated only from your homepage. <b>Book a demo</b> to hear Knight on a model fully trained for your business (30 min onboarding, sells on day one).
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section id="pricing" class="k-section">
+  <div class="k-wrap">
+    <div class="k-section-head k-reveal">
+      <span class="k-eyebrow"><span class="dot"></span>Pricing</span>
+      <h1 class="k-h2">A fraction of one human BDR. <em>10× the output.</em></h1>
+      <p class="k-lead">Pay-as-you-go on minutes. No seats, no per-user fees, no contracts.</p>
+    </div>
+
+    <div class="k-pricing k-reveal">
+      <div class="k-price-card">
+        <div class="name">Starter</div>
+        <div class="price">$499<small>/mo</small></div>
+        <div class="desc">For founders, agencies, small teams running outbound for the first time.</div>
+        <ul>
+          <li>2,500 minutes / month</li>
+          <li>1 Knight agent voice</li>
+          <li>Email + voice + SMS follow-up</li>
+          <li>Calendar & CRM integrations</li>
+          <li>Standard onboarding (self-serve)</li>
+        </ul>
+        <a class="cta" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">Start with Knight</a>
+      </div>
+
+      <div class="k-price-card featured">
+        <span class="badge">MOST POPULAR</span>
+        <div class="name">Growth</div>
+        <div class="price">$1,899<small>/mo</small></div>
+        <div class="desc">For revenue teams replacing a full BDR / AR / Collections function.</div>
+        <ul>
+          <li>12,000 minutes / month</li>
+          <li>Up to 5 Knight agent personas</li>
+          <li>Multi-role: BDR + AR + Collections + Booking</li>
+          <li>30-min business training session</li>
+          <li>Custom voice cloning available</li>
+          <li>Priority support · 99.9% SLA</li>
+        </ul>
+        <a class="cta" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">Book a demo</a>
+      </div>
+
+      <div class="k-price-card">
+        <div class="name">Enterprise</div>
+        <div class="price">Custom<small></small></div>
+        <div class="desc">For teams with compliance, language, or volume requirements.</div>
+        <ul>
+          <li>Unlimited minutes / volume tiers</li>
+          <li>Unlimited agents & languages</li>
+          <li>HIPAA / SOC 2 / TCPA workflows</li>
+          <li>Dedicated success engineer</li>
+          <li>On-prem voice deployment option</li>
+          <li>Custom integrations</li>
+        </ul>
+        <a class="cta" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">Talk to sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="k-section">
+  <div class="k-wrap">
+    <div class="k-final k-reveal">
+      <h2>Stop hiring. <em>Start dialling.</em></h2>
+      <p>30 minutes from now, Knight will be fully trained on your business and ready to call your list. No ramp, no attrition, no excuses.</p>
+      <div class="ctas">
+        <a class="k-btn k-btn-primary" href="https://calendar.app.google/uwtqPhDSzV2YC5ze6" target="_blank" rel="noopener">
+          Book a demo
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <a class="k-btn k-btn-ghost" href="#trial">Try a 60s sample call</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="k-foot">
+  © 2026 KNIGHT.AI · THE AI BDR · BUILT FOR REVENUE TEAMS
+</footer>
+
+<script>
+  /* ============ Voice waveform bars ============ */
+  (function(){
+    const wave = document.getElementById('hero-wave');
+    if (!wave) return;
+    const N = 36;
+    for (let i = 0; i < N; i++) {
+      const b = document.createElement('span');
+      b.className = 'b';
+      b.style.animationDelay = `${(i % 12) * 0.07}s`;
+      b.style.height = (8 + Math.random() * 30) + 'px';
+      wave.appendChild(b);
+    }
+  })();
+
+  /* ============ Hero rotating captions + drifting stats ============ */
+  (function(){
+    const captions = [
+      `"Hey Sarah — quick question while I have you. Are you the right person to talk about how your team handles invoice follow-ups?"`,
+      `"Got it — sounds like you're using QuickBooks for AR right now. Most of our customers were too. Want me to grab 15 minutes Thursday with our team?"`,
+      `"No problem at all, I'll send over a calendar link and a one-pager. What's the best email for you?"`,
+      `"Totally fair — when's better, end of next week, or should I check back in a month?"`,
+    ];
+    const cap = document.getElementById('hero-caption');
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % captions.length;
+      cap.style.opacity = '0';
+      setTimeout(() => { cap.textContent = captions[i]; cap.style.opacity = '1'; }, 250);
+    }, 4500);
+    cap.style.transition = 'opacity .25s ease';
+
+    const calls = document.getElementById('stat-calls');
+    const booked = document.getElementById('stat-booked');
+    setInterval(() => {
+      const c = parseInt(calls.textContent.replace(/,/g,''),10) + Math.floor(Math.random()*4)+1;
+      calls.textContent = c.toLocaleString();
+      if (Math.random() > 0.55) {
+        const b = parseInt(booked.textContent.replace(/,/g,''),10) + 1;
+        booked.textContent = b.toLocaleString();
+      }
+    }, 1800);
+  })();
+
+  /* ============ Savings calculator ============ */
+  (function(){
+    const PRESETS = {
+      bdr:  { team: 8,  cost: 72000, vol: 12000, fn: 'BDR / sales', volLabel: 'Outbound dials / month',     teamLabel: 'BDRs on team' },
+      ar:   { team: 6,  cost: 58000, vol: 8000,  fn: 'AR',           volLabel: 'AR follow-up calls / month', teamLabel: 'AR callers on team' },
+      coll: { team: 4,  cost: 54000, vol: 6000,  fn: 'collections',  volLabel: 'Collection calls / month',  teamLabel: 'Collectors on team' },
+      book: { team: 5,  cost: 48000, vol: 18000, fn: 'booking',      volLabel: 'Bookings handled / month',  teamLabel: 'Booking coordinators' }
+    };
+    const tabs = document.querySelectorAll('#sav-tabs .k-savings-tab');
+    const sldTeam = document.getElementById('sld-team');
+    const sldCost = document.getElementById('sld-cost');
+    const sldVol  = document.getElementById('sld-vol');
+    const vTeam = document.getElementById('v-team'),
+          vCost = document.getElementById('v-cost'),
+          vVol  = document.getElementById('v-vol');
+    const lblTeam = document.getElementById('lbl-team'),
+          helpTeam = document.getElementById('help-team'),
+          lblVol = document.getElementById('lbl-vol'),
+          helpVol = document.getElementById('help-vol');
+    const outBig = document.getElementById('out-big'),
+          outPct = document.getElementById('out-pct'),
+          outPctFn = document.getElementById('out-pct-fn'),
+          outOld = document.getElementById('out-old'),
+          outOldL = document.getElementById('out-old-l'),
+          outNew = document.getElementById('out-new'),
+          outKeep = document.getElementById('out-keep');
+
+    let active = 'bdr';
+    const fmt = n => '$' + Math.round(n).toLocaleString();
+
+    function recalc(){
+      const team = parseInt(sldTeam.value,10);
+      const cost = parseInt(sldCost.value,10);
+      const vol  = parseInt(sldVol.value,10);
+      vTeam.textContent = team;
+      vCost.textContent = fmt(cost);
+      vVol.textContent  = vol.toLocaleString();
+      const oldCost = team * cost;
+      // Knight savings: ~60% on BDR/AR/Collections, ~70% on booking
+      const savePct = active === 'book' ? 0.70 : 0.60;
+      const newCost = oldCost * (1 - savePct);
+      const keep    = oldCost - newCost;
+      outBig.textContent = fmt(keep);
+      outPct.innerHTML = `↓ ${Math.round(savePct*100)}% reduction in <span id="out-pct-fn">${PRESETS[active].fn}</span> cost`;
+      outOld.textContent = fmt(oldCost);
+      outNew.textContent = fmt(newCost);
+      outKeep.textContent = fmt(keep);
+    }
+
+    function setTab(name){
+      active = name;
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      const p = PRESETS[name];
+      sldTeam.value = p.team;
+      sldCost.value = p.cost;
+      sldVol.value  = p.vol;
+      lblTeam.textContent = p.teamLabel;
+      helpTeam.textContent = `Number of ${name === 'book' ? 'booking coordinators' : name + 's'} you currently have`;
+      lblVol.textContent = p.volLabel;
+      helpVol.textContent = p.volLabel;
+      outOldL.textContent = `Current ${name === 'book' ? 'booking team' : name + ' team'} cost`;
+      recalc();
+    }
+
+    tabs.forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+    [sldTeam, sldCost, sldVol].forEach(s => s.addEventListener('input', recalc));
+    recalc();
+  })();
+
+  /* ============ Trial form ============ */
+  (function(){
+    const form = document.getElementById('trial-form');
+    if (!form) return;
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = form.querySelector('.k-trial-submit');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Calling you in 30 seconds…';
+      btn.style.opacity = '0.85';
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/trial/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url:   document.getElementById('trial-url').value.trim(),
+            name:  document.getElementById('trial-name').value.trim(),
+            phone: document.getElementById('trial-phone').value.trim(),
+            email: document.getElementById('trial-email').value.trim(),
+          })
+        });
+        if (resp.ok) {
+          btn.innerHTML = '✓ Submitted — Knight will call you shortly';
+        } else {
+          const d = await resp.json().catch(()=>({detail:'Failed'}));
+          btn.innerHTML = '⚠ ' + (d.detail || 'Submission failed');
+          btn.disabled = false;
+          setTimeout(()=>{ btn.innerHTML = orig; btn.style.opacity='1'; }, 3000);
+        }
+      } catch (err) {
+        btn.innerHTML = '⚠ Network error — try again';
+        btn.disabled = false;
+        setTimeout(()=>{ btn.innerHTML = orig; btn.style.opacity='1'; }, 3000);
+      }
+    });
+  })();
+
+  /* ============ Reveal on scroll ============ */
+  (function(){
+    const els = document.querySelectorAll('.k-reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(el => io.observe(el));
+  })();
+</script>
+</body>
+</html>

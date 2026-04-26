@@ -811,11 +811,77 @@ def _stop_filler_if_playing(cc_id: str) -> None:
 #  FRONTEND
 # ════════════════════════════════════════════════════════════
 @app.get("/")
+async def serve_landing():
+    landing = STATIC_DIR / "landing.html"
+    if landing.exists():
+        return FileResponse(str(landing))
+    # fallback to dashboard if landing missing
+    index = STATIC_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return JSONResponse({"status": "Knight AI SDR running"})
+
+
+@app.get("/app")
 async def serve_dashboard():
     index = STATIC_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
     return JSONResponse({"status": "Knight AI SDR running - dashboard not found"})
+
+
+@app.get("/assets/{path:path}")
+async def serve_assets(path: str):
+    f = STATIC_DIR / "assets" / path
+    if f.exists() and f.is_file():
+        return FileResponse(str(f))
+    return JSONResponse({"error": "not found"}, status_code=404)
+
+
+# Trial-call lead capture from public landing page
+TRIAL_LEADS_FILE = DATA_DIR / "trial_leads.json"
+
+def _load_trial_leads():
+    try:
+        if TRIAL_LEADS_FILE.exists():
+            return json.loads(TRIAL_LEADS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+def _save_trial_leads(rows):
+    TRIAL_LEADS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TRIAL_LEADS_FILE.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+
+
+@app.post("/api/trial/request")
+async def trial_request(request: Request):
+    try:
+        body = await request.json() or {}
+    except Exception:
+        body = {}
+    url   = (body.get("url")   or body.get("website") or "").strip()
+    name  = (body.get("name")  or "").strip()
+    phone = (body.get("phone") or "").strip()
+    email = (body.get("email") or "").strip()
+    if not (url and name and phone and email):
+        raise HTTPException(400, "url, name, phone and email are required")
+    rows = _load_trial_leads()
+    rec = {
+        "id": _secrets.token_hex(8),
+        "url": url, "name": name, "phone": phone, "email": email,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "status": "queued",
+    }
+    rows.append(rec)
+    _save_trial_leads(rows)
+    return {"ok": True, "id": rec["id"], "message": "Knight will call you within 30 seconds."}
+
+
+@app.get("/api/admin/trial-leads")
+async def admin_trial_leads(request: Request):
+    _require_owner(request)
+    return _load_trial_leads()
 
 
 # ════════════════════════════════════════════════════════════
