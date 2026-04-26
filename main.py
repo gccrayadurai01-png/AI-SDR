@@ -2576,25 +2576,36 @@ except Exception:
 _SESSIONS: dict[str, dict] = {}
 
 
-# ── Tenant-scoping middleware ──
-# For every request that carries a Bearer session token, set the per-request
-# tenant ContextVar so storage modules (storage.py, contacts_store.py, qa_kb.py)
-# transparently read/write data/tenants/{tenant_id}/<file>.json instead of the
-# shared root. Owner / unauthenticated requests get the legacy DATA_DIR.
-@app.middleware("http")
-async def _tenant_scoping_middleware(request: Request, call_next):
-    tok_handle = None
-    try:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            sess = _SESSIONS.get(auth[7:].strip())
-            if sess and sess.get("tenant_id") and sess.get("role") != "owner":
-                tok_handle = set_tenant(sess["tenant_id"])
-        response = await call_next(request)
-        return response
-    finally:
-        if tok_handle is not None:
-            reset_tenant(tok_handle)
+# ── Tenant-scoping middleware (pure ASGI) ──
+# IMPORTANT: must be a pure ASGI middleware (not BaseHTTPMiddleware) so the
+# ContextVar set here actually propagates into the endpoint's task. With
+# @app.middleware("http") Starlette runs the endpoint in a separate anyio
+# task and ContextVar mutations are isolated — making tenant scoping silently
+# fall back to DATA_DIR root.
+class TenantScopingMiddleware:
+    def __init__(self, asgi_app):
+        self.app = asgi_app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+        tok_handle = None
+        for name, value in scope.get("headers") or []:
+            if name == b"authorization":
+                auth = value.decode("latin-1", "replace")
+                if auth.startswith("Bearer "):
+                    sess = _SESSIONS.get(auth[7:].strip())
+                    if sess and sess.get("tenant_id") and sess.get("role") != "owner":
+                        tok_handle = set_tenant(sess["tenant_id"])
+                break
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            if tok_handle is not None:
+                reset_tenant(tok_handle)
+
+
+app.add_middleware(TenantScopingMiddleware)
 
 
 def _make_session(user: dict) -> str:
@@ -2704,6 +2715,9 @@ async def admin_create_tenant(request: Request):
         "status":          "active",
         "created_at":      datetime.utcnow().isoformat(),
         "phone_number":    (body.get("phone_number") or "").strip(),
+        "dollar_balance":  float(body.get("dollar_balance", 0) or 0),
+        "margin_pct":      float(body.get("margin_pct", 80) or 80),
+        # legacy field kept for back-compat (unused in new UI)
         "credits_balance": int(body.get("credits_balance", 0) or 0),
         "plan":            (body.get("plan") or "starter").strip(),
         "notes":           (body.get("notes") or "").strip(),
@@ -2746,6 +2760,16 @@ async def admin_update_tenant(tenant_id: str, request: Request):
             if "credits_balance" in body:
                 try:
                     t["credits_balance"] = int(body["credits_balance"])
+                except Exception:
+                    pass
+            if "dollar_balance" in body:
+                try:
+                    t["dollar_balance"] = float(body["dollar_balance"])
+                except Exception:
+                    pass
+            if "margin_pct" in body:
+                try:
+                    t["margin_pct"] = max(0.0, float(body["margin_pct"]))
                 except Exception:
                     pass
             t["updated_at"] = datetime.utcnow().isoformat()
@@ -3276,6 +3300,86 @@ async def admin_usage(request: Request):
         },
         "by_tenant": by_tenant,
     }
+
+
+# ─── Per-tenant calling balance ────────────────────────────────
+# Each tenant gets a $-denominated balance ("dollar_balance") that we display
+# as "minutes remaining" by dividing by their customer-facing per-min rate.
+# customer_per_min = global_avg_cost_per_min × (1 + margin_pct / 100)
+# Margin is configurable per tenant; default 80%.
+
+DEFAULT_MARGIN_PCT = float(os.environ.get("DEFAULT_MARGIN_PCT", "80"))
+
+
+def _global_avg_cost_per_min() -> float:
+    """Cost-per-min computed from ALL historical calls. Used as the rate basis
+    for billing tenants (so all tenants pay the same blended rate, scaled by
+    their margin %)."""
+    calls = _all_calls_across_tenants()
+    cons = _estimate_call_consumption(calls)
+    minutes = cons["total_minutes"]
+    if minutes <= 0:
+        # Fall back to public list rates (rough estimate)
+        return PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN + 0.05  # ~$0.07/min
+    telnyx_cost = minutes * (PRICE_TELNYX_PER_MIN + PRICE_TELNYX_TTS_PER_MIN)
+    el_cost     = (cons["el_chars"] / 1000.0) * PRICE_EL_PER_1K_CHARS
+    claude_cost = ((cons["claude_in_tokens"]  / 1_000_000.0) * PRICE_CLAUDE_IN_PER_MTOK
+                 + (cons["claude_out_tokens"] / 1_000_000.0) * PRICE_CLAUDE_OUT_PER_MTOK)
+    total = telnyx_cost + el_cost + claude_cost
+    return round(total / minutes, 6) if minutes > 0 else 0.0
+
+
+def _tenant_balance_view(tenant: dict) -> dict:
+    """Resolve dollar_balance + margin_pct → customer_per_min + minutes_remaining."""
+    base = _global_avg_cost_per_min()
+    margin = float(tenant.get("margin_pct", DEFAULT_MARGIN_PCT) or DEFAULT_MARGIN_PCT)
+    customer_per_min = round(base * (1.0 + margin / 100.0), 4)
+    dollar_balance = float(tenant.get("dollar_balance", 0) or 0)
+    minutes_remaining = round(dollar_balance / customer_per_min, 1) if customer_per_min > 0 else 0.0
+    return {
+        "dollar_balance":     round(dollar_balance, 2),
+        "margin_pct":         margin,
+        "base_cost_per_min":  round(base, 4),
+        "customer_per_min":   customer_per_min,
+        "minutes_remaining":  max(0.0, minutes_remaining),
+    }
+
+
+@app.get("/api/tenant/balance")
+async def tenant_balance(request: Request):
+    """Tenant-facing: how many calling minutes do I have left? (ElevenLabs-style)."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        # Owner / unauth tenant — return zeros
+        return {"dollar_balance": 0, "minutes_remaining": 0, "customer_per_min": 0,
+                "margin_pct": 0, "base_cost_per_min": 0}
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    return _tenant_balance_view(tenant)
+
+
+@app.post("/api/admin/tenants/{tenant_id}/adjust-balance")
+async def admin_adjust_balance(tenant_id: str, request: Request):
+    """Owner: top up or set tenant dollar_balance.
+    Body: {"delta": 50.0}  (add $50)  OR  {"set": 100.0}  (set to $100)."""
+    _require_owner(request)
+    body = await request.json() or {}
+    tenants = _load_tenants()
+    for t in tenants:
+        if t.get("id") == tenant_id:
+            cur = float(t.get("dollar_balance", 0) or 0)
+            if "set" in body:
+                t["dollar_balance"] = float(body["set"])
+            elif "delta" in body:
+                t["dollar_balance"] = round(cur + float(body["delta"]), 2)
+            else:
+                raise HTTPException(400, "Provide 'set' or 'delta' in body")
+            t["updated_at"] = datetime.utcnow().isoformat()
+            _save_tenants(tenants)
+            return {"ok": True, "tenant_id": tenant_id, **_tenant_balance_view(t)}
+    raise HTTPException(404, "Tenant not found")
 
 
 # ════════════════════════════════════════════════════════════
