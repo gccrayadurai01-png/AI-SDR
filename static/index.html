@@ -1159,7 +1159,16 @@ tbody tr.clickable { cursor: pointer; }
             <h2>🏢 Tenants</h2>
             <p>Each tenant is an isolated workspace — own contacts, calls, agents, email sequence, and dollar balance.</p>
           </div>
-          <button class="btn btn-primary" onclick="showCreateTenantModal()"><i data-lucide="plus"></i> New Tenant</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="showAuditLog()"><i data-lucide="clock"></i> Audit Log</button>
+            <button class="btn btn-primary" onclick="showCreateTenantModal()"><i data-lucide="plus"></i> New Tenant</button>
+          </div>
+        </div>
+
+        <!-- Impersonation banner (shown when owner is viewing as a tenant) -->
+        <div id="impersonationBanner" style="display:none;padding:10px 16px;margin-bottom:12px;background:#7c2d12;color:#fed7aa;border-radius:8px;font-size:13px;font-weight:600;align-items:center;gap:10px;justify-content:space-between;">
+          <span>👁 You are viewing as tenant: <b><span id="impersonateTarget"></span></b></span>
+          <button class="btn btn-sm" style="background:#fed7aa;color:#7c2d12;" onclick="stopImpersonation()">Stop · Return to owner view</button>
         </div>
 
         <!-- ── Owner Test Call Panel ─────────────────────────────────── -->
@@ -1214,6 +1223,51 @@ tbody tr.clickable { cursor: pointer; }
 
         <div class="card">
           <div id="tenantsTableContainer"><div class="empty-state"><p>Loading…</p></div></div>
+        </div>
+
+        <!-- Edit Tenant Modal (E) -->
+        <div id="editTenantModal" class="modal" style="display:none;">
+          <div class="modal-content" style="max-width:560px;">
+            <div class="modal-header">
+              <h3>Edit Tenant <span id="etTitle" style="color:var(--text-muted);font-weight:400;font-size:14px;"></span></h3>
+              <button class="modal-close" onclick="closeEditTenantModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="etId"/>
+              <div class="form-group"><label>Tenant Name</label><input id="etName"/></div>
+              <div class="form-grid">
+                <div class="form-group"><label>$ Balance</label><input id="etBalance" type="number" step="0.01"/></div>
+                <div class="form-group"><label>Margin %</label><input id="etMargin" type="number" step="0.1"/></div>
+                <div class="form-group"><label>Plan</label>
+                  <select id="etPlan">
+                    <option value="starter">Starter</option><option value="growth">Growth</option>
+                    <option value="enterprise">Enterprise</option><option value="trial">Trial</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group"><label>Phone Number (Telnyx FROM, E.164)</label><input id="etPhone" placeholder="+15551234567"/></div>
+              <div class="form-group"><label>Telnyx Connection ID (override)</label><input id="etConn" placeholder="leave blank to use default"/></div>
+              <div class="form-group"><label>Notification Email (low-balance alerts)</label><input id="etNotify" type="email" placeholder="ops@example.com"/></div>
+              <div class="form-group"><label>Notes (internal)</label><textarea id="etNotes" rows="2"></textarea></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" onclick="closeEditTenantModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveEditTenant()"><i data-lucide="check"></i> Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Log Modal (D) -->
+        <div id="auditLogModal" class="modal" style="display:none;">
+          <div class="modal-content" style="max-width:900px;">
+            <div class="modal-header">
+              <h3>📋 Audit Log</h3>
+              <button class="modal-close" onclick="document.getElementById('auditLogModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height:70vh;overflow:auto;" id="auditLogBody">
+              <div class="empty-state"><p>Loading…</p></div>
+            </div>
+          </div>
         </div>
 
         <!-- Create Tenant Modal -->
@@ -3449,6 +3503,7 @@ async function addProviderTopup() {
 
 /* ────────── ADMIN · TENANTS ────────── */
 async function loadAdminTenantsPage() {
+  refreshImpersonationBanner();
   loadMeasurements();
   loadProviderTopups();
   loadCostDashboard();
@@ -3490,6 +3545,7 @@ async function loadAdminTenantsPage() {
           '<button class="btn btn-secondary btn-sm" onclick="topUpTenant(\''+t.id+'\')" title="Top up balance"><i data-lucide="dollar-sign"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="viewLedger(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="View usage ledger"><i data-lucide="list"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="viewStatement(\''+t.id+'\')" title="Monthly statement / invoice"><i data-lucide="file-text"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="impersonate(\''+t.id+'\')" title="View as this tenant"><i data-lucide="eye"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')" title="Edit"><i data-lucide="edit-2"></i></button> ' +
           (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Delete"><i data-lucide="trash-2"></i></button>') +
         '</td>' +
@@ -3531,23 +3587,93 @@ async function createTenant() {
 }
 
 async function editTenant(tid) {
-  const newBal = prompt('Set $ balance for '+tid+' (leave blank to skip):');
-  if (newBal === null) return;
-  const payload = {};
-  if (newBal.trim() !== '') payload.dollar_balance = parseFloat(newBal) || 0;
-  const newMargin = prompt('Margin % (e.g. 80 for 80% markup; blank to skip):');
-  if (newMargin && newMargin.trim() !== '') payload.margin_pct = parseFloat(newMargin) || 80;
-  const newPhone = prompt('Assigned phone number / Telnyx FROM (blank to skip):');
-  if (newPhone && newPhone.trim()) payload.phone_number = newPhone.trim();
-  const newConn = prompt('Telnyx Connection ID for outbound (blank to skip / use default):');
-  if (newConn && newConn.trim()) payload.telnyx_connection_id = newConn.trim();
-  const newNotify = prompt('Notification email for low-balance alerts (blank to skip):');
-  if (newNotify && newNotify.trim()) payload.notify_email = newNotify.trim();
-  if (!Object.keys(payload).length) return;
+  // Real modal (E)
+  const list = await GET('/api/admin/tenants');
+  const t = (list.tenants || []).find(x => x.id === tid);
+  if (!t) return toast('Tenant not found', 'error');
+  document.getElementById('etId').value      = t.id;
+  document.getElementById('etTitle').textContent = '· ' + (t.id || '');
+  document.getElementById('etName').value    = t.name || '';
+  document.getElementById('etBalance').value = t.dollar_balance != null ? t.dollar_balance : 0;
+  document.getElementById('etMargin').value  = t.margin_pct != null ? t.margin_pct : 80;
+  document.getElementById('etPlan').value    = t.plan || 'starter';
+  document.getElementById('etPhone').value   = t.phone_number || '';
+  document.getElementById('etConn').value    = t.telnyx_connection_id || '';
+  document.getElementById('etNotify').value  = t.notify_email || '';
+  document.getElementById('etNotes').value   = t.notes || '';
+  document.getElementById('editTenantModal').style.display = 'flex';
+  if (window.lucide) lucide.createIcons();
+}
+function closeEditTenantModal(){ document.getElementById('editTenantModal').style.display = 'none'; }
+async function saveEditTenant() {
+  const tid = document.getElementById('etId').value;
+  const payload = {
+    name:                 document.getElementById('etName').value.trim(),
+    dollar_balance:       parseFloat(document.getElementById('etBalance').value) || 0,
+    margin_pct:           parseFloat(document.getElementById('etMargin').value) || 0,
+    plan:                 document.getElementById('etPlan').value,
+    phone_number:         document.getElementById('etPhone').value.trim(),
+    telnyx_connection_id: document.getElementById('etConn').value.trim(),
+    notify_email:         document.getElementById('etNotify').value.trim(),
+    notes:                document.getElementById('etNotes').value.trim(),
+  };
   const r = await api('PATCH', '/api/admin/tenants/'+encodeURIComponent(tid), payload);
   if (r._error) return toast('Update failed: '+r.detail, 'error');
-  toast('Tenant updated', 'success');
+  toast('Tenant saved', 'success');
+  closeEditTenantModal();
   loadAdminTenantsPage();
+}
+
+/* ────────── OWNER · IMPERSONATION (C) ────────── */
+async function impersonate(tid) {
+  if (!confirm('View as tenant "'+tid+'"? You\'ll see their dashboards/data until you stop.')) return;
+  const r = await POST('/api/admin/impersonate', {tenant_id: tid});
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  toast('Now viewing as '+tid, 'success');
+  // Reload to apply new tenant scope
+  setTimeout(() => location.reload(), 600);
+}
+async function stopImpersonation() {
+  const r = await POST('/api/admin/impersonate', {tenant_id: null});
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  toast('Returned to owner view', 'success');
+  setTimeout(() => location.reload(), 600);
+}
+async function refreshImpersonationBanner() {
+  try {
+    const r = await GET('/api/admin/impersonate');
+    if (r._error) return;
+    const b = document.getElementById('impersonationBanner');
+    if (!b) return;
+    if (r.impersonating) {
+      document.getElementById('impersonateTarget').textContent = r.impersonating;
+      b.style.display = 'flex';
+    } else {
+      b.style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+/* ────────── OWNER · AUDIT LOG (D) ────────── */
+async function showAuditLog() {
+  document.getElementById('auditLogModal').style.display = 'flex';
+  const body = document.getElementById('auditLogBody');
+  body.innerHTML = '<div class="empty-state"><p>Loading…</p></div>';
+  const r = await GET('/api/admin/audit-log?limit=200');
+  if (r._error) { body.innerHTML = '<div class="empty-state"><p>Failed: '+escHtml(r.detail||'')+'</p></div>'; return; }
+  const entries = r.entries || [];
+  if (!entries.length) { body.innerHTML = '<div class="empty-state"><p>No actions logged yet.</p></div>'; return; }
+  body.innerHTML = '<div class="table-wrap"><table><thead><tr>'
+    + '<th>When</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th>'
+    + '</tr></thead><tbody>'
+    + entries.map(e => '<tr>'
+        + '<td>'+escHtml((e.ts||'').slice(0,19).replace('T',' '))+'</td>'
+        + '<td>'+escHtml(e.actor||'')+'</td>'
+        + '<td><b>'+escHtml(e.action||'')+'</b></td>'
+        + '<td>'+escHtml(e.target||'—')+'</td>'
+        + '<td style="font-size:11px;color:var(--text-muted);">'+escHtml(JSON.stringify(e.details||{}))+'</td>'
+        + '</tr>').join('')
+    + '</tbody></table></div>';
 }
 
 function viewStatement(tid) {

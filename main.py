@@ -2608,8 +2608,12 @@ class TenantScopingMiddleware:
                 auth = value.decode("latin-1", "replace")
                 if auth.startswith("Bearer "):
                     sess = _SESSIONS.get(auth[7:].strip())
-                    if sess and sess.get("tenant_id") and sess.get("role") != "owner":
-                        tok_handle = set_tenant(sess["tenant_id"])
+                    if sess:
+                        # Owner impersonation takes precedence: owner sees tenant scope.
+                        if sess.get("role") == "owner" and sess.get("impersonating"):
+                            tok_handle = set_tenant(sess["impersonating"])
+                        elif sess.get("tenant_id") and sess.get("role") != "owner":
+                            tok_handle = set_tenant(sess["tenant_id"])
                 break
         try:
             await self.app(scope, receive, send)
@@ -3543,6 +3547,97 @@ async def stripe_webhook(request: Request):
     return {"ok": True}
 
 
+# ─── Audit Log (D) ────────────────────────────────────────────
+# Records every owner action: top-ups, balance adjustments, tenant edits,
+# tenant create/delete, impersonation events, etc. Persisted to
+# data/audit_log.json (last 5000 entries kept).
+AUDIT_LOG_FILE = Path(__file__).parent / "data" / "audit_log.json"
+
+
+def _append_audit(actor: str, action: str, target: str | None = None, details: dict | None = None) -> None:
+    """Best-effort audit append; never raises."""
+    try:
+        entries: list = []
+        if AUDIT_LOG_FILE.exists():
+            try:
+                d = json.loads(AUDIT_LOG_FILE.read_text(encoding="utf-8"))
+                entries = d.get("entries") or []
+            except Exception:
+                entries = []
+        entries.insert(0, {
+            "ts":      datetime.utcnow().isoformat() + "Z",
+            "actor":   actor or "system",
+            "action":  action,
+            "target":  target or "",
+            "details": details or {},
+        })
+        # Cap at 5000
+        entries = entries[:5000]
+        AUDIT_LOG_FILE.parent.mkdir(exist_ok=True)
+        AUDIT_LOG_FILE.write_text(json.dumps({"entries": entries}, indent=2), encoding="utf-8")
+    except Exception:
+        logger.exception("audit log append failed")
+
+
+def _actor_from_session(request: Request) -> str:
+    try:
+        token = (request.headers.get("authorization") or "").replace("Bearer ", "").strip()
+        sess = _SESSIONS.get(token)
+        if sess: return f"{sess.get('username','?')}@{sess.get('role','?')}"
+    except Exception:
+        pass
+    return "anonymous"
+
+
+@app.post("/api/admin/impersonate")
+async def admin_impersonate(request: Request):
+    """Owner: temporarily view as another tenant.
+    Body: {"tenant_id": "tenant_xyz"} → sets sess['impersonating'] = tenant_id.
+    Body: {"tenant_id": null}         → clears impersonation.
+    Owner sessions retain role=owner but tenant-scoped reads use impersonating."""
+    _require_owner(request)
+    body = await request.json() or {}
+    target = body.get("tenant_id") or None
+    token = (request.headers.get("authorization") or "").replace("Bearer ", "").strip()
+    sess = _SESSIONS.get(token)
+    if not sess:
+        raise HTTPException(401, "No session")
+    if target:
+        if not any(t.get("id") == target for t in _load_tenants()):
+            raise HTTPException(404, "Tenant not found")
+        sess["impersonating"] = target
+        _append_audit(_actor_from_session(request), "owner.impersonate.start", target, {})
+        return {"ok": True, "impersonating": target}
+    else:
+        prev = sess.pop("impersonating", None)
+        if prev:
+            _append_audit(_actor_from_session(request), "owner.impersonate.stop", prev, {})
+        return {"ok": True, "impersonating": None}
+
+
+@app.get("/api/admin/impersonate")
+async def admin_impersonate_status(request: Request):
+    """Get current impersonation state for the owner session."""
+    _require_owner(request)
+    token = (request.headers.get("authorization") or "").replace("Bearer ", "").strip()
+    sess = _SESSIONS.get(token) or {}
+    return {"impersonating": sess.get("impersonating")}
+
+
+@app.get("/api/admin/audit-log")
+async def admin_audit_log(request: Request, limit: int = 200):
+    """Owner: recent audit log entries (newest first)."""
+    _require_owner(request)
+    if not AUDIT_LOG_FILE.exists():
+        return {"entries": []}
+    try:
+        d = json.loads(AUDIT_LOG_FILE.read_text(encoding="utf-8"))
+        entries = d.get("entries") or []
+        return {"entries": entries[: max(1, min(2000, int(limit)))]}
+    except Exception:
+        return {"entries": []}
+
+
 # ─── Phase 7: Monthly billing statements ──────────────────────
 # Renders a monthly invoice for a tenant: lists every call, total minutes,
 # total charged, balance changes, top-ups (Stripe / manual). Returns JSON
@@ -4063,6 +4158,8 @@ async def admin_add_provider_topup(request: Request):
         "note": (body.get("note") or "").strip(),
     })
     _save_provider_topups(data)
+    _append_audit(_actor_from_session(request), "provider.topup", provider,
+                  {"amount": amount, "note": body.get("note") or ""})
     return {"ok": True, "provider": provider, "total": _provider_total_spent(provider)}
 
 
@@ -4188,8 +4285,12 @@ async def admin_adjust_balance(tenant_id: str, request: Request):
             cur = float(t.get("dollar_balance", 0) or 0)
             if "set" in body:
                 t["dollar_balance"] = float(body["set"])
+                _append_audit(_actor_from_session(request), "tenant.balance.set", tenant_id,
+                              {"old": cur, "new": t["dollar_balance"]})
             elif "delta" in body:
                 t["dollar_balance"] = round(cur + float(body["delta"]), 2)
+                _append_audit(_actor_from_session(request), "tenant.balance.delta", tenant_id,
+                              {"delta": float(body["delta"]), "old": cur, "new": t["dollar_balance"]})
             else:
                 raise HTTPException(400, "Provide 'set' or 'delta' in body")
             t["updated_at"] = datetime.utcnow().isoformat()
@@ -5743,6 +5844,76 @@ async def trigger_outbound_call(req: CallRequest):
     except Exception as e:
         logger.exception("Outbound dial failed")
         raise HTTPException(status_code=502, detail=format_telnyx_exception(e)) from e
+
+
+@app.get("/api/admin/tts-provider")
+async def admin_tts_provider(request: Request):
+    """Owner: status of TTS providers (ElevenLabs / Telnyx native / AWS Polly).
+    Polly is ~95% cheaper than ElevenLabs Pro at neural engine."""
+    _require_owner(request)
+    try:
+        import aws_polly_handler
+        polly_configured = aws_polly_handler.is_configured()
+        polly_cost_per_1k = aws_polly_handler.estimate_cost_per_1k_chars()
+    except Exception:
+        polly_configured = False
+        polly_cost_per_1k = 0.016
+    return {
+        "active_provider": (os.environ.get("TTS_PROVIDER") or "elevenlabs").lower(),
+        "providers": {
+            "elevenlabs": {
+                "configured":    bool((os.environ.get("ELEVENLABS_API_KEY") or "").strip()),
+                "cost_per_1k":   PRICE_EL_PER_1K_CHARS,
+                "voice":         os.environ.get("ELEVENLABS_VOICE_ID") or "default",
+            },
+            "telnyx_native": {
+                "configured":  bool(config.TELNYX_API_KEY),
+                "cost_per_1k": 0.5,  # rough; Telnyx bills per-min not per-char
+                "note":        "Per-min billing (~$0.005/min); cost depends on call duration",
+            },
+            "aws_polly": {
+                "configured":  polly_configured,
+                "cost_per_1k": polly_cost_per_1k,
+                "voice":       os.environ.get("AWS_POLLY_VOICE", "Joanna"),
+                "engine":      os.environ.get("AWS_POLLY_ENGINE", "neural"),
+                "savings_vs_elevenlabs_pct": round((1 - polly_cost_per_1k / max(0.0001, PRICE_EL_PER_1K_CHARS)) * 100, 1),
+            },
+        },
+        "env_vars_to_enable_polly": [
+            "TTS_PROVIDER=aws_polly",
+            "AWS_ACCESS_KEY_ID=...",
+            "AWS_SECRET_ACCESS_KEY=...",
+            "AWS_REGION=us-east-1 (optional)",
+            "AWS_POLLY_VOICE=Joanna (optional)",
+            "AWS_POLLY_ENGINE=neural (optional)",
+        ],
+    }
+
+
+@app.post("/api/admin/tts-test")
+async def admin_tts_test(request: Request):
+    """Owner: quickly test the active TTS provider end-to-end.
+    Body: {"text": "Hello world"}. Returns audio size + cost estimate."""
+    _require_owner(request)
+    body = await request.json() or {}
+    text = (body.get("text") or "Hello, this is a test of the AI SDR voice synthesis.").strip()
+    provider = (body.get("provider") or os.environ.get("TTS_PROVIDER") or "elevenlabs").lower()
+    if provider == "aws_polly":
+        try:
+            import aws_polly_handler
+            if not aws_polly_handler.is_configured():
+                raise HTTPException(503, "AWS Polly not configured. Set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY env vars.")
+            audio = aws_polly_handler.synthesize_speech(text)
+            cost_per_1k = aws_polly_handler.estimate_cost_per_1k_chars()
+            return {
+                "ok": True, "provider": "aws_polly",
+                "chars": len(text), "audio_bytes": len(audio),
+                "cost_usd": round((len(text) / 1000.0) * cost_per_1k, 6),
+            }
+        except HTTPException: raise
+        except Exception as e:
+            raise HTTPException(502, f"Polly error: {e}") from e
+    return {"ok": False, "provider": provider, "note": "Test endpoint currently supports aws_polly only"}
 
 
 @app.post("/api/owner/test-call")
