@@ -1826,6 +1826,50 @@ tbody tr.clickable { cursor: pointer; }
 
 <script>
 /* ===================================================================
+   GLOBAL PASSWORD VISIBILITY TOGGLE
+   Applies a 👁 / 🙈 toggle button next to every <input type="password">.
+   Runs on DOMContentLoaded and again whenever new modals open.
+   =================================================================== */
+function togglePw(id, btn){
+  var el = (typeof id === 'string') ? document.getElementById(id) : id;
+  if (!el) return;
+  var show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  if (btn) {
+    btn.textContent = show ? '🙈' : '👁';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    btn.title = show ? 'Hide password' : 'Show password';
+  }
+}
+function attachPasswordToggles(root){
+  root = root || document;
+  var fields = root.querySelectorAll('input[type="password"]:not([data-pw-toggle])');
+  fields.forEach(function(input){
+    if (input.dataset.pwToggle) return;
+    input.dataset.pwToggle = '1';
+    var parent = input.parentNode;
+    if (!parent) return;
+    // Wrap input in a relative container if it isn't already.
+    var wrap = document.createElement('span');
+    wrap.style.cssText = 'position:relative;display:block;';
+    parent.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    input.style.paddingRight = '40px';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '👁';
+    btn.title = 'Show password';
+    btn.setAttribute('aria-label', 'Show password');
+    btn.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;padding:4px;font-size:16px;color:#94A3B8;line-height:1;';
+    btn.addEventListener('click', function(){ togglePw(input, btn); });
+    wrap.appendChild(btn);
+  });
+}
+window.addEventListener('DOMContentLoaded', function(){ attachPasswordToggles(document); });
+// Re-scan periodically in case modals inject new password inputs.
+setInterval(function(){ attachPasswordToggles(document); }, 1500);
+
+/* ===================================================================
    API HELPERS
    =================================================================== */
 async function api(method, path, body) {

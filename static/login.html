@@ -224,8 +224,22 @@
   </div>
   <div class="form-group">
     <label>Password</label>
-    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div style="position:relative;">
+      <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px;"/>
+      <button type="button" onclick="togglePw('password',this)" aria-label="Show password"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;padding:6px;color:#94A3B8;font-size:16px;">👁</button>
+    </div>
   </div>
+  <script>
+    function togglePw(id, btn){
+      var el = document.getElementById(id);
+      if (!el) return;
+      var show = el.type === 'password';
+      el.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    }
+  </script>
 
   <button class="btn-login" onclick="doLogin()" id="loginBtn">
     <div class="spinner" id="spinner"></div>
