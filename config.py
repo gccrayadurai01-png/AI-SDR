@@ -62,12 +62,22 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return v.strip().lower() in ("1", "true", "yes", "on")
 
 
+# Voice provider: "telnyx" (default) or "twilio"
+_vp_raw = (_env_str("VOICE_PROVIDER") or "telnyx").strip().lower()
+VOICE_PROVIDER: str = "twilio" if _vp_raw == "twilio" else "telnyx"
+
 # Telnyx
 TELNYX_API_KEY = _env_str("TELNYX_API_KEY")
 TELNYX_PUBLIC_KEY = _env_str("TELNYX_PUBLIC_KEY")
 TELNYX_PHONE_NUMBER = _normalize_e164_phone(_env_str("TELNYX_PHONE_NUMBER"))
 _cid = (_env_str("TELNYX_CONNECTION_ID") or "").strip()
 TELNYX_CONNECTION_ID = _cid if _cid else None
+
+# Twilio
+TWILIO_ACCOUNT_SID = _env_str("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = _env_str("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = _normalize_e164_phone(_env_str("TWILIO_PHONE_NUMBER"))
+TWILIO_TTS_VOICE = _env_str("TWILIO_TTS_VOICE") or "Polly.Matthew-Neural"
 
 # Cartesia
 CARTESIA_API_KEY     = _env_str("CARTESIA_API_KEY")
@@ -262,6 +272,8 @@ def reload_secrets() -> None:
         s = str(v).strip()
         if s:
             os.environ[k] = s
+    global VOICE_PROVIDER
+    global TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_TTS_VOICE
     global TELNYX_API_KEY, TELNYX_PUBLIC_KEY, TELNYX_PHONE_NUMBER, TELNYX_CONNECTION_ID
     global CARTESIA_API_KEY, APOLLO_API_KEY, ANTHROPIC_API_KEY, ANTHROPIC_MODEL
     global ANTHROPIC_LIVE_MODEL, ANTHROPIC_PHONE_MODEL_DEFAULT, ANTHROPIC_MAX_TOKENS_REPLY
@@ -275,6 +287,12 @@ def reload_secrets() -> None:
     global SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM, SMTP_USE_TLS
     global EMAIL_AUTOMATION_ENABLED, EMAIL_SEQUENCE_TICK_SEC
     global POST_CALL_FOLLOWUP_EMAIL_ENABLED, POST_CALL_FOLLOWUP_DELAY_SEC
+    _vp2 = (_env_str("VOICE_PROVIDER") or "telnyx").strip().lower()
+    VOICE_PROVIDER = "twilio" if _vp2 == "twilio" else "telnyx"
+    TWILIO_ACCOUNT_SID = _env_str("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN = _env_str("TWILIO_AUTH_TOKEN")
+    TWILIO_PHONE_NUMBER = _normalize_e164_phone(_env_str("TWILIO_PHONE_NUMBER"))
+    TWILIO_TTS_VOICE = _env_str("TWILIO_TTS_VOICE") or "Polly.Matthew-Neural"
     TELNYX_API_KEY = _env_str("TELNYX_API_KEY")
     TELNYX_PUBLIC_KEY = _env_str("TELNYX_PUBLIC_KEY")
     TELNYX_PHONE_NUMBER = _normalize_e164_phone(_env_str("TELNYX_PHONE_NUMBER"))
@@ -381,10 +399,22 @@ def env_file_nonempty(key: str) -> bool:
 
 
 def dashboard_connection_flags() -> dict[str, bool]:
+    provider = (os.environ.get("VOICE_PROVIDER") or "telnyx").strip().lower()
+    if provider == "twilio":
+        voice_ok = (
+            env_file_nonempty("TWILIO_ACCOUNT_SID")
+            and env_file_nonempty("TWILIO_AUTH_TOKEN")
+            and env_file_nonempty("TWILIO_PHONE_NUMBER")
+        )
+    else:
+        voice_ok = (
+            env_file_nonempty("TELNYX_API_KEY")
+            and env_file_nonempty("TELNYX_CONNECTION_ID")
+            and env_file_nonempty("TELNYX_PHONE_NUMBER")
+        )
     return {
-        "telnyx": env_file_nonempty("TELNYX_API_KEY")
-        and env_file_nonempty("TELNYX_CONNECTION_ID")
-        and env_file_nonempty("TELNYX_PHONE_NUMBER"),
+        "telnyx": voice_ok,        # kept as "telnyx" key for UI compat
+        "voice_provider": provider,
         "deepgram": env_file_nonempty("DEEPGRAM_API_KEY"),
         "anthropic": env_file_nonempty("ANTHROPIC_API_KEY"),
         "apollo": env_file_nonempty("APOLLO_API_KEY"),

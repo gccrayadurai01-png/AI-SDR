@@ -11,3 +11,4 @@ eval_type_backport
 python-multipart==0.0.6
 boto3>=1.34.0
 stripe>=8.0.0
+twilio>=8.0.0

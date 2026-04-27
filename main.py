@@ -902,6 +902,13 @@ async def health():
 
 @app.get("/api/telnyx/diagnostics")
 async def telnyx_diagnostics():
+    provider = (os.environ.get("VOICE_PROVIDER") or "telnyx").strip().lower()
+    if provider == "twilio":
+        try:
+            import twilio_handler as _twilio
+            return _twilio.run_twilio_diagnostics()
+        except Exception as e:
+            return {"provider": "twilio", "ok": False, "issues": [str(e)]}
     return run_telnyx_diagnostics()
 
 
@@ -5915,27 +5922,36 @@ async def place_outbound_call(req: CallRequest) -> dict:
             status_code=400,
             detail="Invalid phone number — use E.164 (+15551234567) or 10-digit US/CA.",
         )
-    if not config.TELNYX_PHONE_NUMBER:
-        raise HTTPException(
-            status_code=400,
-            detail="TELNYX_PHONE_NUMBER is missing or invalid in .env (need +E.164).",
-        )
-    if not config.TELNYX_CONNECTION_ID:
-        raise HTTPException(status_code=400, detail="TELNYX_CONNECTION_ID is not set in .env.")
+
+    # ── Provider validation ──
+    provider = (os.environ.get("VOICE_PROVIDER") or "telnyx").strip().lower()
+    if provider == "twilio":
+        import twilio_handler as _twilio
+        if not _twilio.is_configured():
+            raise HTTPException(
+                status_code=400,
+                detail="Twilio is not fully configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER.",
+            )
+    else:
+        provider = "telnyx"
+        if not config.TELNYX_PHONE_NUMBER:
+            raise HTTPException(
+                status_code=400,
+                detail="TELNYX_PHONE_NUMBER is missing or invalid in .env (need +E.164).",
+            )
+        if not config.TELNYX_CONNECTION_ID:
+            raise HTTPException(status_code=400, detail="TELNYX_CONNECTION_ID is not set in .env.")
+
     # Voice override: stored on the call record rather than mutating the
     # global config — global mutation races between concurrent outbound
     # calls (two dials requesting different voices would stomp each other).
-    # The assistant itself is tuned via sync_assistant_to_script once at
-    # startup, so per-call voice swaps are tracked but not applied to the
-    # shared AI Assistant config.
     voice_id = (req.voice_id or "").strip()
     if voice_id:
         logger.info("Voice override requested for call: %s (call-local only)", voice_id)
+
     # ── Phase 3: per-tenant outbound number routing + zero-balance gate ──
     # If the tenant has its own assigned phone_number / telnyx_connection_id, use them.
     # Otherwise fall back to the global config defaults.
-    # Also block the call if the tenant's dollar_balance is depleted — protects
-    # the platform from giving away free Telnyx/EL minutes.
     tenant_from_number: str | None = None
     tenant_connection_id: str | None = None
     skip_balance_check = bool(getattr(req, "owner_test", False))
@@ -5965,11 +5981,22 @@ async def place_outbound_call(req: CallRequest) -> dict:
         raise
     except Exception:
         logger.exception("Phase 3 per-tenant routing lookup failed; using defaults")
-    logger.info(f"Dialing {to} ({req.prospect_name}) from={tenant_from_number or config.TELNYX_PHONE_NUMBER}")
+
     # Fire research in background — don't wait for it before dialing
     if req.prospect_name or req.company:
         asyncio.create_task(research_prospect(req.prospect_name, "", req.company))
-    result = await make_outbound_call(to, from_number=tenant_from_number, connection_id=tenant_connection_id)
+
+    # ── Dial via selected provider ──
+    if provider == "twilio":
+        import twilio_handler as _twilio
+        from_num = tenant_from_number or os.environ.get("TWILIO_PHONE_NUMBER") or ""
+        logger.info("Dialing %s (%s) via Twilio from=%s", to, req.prospect_name, from_num)
+        result = await _twilio.make_outbound_call(to, from_number=from_num)
+    else:
+        logger.info("Dialing %s (%s) via Telnyx from=%s", to, req.prospect_name,
+                    tenant_from_number or config.TELNYX_PHONE_NUMBER)
+        result = await make_outbound_call(to, from_number=tenant_from_number, connection_id=tenant_connection_id)
+
     em = (req.prospect_email or "").strip()
     rec = {
         "call_control_id": result["call_control_id"],
@@ -5983,6 +6010,7 @@ async def place_outbound_call(req: CallRequest) -> dict:
         "transcript":      [],
         "started_at":      datetime.utcnow().isoformat(),
         "recording_url":   None,
+        "provider":        provider,
     }
     active_calls[result["call_control_id"]] = rec
     save_call(rec)
@@ -5998,7 +6026,47 @@ async def trigger_outbound_call(req: CallRequest):
         raise
     except Exception as e:
         logger.exception("Outbound dial failed")
-        raise HTTPException(status_code=502, detail=format_telnyx_exception(e)) from e
+        provider = (os.environ.get("VOICE_PROVIDER") or "telnyx").strip().lower()
+        detail = format_telnyx_exception(e) if provider == "telnyx" else str(e)
+        raise HTTPException(status_code=502, detail=detail) from e
+
+
+@app.get("/api/admin/voice-provider")
+async def admin_voice_provider(request: Request):
+    """Owner: which voice call provider is active (telnyx or twilio) and its status."""
+    _require_owner(request)
+    provider = (os.environ.get("VOICE_PROVIDER") or "telnyx").strip().lower()
+    if provider == "twilio":
+        try:
+            import twilio_handler as _twilio
+            diag = _twilio.run_twilio_diagnostics()
+            return {
+                "provider": "twilio",
+                "configured": _twilio.is_configured(),
+                "tts_voice": _twilio.get_tts_voice(),
+                "phone_number": os.environ.get("TWILIO_PHONE_NUMBER"),
+                "diagnostics": diag,
+                "pricing": {
+                    "outbound_per_min_usd": 0.013,
+                    "inbound_per_min_usd": 0.0085,
+                    "tts": "FREE (Polly voices included)",
+                    "stt": "FREE (Gather speech included)",
+                },
+            }
+        except Exception as e:
+            return {"provider": "twilio", "configured": False, "error": str(e)}
+    else:
+        from telnyx_handler import run_telnyx_diagnostics as _tx_diag
+        return {
+            "provider": "telnyx",
+            "configured": bool(config.TELNYX_API_KEY and config.TELNYX_PHONE_NUMBER),
+            "phone_number": config.TELNYX_PHONE_NUMBER,
+            "pricing": {
+                "outbound_per_min_usd": 0.007,
+                "inbound_per_min_usd": 0.005,
+                "tts": "Telnyx native / ElevenLabs",
+            },
+        }
 
 
 @app.get("/api/admin/tts-provider")
@@ -6742,6 +6810,203 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return JSONResponse(content={"status": "error", "detail": str(e)}, status_code=500)
+
+
+# ════════════════════════════════════════════════════════════
+#  TWILIO WEBHOOKS  (active when VOICE_PROVIDER=twilio)
+# ════════════════════════════════════════════════════════════
+from fastapi.responses import Response as _FastAPIResponse
+
+
+@app.post("/webhooks/twilio/answered")
+async def twilio_webhook_answered(request: Request):
+    """
+    Twilio calls this URL when the prospect answers.
+    We return TwiML with our greeting + <Gather speech> so Twilio listens for their reply.
+    """
+    import twilio_handler as _twilio
+    form = await request.form()
+    call_sid = str(form.get("CallSid") or "")
+    to_num   = str(form.get("To") or "")
+    from_num = str(form.get("From") or "")
+    logger.info("TWILIO answered: CallSid=%s to=%s from=%s", call_sid, to_num, from_num)
+
+    if call_sid in opened_calls:
+        # Already greeted — just return gather so we keep listening
+        gather_url = f"{config.APP_BASE_URL}/webhooks/twilio/gather"
+        twiml = _twilio.make_twiml_pause_gather(1, gather_url)
+        return _FastAPIResponse(content=twiml, media_type="application/xml")
+
+    opened_calls.add(call_sid)
+
+    # Register call record if not yet created (inbound or delayed dial confirm)
+    rec = active_calls.get(call_sid) or {}
+    if not rec:
+        rec = {
+            "call_control_id": call_sid,
+            "call_leg_id": call_sid,
+            "state": "answered",
+            "to": to_num,
+            "prospect_name": "there",
+            "company": "",
+            "notes": "",
+            "transcript": [],
+            "started_at": datetime.utcnow().isoformat(),
+            "recording_url": None,
+            "provider": "twilio",
+        }
+        active_calls[call_sid] = rec
+        save_call(rec)
+    else:
+        rec["state"] = "answered"
+        active_calls[call_sid] = rec
+
+    conversations.setdefault(call_sid, [])
+
+    # Build greeting from script
+    name = rec.get("prospect_name") or "there"
+    greeting = opening_line(name)
+
+    # Append greeting to transcript
+    rec.setdefault("transcript", []).append({"role": "agent", "text": greeting})
+    save_call(rec)
+
+    gather_url = f"{config.APP_BASE_URL}/webhooks/twilio/gather"
+    twiml = _twilio.make_twiml_gather(greeting, gather_url, timeout=10)
+    return _FastAPIResponse(content=twiml, media_type="application/xml")
+
+
+@app.post("/webhooks/twilio/gather")
+async def twilio_webhook_gather(request: Request):
+    """
+    Twilio sends transcribed speech here after <Gather>.
+    We run Claude and return TwiML with AI reply + next <Gather>.
+    """
+    import twilio_handler as _twilio
+    form = await request.form()
+    call_sid      = str(form.get("CallSid") or "")
+    speech_result = str(form.get("SpeechResult") or "").strip()
+    confidence    = str(form.get("Confidence") or "")
+
+    gather_url = f"{config.APP_BASE_URL}/webhooks/twilio/gather"
+
+    if not call_sid:
+        return _FastAPIResponse(content=_twilio.make_twiml_hangup(), media_type="application/xml")
+
+    rec = active_calls.get(call_sid) or {}
+    if rec.get("state") == "ended":
+        return _FastAPIResponse(content=_twilio.make_twiml_hangup(), media_type="application/xml")
+
+    # No speech detected → keep listening
+    if not speech_result:
+        logger.info("TWILIO gather: no speech on %s — re-gather", call_sid)
+        twiml = _twilio.make_twiml_pause_gather(0, gather_url, timeout=10)
+        return _FastAPIResponse(content=twiml, media_type="application/xml")
+
+    logger.info("TWILIO heard [%s] conf=%s: %r", call_sid, confidence, speech_result)
+
+    # Persist prospect turn
+    rec.setdefault("transcript", []).append({"role": "prospect", "text": speech_result})
+    save_call(rec)
+
+    # Check for hard-stop signals
+    if _is_hard_stop(speech_result):
+        goodbye = "No problem at all. Sorry to bother you. Have a great day!"
+        rec["transcript"].append({"role": "agent", "text": goodbye})
+        rec["state"] = "ended"
+        active_calls[call_sid] = rec
+        save_call(rec)
+        twiml = _twilio.make_twiml_say_hangup(goodbye)
+        return _FastAPIResponse(content=twiml, media_type="application/xml")
+
+    # Build conversation history for Claude
+    conv = conversations.setdefault(call_sid, [])
+    conv.append({"role": "user", "content": speech_result})
+
+    try:
+        ai_reply = await next_sdr_reply(conv)
+    except Exception as e:
+        logger.error("TWILIO Claude reply failed: %s", e)
+        ai_reply = "Sorry, I had a quick technical hiccup. Could you say that again?"
+
+    conv.append({"role": "assistant", "content": ai_reply})
+    conversations[call_sid] = conv
+
+    # Persist AI turn
+    rec["transcript"].append({"role": "agent", "text": ai_reply})
+    save_call(rec)
+
+    logger.info("TWILIO AI reply [%s]: %r", call_sid, ai_reply[:120])
+
+    # Detect goodbye / booking → say reply and hang up
+    if _is_goodbye(ai_reply) or _is_booking_confirmed(speech_result):
+        twiml = _twilio.make_twiml_say_hangup(ai_reply)
+    else:
+        twiml = _twilio.make_twiml_gather(ai_reply, gather_url, timeout=10)
+
+    return _FastAPIResponse(content=twiml, media_type="application/xml")
+
+
+@app.post("/webhooks/twilio/status")
+async def twilio_webhook_status(request: Request):
+    """
+    Twilio posts call status changes here (initiated, ringing, answered, completed).
+    On 'completed' we finalize call record and decrement tenant balance.
+    """
+    form = await request.form()
+    call_sid     = str(form.get("CallSid") or "")
+    call_status  = str(form.get("CallStatus") or "").lower()
+    call_duration = str(form.get("CallDuration") or "0")  # seconds (only on completed)
+
+    logger.info("TWILIO status: %s %s duration=%ss", call_sid, call_status, call_duration)
+
+    if call_status not in ("completed", "failed", "busy", "no-answer", "canceled"):
+        return JSONResponse(content={"status": "ok"})
+
+    if not call_sid:
+        return JSONResponse(content={"status": "ok"})
+
+    # Finalize call record
+    try:
+        duration_seconds = int(call_duration) if call_duration.isdigit() else 0
+    except Exception:
+        duration_seconds = 0
+
+    ended_at = datetime.utcnow().isoformat()
+    rec = active_calls.get(call_sid) or {}
+
+    if rec.get("state") == "ended":
+        return JSONResponse(content={"status": "ok"})
+
+    rec["state"] = "ended"
+    rec["ended_at"] = ended_at
+    rec["duration_seconds"] = duration_seconds
+    active_calls[call_sid] = rec
+
+    signal_call_ended(call_sid)
+
+    transcript = rec.get("transcript") or []
+    finalize_call_end(
+        call_sid,
+        state="ended",
+        ended_at=ended_at,
+        duration_seconds=duration_seconds,
+        transcript=transcript,
+    )
+
+    # Phase 4: decrement tenant balance
+    try:
+        call_row = get_call_by_control_id(call_sid) or {}
+        tid = call_row.get("tenant_id") or rec.get("tenant_id")
+        if tid and duration_seconds > 0:
+            _decrement_tenant_balance_for_call(tid, duration_seconds)
+    except Exception:
+        logger.exception("Twilio tenant balance decrement failed for %s", call_sid)
+
+    # Run call insights in background
+    asyncio.create_task(_generate_call_insights(call_sid))
+
+    return JSONResponse(content={"status": "ok"})
 
 
 # ════════════════════════════════════════════════════════════
