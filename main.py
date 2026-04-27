@@ -2687,7 +2687,12 @@ async def whoami(request: Request):
     s = _session_from_request(request)
     if not s:
         return {"authenticated": False}
-    return {"authenticated": True, **s}
+    out = {"authenticated": True, **s}
+    tid = s.get("tenant_id")
+    if tid:
+        t = next((x for x in _load_tenants() if x.get("id") == tid), None)
+        if t: out["tenant_name"] = t.get("name") or tid
+    return out
 
 
 @app.post("/api/auth/logout")
@@ -2791,6 +2796,12 @@ async def admin_update_tenant(tenant_id: str, request: Request):
             if "margin_pct" in body:
                 try:
                     t["margin_pct"] = max(0.0, float(body["margin_pct"]))
+                except Exception:
+                    pass
+            if "cost_per_min_override" in body:
+                try:
+                    val = float(body["cost_per_min_override"] or 0)
+                    t["cost_per_min_override"] = max(0.0, val)
                 except Exception:
                     pass
             t["updated_at"] = datetime.utcnow().isoformat()
@@ -3402,18 +3413,31 @@ def _global_avg_cost_per_min() -> float:
 
 
 def _tenant_balance_view(tenant: dict) -> dict:
-    """Resolve dollar_balance + margin_pct → customer_per_min + minutes_remaining."""
-    base = _global_avg_cost_per_min()
+    """Resolve dollar_balance + margin_pct → customer_per_min + minutes_remaining.
+    If tenant has cost_per_min_override set (>0), use it DIRECTLY as the customer rate
+    (bypasses the auto-computed blended cost × margin formula). This lets the owner
+    fix per-tenant pricing manually."""
+    override = float(tenant.get("cost_per_min_override", 0) or 0)
     margin = float(tenant.get("margin_pct", DEFAULT_MARGIN_PCT) or DEFAULT_MARGIN_PCT)
-    customer_per_min = round(base * (1.0 + margin / 100.0), 4)
+    base = _global_avg_cost_per_min()
+    if override > 0:
+        customer_per_min = round(override, 4)
+        rate_source = "manual_override"
+    else:
+        customer_per_min = round(base * (1.0 + margin / 100.0), 4)
+        rate_source = "auto_blended"
     dollar_balance = float(tenant.get("dollar_balance", 0) or 0)
     minutes_remaining = round(dollar_balance / customer_per_min, 1) if customer_per_min > 0 else 0.0
+    topups = tenant.get("topup_history") or []
     return {
         "dollar_balance":     round(dollar_balance, 2),
         "margin_pct":         margin,
         "base_cost_per_min":  round(base, 4),
         "customer_per_min":   customer_per_min,
         "minutes_remaining":  max(0.0, minutes_remaining),
+        "rate_source":        rate_source,
+        "cost_per_min_override": round(override, 4) if override > 0 else None,
+        "topup_count":        len([t for t in topups if isinstance(t, dict)]),
     }
 
 
@@ -3464,6 +3488,117 @@ async def admin_tenant_usage_ledger(tenant_id: str, request: Request, limit: int
 #   APP_BASE_URL         (used to build success/cancel URLs)
 STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+
+
+OWNER_TOPUP_EMAIL = os.environ.get("OWNER_TOPUP_EMAIL", "rayaduraij@gmail.com").strip()
+
+
+@app.post("/api/tenant/topup-request")
+async def tenant_topup_request(request: Request):
+    """Tenant: request a top-up by emailing the owner.
+    Body: {"minutes": 500, "amount_usd"?: 50, "note"?: "..."} — at least one of
+    minutes or amount_usd required. Sends email to OWNER_TOPUP_EMAIL with
+    tenant name, current balance, requested amount/minutes."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        raise HTTPException(400, "No tenant context")
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant:
+        raise HTTPException(404, "Tenant not found")
+    body = await request.json() or {}
+    minutes_wanted = int(body.get("minutes", 0) or 0)
+    amount_usd = float(body.get("amount_usd", 0) or 0)
+    note = (body.get("note") or "").strip()
+    if minutes_wanted <= 0 and amount_usd <= 0:
+        raise HTTPException(400, "Provide minutes or amount_usd (>0)")
+    view = _tenant_balance_view(tenant)
+    # If only minutes given, estimate dollars
+    if minutes_wanted > 0 and amount_usd <= 0:
+        amount_usd = round(minutes_wanted * view["customer_per_min"], 2)
+    # If only dollars given, estimate minutes
+    if amount_usd > 0 and minutes_wanted <= 0:
+        minutes_wanted = int(round(amount_usd / max(0.0001, view["customer_per_min"])))
+
+    requester = sess.get("username") or "tenant_user"
+    tenant_name = tenant.get("name") or tid
+    subject = f"[Top-Up Request] {tenant_name} → {minutes_wanted} min (${amount_usd:.2f})"
+    body_html = (
+        f"<h3>New top-up request from {tenant_name}</h3>"
+        f"<table cellpadding='6' style='border-collapse:collapse;'>"
+        f"<tr><td><b>Tenant:</b></td><td>{tenant_name} <code>({tid})</code></td></tr>"
+        f"<tr><td><b>Requested by:</b></td><td>{requester}</td></tr>"
+        f"<tr><td><b>Minutes wanted:</b></td><td>{minutes_wanted} min</td></tr>"
+        f"<tr><td><b>Estimated cost:</b></td><td>${amount_usd:.2f}</td></tr>"
+        f"<tr><td><b>Current balance:</b></td><td>${view['dollar_balance']:.2f} ({view['minutes_remaining']:.0f} min)</td></tr>"
+        f"<tr><td><b>Customer rate:</b></td><td>${view['customer_per_min']:.4f}/min</td></tr>"
+        f"<tr><td><b>Margin %:</b></td><td>{view['margin_pct']:.0f}%</td></tr>"
+        f"<tr><td><b>Note:</b></td><td>{(note or '—')}</td></tr>"
+        f"</table>"
+        f"<p style='margin-top:18px;'>To approve: log into the owner console and "
+        f"click the $ icon next to <b>{tenant_name}</b> to top up the balance.</p>"
+        f"<p style='color:#888;font-size:12px;'>Sent automatically by AI-SDR · {datetime.utcnow().isoformat()[:19]}Z</p>"
+    )
+    try:
+        from email_sequences import send_email_async, smtp_ready
+        if not smtp_ready():
+            # Still record the request even if email can't send.
+            logger.warning("Top-up request: SMTP not configured; logged only")
+        else:
+            asyncio.create_task(send_email_async(OWNER_TOPUP_EMAIL, subject, body_html))
+    except Exception:
+        logger.exception("Top-up email send failed (non-fatal)")
+    # Log to tenant pending requests
+    pending = tenant.setdefault("pending_topup_requests", [])
+    if isinstance(pending, list):
+        pending.insert(0, {
+            "ts":             datetime.utcnow().isoformat() + "Z",
+            "minutes_wanted": minutes_wanted,
+            "amount_usd":     round(amount_usd, 2),
+            "note":           note,
+            "requester":      requester,
+            "status":         "pending",
+        })
+        tenant["pending_topup_requests"] = pending[:50]
+        all_t = _load_tenants()
+        for tt in all_t:
+            if tt.get("id") == tid:
+                tt["pending_topup_requests"] = pending[:50]
+        _save_tenants(all_t)
+    return {
+        "ok": True,
+        "message": f"Request sent to {OWNER_TOPUP_EMAIL}. You'll get a confirmation once approved.",
+        "minutes_wanted": minutes_wanted,
+        "amount_usd": round(amount_usd, 2),
+    }
+
+
+@app.get("/api/tenant/topup-history")
+async def tenant_topup_history(request: Request):
+    """Tenant: own top-up history (when did owner top us up, how much)."""
+    sess = _require_session(request)
+    tid = sess.get("tenant_id")
+    if not tid:
+        return {"history": []}
+    tenant = next((t for t in _load_tenants() if t.get("id") == tid), None)
+    if not tenant: return {"history": []}
+    return {
+        "history":  tenant.get("topup_history") or [],
+        "pending":  tenant.get("pending_topup_requests") or [],
+    }
+
+
+@app.get("/api/admin/tenants/{tenant_id}/topup-history")
+async def admin_tenant_topup_history(tenant_id: str, request: Request):
+    """Owner: any tenant's top-up history + pending requests."""
+    _require_owner(request)
+    tenant = next((t for t in _load_tenants() if t.get("id") == tenant_id), None)
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    return {
+        "tenant_id": tenant_id,
+        "history":   tenant.get("topup_history") or [],
+        "pending":   tenant.get("pending_topup_requests") or [],
+    }
 
 
 @app.post("/api/tenant/topup-checkout")
@@ -4286,16 +4421,33 @@ async def admin_adjust_balance(tenant_id: str, request: Request):
     for t in tenants:
         if t.get("id") == tenant_id:
             cur = float(t.get("dollar_balance", 0) or 0)
+            delta_amount = 0.0
             if "set" in body:
-                t["dollar_balance"] = float(body["set"])
+                new_val = float(body["set"])
+                delta_amount = new_val - cur
+                t["dollar_balance"] = new_val
                 _append_audit(_actor_from_session(request), "tenant.balance.set", tenant_id,
                               {"old": cur, "new": t["dollar_balance"]})
             elif "delta" in body:
-                t["dollar_balance"] = round(cur + float(body["delta"]), 2)
+                delta_amount = float(body["delta"])
+                t["dollar_balance"] = round(cur + delta_amount, 2)
                 _append_audit(_actor_from_session(request), "tenant.balance.delta", tenant_id,
-                              {"delta": float(body["delta"]), "old": cur, "new": t["dollar_balance"]})
+                              {"delta": delta_amount, "old": cur, "new": t["dollar_balance"]})
             else:
                 raise HTTPException(400, "Provide 'set' or 'delta' in body")
+            # Track top-up history (positive delta only)
+            if delta_amount > 0:
+                history = t.setdefault("topup_history", [])
+                if isinstance(history, list):
+                    history.insert(0, {
+                        "ts":     datetime.utcnow().isoformat() + "Z",
+                        "amount": round(delta_amount, 2),
+                        "method": body.get("method") or "manual",
+                        "note":   (body.get("note") or "").strip(),
+                        "actor":  _actor_from_session(request),
+                        "balance_after": t["dollar_balance"],
+                    })
+                    t["topup_history"] = history[:200]
             t["updated_at"] = datetime.utcnow().isoformat()
             _save_tenants(tenants)
             return {"ok": True, "tenant_id": tenant_id, **_tenant_balance_view(t)}

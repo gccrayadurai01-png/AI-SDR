@@ -423,10 +423,16 @@ tbody tr.clickable { cursor: pointer; }
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <h1>
-        <span class="brand-icon"><i data-lucide="shield" style="width:18px;height:18px;color:#fff;"></i></span>
-        Knight AI SDR
+        <span class="brand-icon" style="background:linear-gradient(135deg,#6366f1 0%,#a855f7 100%);box-shadow:0 4px 14px rgba(99,102,241,0.4);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+        </span>
+        Knight AI
       </h1>
-      <p>AI Sales Development</p>
+      <p id="brandTenantName" style="color:#A5B4FC;font-weight:600;text-transform:none;letter-spacing:0;font-size:12px;display:none;">—</p>
+      <p style="margin-top:0;">AI Sales Development</p>
     </div>
     <nav class="sidebar-nav">
       <!-- OWNER-ONLY NAV (hidden for tenants) -->
@@ -521,21 +527,29 @@ tbody tr.clickable { cursor: pointer; }
          style="display:none;position:sticky;top:0;z-index:80;background:var(--bg);
                 border-bottom:1px solid var(--border);padding:10px 20px;">
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:14px;">
-        <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#0F172A,#1E293B);
-                    border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:8px 14px;color:#fff;">
-          <div style="width:8px;height:8px;border-radius:50%;background:#10B981;box-shadow:0 0 6px #10B981;"></div>
-          <div style="display:flex;flex-direction:column;line-height:1.2;">
-            <div style="font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;">Calling balance</div>
-            <div style="font-size:16px;font-weight:700;">
-              <span id="tbMinutes">—</span> <span style="color:#94A3B8;font-weight:500;font-size:12px;">min remaining</span>
+        <div id="tbPillCard" onclick="toggleBalanceDetails()" style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#0F172A 0%,#1E293B 50%,#312E81 100%);
+                    border:1px solid rgba(99,102,241,0.4);border-radius:14px;padding:10px 16px;color:#fff;cursor:pointer;
+                    box-shadow:0 4px 16px rgba(99,102,241,0.2);transition:all 0.2s;"
+             onmouseover="this.style.borderColor='rgba(99,102,241,0.7)';this.style.transform='translateY(-1px)';"
+             onmouseout="this.style.borderColor='rgba(99,102,241,0.4)';this.style.transform='none';">
+          <div style="width:10px;height:10px;border-radius:50%;background:#10B981;box-shadow:0 0 10px #10B981;flex-shrink:0;"></div>
+          <div style="line-height:1.1;">
+            <div style="font-size:10px;color:#A5B4FC;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Minutes Remaining</div>
+            <div style="font-size:24px;font-weight:800;color:#fff;letter-spacing:-0.5px;">
+              <span id="tbMinutes">—</span>
+              <span style="color:#94A3B8;font-weight:500;font-size:13px;margin-left:2px;">min</span>
             </div>
-            <div style="font-size:11px;color:#94A3B8;">
-              <span id="tbDollars">$0.00</span> · <span id="tbRate">—</span>/min
+            <div id="tbDetails" style="display:none;margin-top:4px;font-size:11px;color:#94A3B8;">
+              Balance: <b style="color:#fff;"><span id="tbDollars">$0.00</span></b>
+              · Rate: <b style="color:#A5B4FC;"><span id="tbRate">—</span>/min</b>
+              · Top-ups: <b style="color:#fff;"><span id="tbTopupCount">0</span></b>
             </div>
           </div>
-          <button onclick="tenantTopUp()" title="Top up balance" style="background:#6366f1;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">+ Top Up</button>
-          <button onclick="tenantViewLedger()" title="Usage history" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;">📒 History</button>
-          <button onclick="tenantViewStatement()" title="Monthly statement" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;">📄 Statement</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end;">
+          <button onclick="tenantTopUp()" title="Request top-up" style="background:#6366f1;color:#fff;border:0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,0.3);">+ Request Top-Up</button>
+          <button onclick="tenantViewTopupHistory()" title="Top-up history" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;">📜 History</button>
+          <button onclick="tenantViewStatement()" title="Monthly statement" style="background:transparent;color:#cbd5e1;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;">📄 Statement</button>
         </div>
       </div>
     </div>
@@ -1160,7 +1174,6 @@ tbody tr.clickable { cursor: pointer; }
             <p>Each tenant is an isolated workspace — own contacts, calls, agents, email sequence, and dollar balance.</p>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary" onclick="showAuditLog()"><i data-lucide="clock"></i> Audit Log</button>
             <button class="btn btn-primary" onclick="showCreateTenantModal()"><i data-lucide="plus"></i> New Tenant</button>
           </div>
         </div>
@@ -1246,6 +1259,10 @@ tbody tr.clickable { cursor: pointer; }
                 </div>
               </div>
               <div class="form-group"><label>Phone Number (Telnyx FROM, E.164)</label><input id="etPhone" placeholder="+15551234567"/></div>
+              <div class="form-group">
+                <label>Manual $/min Override <span style="color:var(--text-muted);font-size:11px;font-weight:400;">(blank = auto-compute from blended cost × margin)</span></label>
+                <input id="etOverride" type="number" step="0.0001" min="0" placeholder="e.g. 0.15"/>
+              </div>
               <div class="form-group"><label>Telnyx Connection ID (override)</label><input id="etConn" placeholder="leave blank to use default"/></div>
               <div class="form-group"><label>Notification Email (low-balance alerts)</label><input id="etNotify" type="email" placeholder="ops@example.com"/></div>
               <div class="form-group"><label>Notes (internal)</label><textarea id="etNotes" rows="2"></textarea></div>
@@ -1278,26 +1295,26 @@ tbody tr.clickable { cursor: pointer; }
               <button class="modal-close" onclick="closeCreateTenantModal()">&times;</button>
             </div>
             <div class="modal-body">
-              <div class="form-group"><label>Company / Tenant Name</label><input id="ntName" placeholder="Acme Corp"/></div>
+              <div class="form-group"><label>Company / Tenant Name <span style="color:#ef4444;">*</span></label><input id="ntName" required placeholder="Acme Corp"/></div>
               <div class="form-grid">
-                <div class="form-group"><label>Plan</label>
-                  <select id="ntPlan">
+                <div class="form-group"><label>Plan <span style="color:#ef4444;">*</span></label>
+                  <select id="ntPlan" required>
                     <option value="starter">Starter</option>
                     <option value="growth">Growth</option>
                     <option value="enterprise">Enterprise</option>
                     <option value="trial">Trial</option>
                   </select>
                 </div>
-                <div class="form-group"><label>Initial $ Balance</label><input id="ntDollars" type="number" step="0.01" value="0" placeholder="100.00"/></div>
-                <div class="form-group"><label>Margin %</label><input id="ntMargin" type="number" value="80" placeholder="80"/></div>
+                <div class="form-group"><label>Initial $ Balance <span style="color:#ef4444;">*</span></label><input id="ntDollars" type="number" step="0.01" min="0" value="0" required placeholder="100.00"/></div>
+                <div class="form-group"><label>Margin % <span style="color:#ef4444;">*</span></label><input id="ntMargin" type="number" min="0" value="80" required placeholder="80"/></div>
               </div>
-              <div class="form-group"><label>Assigned Phone Number (Telnyx)</label><input id="ntPhone" placeholder="+15551234567"/></div>
+              <div class="form-group"><label>Assigned Phone Number (Telnyx) <span style="color:#ef4444;">*</span></label><input id="ntPhone" required placeholder="+15551234567"/></div>
               <div class="form-group"><label>Notes (internal)</label><textarea id="ntNotes" rows="2"></textarea></div>
               <hr style="border-color:rgba(255,255,255,0.1);margin:14px 0;"/>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Optional: seed a tenant-admin login at the same time.</div>
+              <div style="font-size:12px;color:#A5B4FC;margin-bottom:8px;font-weight:600;">Tenant admin login (required)</div>
               <div class="form-grid">
-                <div class="form-group"><label>Admin Username</label><input id="ntAdminUser" placeholder="acme_admin" autocomplete="off"/></div>
-                <div class="form-group"><label>Admin Password</label><input id="ntAdminPass" type="password" placeholder="strong password" autocomplete="new-password"/></div>
+                <div class="form-group"><label>Admin Username <span style="color:#ef4444;">*</span></label><input id="ntAdminUser" required placeholder="acme_admin" autocomplete="off"/></div>
+                <div class="form-group"><label>Admin Password <span style="color:#ef4444;">*</span></label><input id="ntAdminPass" type="password" required minlength="6" placeholder="min 6 chars" autocomplete="new-password"/></div>
               </div>
             </div>
             <div class="modal-footer">
@@ -3524,28 +3541,34 @@ async function loadAdminTenantsPage() {
   const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
   c.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
     '<th>Name</th><th>ID</th><th>Plan</th><th>Phone</th><th>Users</th>' +
-    '<th>Balance ($)</th><th>Margin %</th><th>Min Remaining</th><th>Status</th><th>Actions</th>' +
+    '<th>Balance ($)</th><th>Margin %</th><th>Min Remaining</th><th>Top-ups</th><th>Status</th><th>Actions</th>' +
     '</tr></thead><tbody>' +
     tenants.map(function(t){
       const margin = (t.margin_pct == null) ? 80 : Number(t.margin_pct);
       const bal    = Number(t.dollar_balance || 0);
-      const custPerMin = _avgPerMin > 0 ? _avgPerMin * (1 + margin/100) : 0;
+      const override = Number(t.cost_per_min_override || 0);
+      const custPerMin = override > 0 ? override : (_avgPerMin > 0 ? _avgPerMin * (1 + margin/100) : 0);
       const minRem = custPerMin > 0 ? (bal / custPerMin) : 0;
+      const topupCount = (t.topup_history || []).length;
+      const pendingCount = (t.pending_topup_requests || []).filter(p => p.status === 'pending').length;
+      const rateBadge = override > 0 ? '<span style="font-size:10px;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:8px;margin-left:4px;">FIXED</span>' : '';
       return '<tr>' +
-        '<td><b>'+escHtml(t.name||'')+'</b><br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(t.notes||'')+'</span></td>' +
+        '<td><b style="color:#fff;">'+escHtml(t.name||'')+'</b>'+rateBadge+'<br><span style="font-size:11px;color:var(--text-muted);">'+escHtml(t.notes||'')+'</span></td>' +
         '<td><code style="font-size:11px;">'+escHtml(t.id||'')+'</code></td>' +
         '<td>'+escHtml(t.plan||'')+'</td>' +
         '<td>'+escHtml(t.phone_number||'—')+'</td>' +
         '<td>'+(t.user_count||0)+'</td>' +
         '<td><b>'+fmt$(bal)+'</b></td>' +
         '<td>'+margin.toFixed(0)+'%</td>' +
-        '<td><b style="color:#10B981;">'+minRem.toFixed(0)+' min</b></td>' +
+        '<td><b style="color:#10B981;">'+minRem.toFixed(0)+' min</b><br><span style="font-size:10px;color:var(--text-muted);">@ $'+custPerMin.toFixed(4)+'/min</span></td>' +
+        '<td><b>'+topupCount+'</b>'+(pendingCount>0?' <span style="background:#f59e0b;color:#000;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:700;">+'+pendingCount+' pending</span>':'')+'</td>' +
         '<td><span class="badge badge-'+(t.status==='active'?'green':'gray')+'">'+escHtml(t.status||'')+'</span></td>' +
         '<td style="white-space:nowrap;">' +
           '<button class="btn btn-secondary btn-sm" onclick="topUpTenant(\''+t.id+'\')" title="Top up balance"><i data-lucide="dollar-sign"></i></button> ' +
-          '<button class="btn btn-secondary btn-sm" onclick="viewLedger(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="View usage ledger"><i data-lucide="list"></i></button> ' +
-          '<button class="btn btn-secondary btn-sm" onclick="viewStatement(\''+t.id+'\')" title="Monthly statement / invoice"><i data-lucide="file-text"></i></button> ' +
-          '<button class="btn btn-secondary btn-sm" onclick="impersonate(\''+t.id+'\')" title="View as this tenant"><i data-lucide="eye"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="viewTopupHistory(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Top-up history"><i data-lucide="history"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="viewLedger(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Usage ledger"><i data-lucide="list"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="viewStatement(\''+t.id+'\')" title="Monthly statement"><i data-lucide="file-text"></i></button> ' +
+          '<button class="btn btn-secondary btn-sm" onclick="impersonate(\''+t.id+'\')" title="View as tenant"><i data-lucide="eye"></i></button> ' +
           '<button class="btn btn-secondary btn-sm" onclick="editTenant(\''+t.id+'\')" title="Edit"><i data-lucide="edit-2"></i></button> ' +
           (t.id==='tenant_default' ? '' : '<button class="btn btn-secondary btn-sm" onclick="deleteTenant(\''+t.id+'\',\''+escHtml(t.name||'')+'\')" title="Delete"><i data-lucide="trash-2"></i></button>') +
         '</td>' +
@@ -3578,7 +3601,15 @@ async function createTenant() {
     admin_username:  document.getElementById('ntAdminUser').value.trim(),
     admin_password:  document.getElementById('ntAdminPass').value,
   };
-  if (!payload.name) return toast('Name is required', 'error');
+  // Required field validation
+  const errs = [];
+  if (!payload.name)           errs.push('Company / Tenant Name');
+  if (!payload.plan)           errs.push('Plan');
+  if (!payload.phone_number)   errs.push('Phone Number');
+  if (payload.dollar_balance < 0) errs.push('Initial Balance must be ≥ 0');
+  if (!payload.admin_username) errs.push('Admin Username');
+  if (!payload.admin_password || payload.admin_password.length < 6) errs.push('Admin Password (min 6 chars)');
+  if (errs.length) return toast('Please fill: ' + errs.join(', '), 'error');
   const r = await POST('/api/admin/tenants', payload);
   if (r._error) return toast('Create failed: '+r.detail, 'error');
   toast('Tenant created'+(r.seeded_user?' + login '+r.seeded_user:''), 'success');
@@ -3598,6 +3629,7 @@ async function editTenant(tid) {
   document.getElementById('etMargin').value  = t.margin_pct != null ? t.margin_pct : 80;
   document.getElementById('etPlan').value    = t.plan || 'starter';
   document.getElementById('etPhone').value   = t.phone_number || '';
+  document.getElementById('etOverride').value = t.cost_per_min_override || '';
   document.getElementById('etConn').value    = t.telnyx_connection_id || '';
   document.getElementById('etNotify').value  = t.notify_email || '';
   document.getElementById('etNotes').value   = t.notes || '';
@@ -3613,6 +3645,7 @@ async function saveEditTenant() {
     margin_pct:           parseFloat(document.getElementById('etMargin').value) || 0,
     plan:                 document.getElementById('etPlan').value,
     phone_number:         document.getElementById('etPhone').value.trim(),
+    cost_per_min_override: parseFloat(document.getElementById('etOverride').value) || 0,
     telnyx_connection_id: document.getElementById('etConn').value.trim(),
     notify_email:         document.getElementById('etNotify').value.trim(),
     notes:                document.getElementById('etNotes').value.trim(),
@@ -3654,7 +3687,66 @@ async function refreshImpersonationBanner() {
   } catch (e) {}
 }
 
-/* ────────── OWNER · AUDIT LOG (D) ────────── */
+/* ────────── OWNER · TENANT TOP-UP HISTORY ────────── */
+async function viewTopupHistory(tid, tname) {
+  const r = await GET('/api/admin/tenants/'+encodeURIComponent(tid)+'/topup-history');
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  const history = r.history || [];
+  const pending = r.pending || [];
+  let m = document.getElementById('ownerTopupHistModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'ownerTopupHistModal';
+    m.className = 'modal';
+    document.body.appendChild(m);
+  }
+  let html = '<div class="modal-content" style="max-width:760px;">'
+    + '<div class="modal-header"><h3>📜 Top-Up History — '+escHtml(tname||tid)+'</h3>'
+    + '<button class="modal-close" onclick="document.getElementById(\'ownerTopupHistModal\').style.display=\'none\'">&times;</button></div>'
+    + '<div class="modal-body" style="max-height:60vh;overflow:auto;">';
+  if (pending.length) {
+    html += '<h4 style="margin-top:0;color:#f59e0b;">⏳ Pending Tenant Requests ('+pending.length+')</h4>';
+    html += '<div class="table-wrap" style="margin-bottom:18px;"><table><thead><tr><th>Requested</th><th>Minutes</th><th>Est. Cost</th><th>Note</th><th>Action</th></tr></thead><tbody>';
+    pending.forEach(p => {
+      html += '<tr>'
+        + '<td>'+escHtml((p.ts||'').slice(0,19).replace('T',' '))+'</td>'
+        + '<td><b>'+(p.minutes_wanted||0)+' min</b></td>'
+        + '<td>$'+(Number(p.amount_usd||0)).toFixed(2)+'</td>'
+        + '<td style="font-size:11px;color:var(--text-muted);">'+escHtml(p.note||'—')+'</td>'
+        + '<td><button class="btn btn-primary btn-sm" onclick="approveTopup(\''+tid+'\','+(p.amount_usd||0)+')">Approve & Top Up</button></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '<h4 style="color:#10b981;">✅ Completed Top-Ups ('+history.length+')</h4>';
+  if (!history.length) {
+    html += '<div class="empty-state"><p>No top-ups yet.</p></div>';
+  } else {
+    html += '<div class="table-wrap"><table><thead><tr><th>When</th><th>Amount</th><th>Method</th><th>By</th><th>Balance After</th></tr></thead><tbody>';
+    history.forEach(h => {
+      html += '<tr>'
+        + '<td>'+escHtml((h.ts||'').slice(0,19).replace('T',' '))+'</td>'
+        + '<td><b style="color:#10b981;">+$'+(Number(h.amount||0)).toFixed(2)+'</b></td>'
+        + '<td>'+escHtml(h.method||'manual')+'</td>'
+        + '<td style="font-size:11px;">'+escHtml(h.actor||'—')+'</td>'
+        + '<td>$'+(Number(h.balance_after||0)).toFixed(2)+'</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div></div>';
+  m.innerHTML = html;
+  m.style.display = 'flex';
+}
+async function approveTopup(tid, amount) {
+  const r = await POST('/api/admin/tenants/'+encodeURIComponent(tid)+'/adjust-balance', {delta: amount, method: 'approved_request', note: 'Approved tenant request'});
+  if (r._error) return toast('Approve failed: '+r.detail, 'error');
+  toast('Topped up $'+amount+'. Balance: $'+(r.dollar_balance||0).toFixed(2), 'success');
+  document.getElementById('ownerTopupHistModal').style.display = 'none';
+  loadAdminTenantsPage();
+}
+
+/* ────────── OWNER · AUDIT LOG (still available, just not in header) ────────── */
 async function showAuditLog() {
   document.getElementById('auditLogModal').style.display = 'flex';
   const body = document.getElementById('auditLogBody');
@@ -3863,6 +3955,34 @@ function applyRoleVisibility() {
   document.querySelectorAll('.tenant-only').forEach(function(el){
     el.style.display = isOwner ? 'none' : '';
   });
+
+  // Highlight tenant company name in sidebar header
+  const brandName = document.getElementById('brandTenantName');
+  if (brandName) {
+    if (!isOwner) {
+      // Lookup tenant name (cached)
+      const cached = sessionStorage.getItem('knight_tenant_name');
+      if (cached) {
+        brandName.textContent = '🏢 ' + cached;
+        brandName.style.display = 'block';
+      } else {
+        const tid = sessionStorage.getItem('knight_tenant') || '';
+        if (tid) {
+          GET('/api/tenant/balance').then(()=>{}); // warm
+          fetch('/api/me', { headers: { 'Authorization': 'Bearer '+(sessionStorage.getItem('cloudfuze_token')||'') } })
+            .then(r => r.json()).then(me => {
+              const name = (me && (me.tenant_name || me.tenant_id || tid)) || tid;
+              sessionStorage.setItem('knight_tenant_name', name);
+              brandName.textContent = '🏢 ' + name;
+              brandName.style.display = 'block';
+            }).catch(()=>{});
+        }
+      }
+    } else {
+      brandName.textContent = '👁 Owner Console';
+      brandName.style.display = 'block';
+    }
+  }
   // topStatusBanner is owner-only (handled by .owner-only class above) —
   // tenants no longer see the SMTP status nag at the top.
 
@@ -3932,22 +4052,124 @@ function tenantViewStatement() {
     .catch(e => toast('Statement load failed: '+e, 'error'));
 }
 
+function toggleBalanceDetails() {
+  const el = document.getElementById('tbDetails');
+  if (!el) return;
+  el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+}
+
 async function tenantTopUp() {
-  const amtStr = prompt('Top up balance (USD, min $10, max $5000):', '50');
-  if (!amtStr) return;
-  const amount = parseFloat(amtStr);
-  if (isNaN(amount) || amount < 10 || amount > 5000) return toast('Amount must be $10-$5000', 'error');
-  const r = await POST('/api/tenant/topup-checkout', {amount});
-  if (r._error) {
-    if ((r.detail||'').toLowerCase().includes('not configured')) {
-      return toast('Self-service top-up unavailable. Contact your admin to top up manually.', 'info');
-    }
-    return toast('Top-up failed: '+r.detail, 'error');
+  // Build a small inline modal (cleaner than chained prompts)
+  let m = document.getElementById('topupRequestModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'topupRequestModal';
+    m.className = 'modal';
+    document.body.appendChild(m);
   }
-  if (r.checkout_url) {
-    window.open(r.checkout_url, '_blank');
-    toast('Stripe checkout opened in new tab', 'info');
+  m.innerHTML = `
+    <div class="modal-content" style="max-width:460px;">
+      <div class="modal-header">
+        <h3>📞 Request Calling Top-Up</h3>
+        <button class="modal-close" onclick="document.getElementById('topupRequestModal').style.display='none'">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+          Tell us how many minutes you need. We'll get back to you with payment instructions.
+        </p>
+        <div class="form-group">
+          <label>How many minutes do you want to add?</label>
+          <input id="trMinutes" type="number" min="50" step="50" placeholder="e.g. 500" autofocus
+                 oninput="trEstimate()" style="font-size:18px;font-weight:600;"/>
+        </div>
+        <div id="trEstimateBox" style="background:rgba(99,102,241,0.08);border-radius:8px;padding:10px 14px;font-size:13px;color:#A5B4FC;display:none;">
+          Estimated cost: <b id="trCost" style="color:#fff;">$0.00</b>
+          <span style="color:var(--text-muted);">at <span id="trRate">—</span>/min</span>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Note (optional)</label>
+          <textarea id="trNote" rows="2" placeholder="Any special requirements..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('topupRequestModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="submitTopUpRequest()"><i data-lucide="send"></i> Send Request</button>
+      </div>
+    </div>`;
+  m.style.display = 'flex';
+  if (window.lucide) lucide.createIcons();
+  // Cache the rate from balance pill so we can estimate inline
+  window._tbRate = parseFloat((document.getElementById('tbRate')||{textContent:''}).textContent.replace('$',''))||0;
+}
+function trEstimate() {
+  const mins = parseInt(document.getElementById('trMinutes').value) || 0;
+  const rate = window._tbRate || 0;
+  const box = document.getElementById('trEstimateBox');
+  if (mins > 0 && rate > 0) {
+    document.getElementById('trCost').textContent = '$' + (mins * rate).toFixed(2);
+    document.getElementById('trRate').textContent = '$' + rate.toFixed(4);
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
   }
+}
+async function submitTopUpRequest() {
+  const minutes = parseInt(document.getElementById('trMinutes').value) || 0;
+  const note = document.getElementById('trNote').value.trim();
+  if (minutes <= 0) return toast('Enter a number of minutes', 'error');
+  const r = await POST('/api/tenant/topup-request', {minutes, note});
+  if (r._error) return toast('Request failed: '+r.detail, 'error');
+  toast(r.message || 'Request sent!', 'success');
+  document.getElementById('topupRequestModal').style.display = 'none';
+}
+
+async function tenantViewTopupHistory() {
+  const r = await GET('/api/tenant/topup-history');
+  if (r._error) return toast('Failed: '+r.detail, 'error');
+  const history = r.history || [];
+  const pending = r.pending || [];
+  let m = document.getElementById('topupHistModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'topupHistModal';
+    m.className = 'modal';
+    document.body.appendChild(m);
+  }
+  let html = '<div class="modal-content" style="max-width:760px;">'
+    + '<div class="modal-header"><h3>📜 Top-Up History</h3>'
+    + '<button class="modal-close" onclick="document.getElementById(\'topupHistModal\').style.display=\'none\'">&times;</button></div>'
+    + '<div class="modal-body" style="max-height:60vh;overflow:auto;">';
+  if (pending.length) {
+    html += '<h4 style="margin-top:0;color:#f59e0b;">Pending Requests ('+pending.length+')</h4>';
+    html += '<div class="table-wrap" style="margin-bottom:18px;"><table><thead><tr><th>Sent</th><th>Minutes</th><th>Est. Cost</th><th>Status</th></tr></thead><tbody>';
+    pending.forEach(p => {
+      html += '<tr>'
+        + '<td>'+escHtml((p.ts||'').slice(0,19).replace('T',' '))+'</td>'
+        + '<td>'+(p.minutes_wanted||0)+'</td>'
+        + '<td>$'+(Number(p.amount_usd||0)).toFixed(2)+'</td>'
+        + '<td><span class="badge badge-yellow">'+escHtml(p.status||'pending')+'</span></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '<h4 style="color:#10b981;">Completed Top-Ups ('+history.length+')</h4>';
+  if (!history.length) {
+    html += '<div class="empty-state"><p>No top-ups yet.</p></div>';
+  } else {
+    html += '<div class="table-wrap"><table><thead><tr><th>When</th><th>Amount</th><th>Method</th><th>Balance After</th></tr></thead><tbody>';
+    history.forEach(h => {
+      html += '<tr>'
+        + '<td>'+escHtml((h.ts||'').slice(0,19).replace('T',' '))+'</td>'
+        + '<td><b style="color:#10b981;">+$'+(Number(h.amount||0)).toFixed(2)+'</b></td>'
+        + '<td>'+escHtml(h.method||'manual')+'</td>'
+        + '<td>$'+(Number(h.balance_after||0)).toFixed(2)+'</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div></div>';
+  m.innerHTML = html;
+  m.style.display = 'flex';
 }
 
 async function loadTenantBalance() {
@@ -3956,9 +4178,11 @@ async function loadTenantBalance() {
     if (!d || d._error) return;
     const fmt$ = (v) => '$' + (Number(v||0)).toFixed(2);
     const minutes = Number(d.minutes_remaining || 0);
-    document.getElementById('tbMinutes').textContent = minutes.toFixed(1);
+    document.getElementById('tbMinutes').textContent = Math.round(minutes);
     document.getElementById('tbDollars').textContent = fmt$(d.dollar_balance);
-    document.getElementById('tbRate').textContent    = fmt$(d.customer_per_min);
+    document.getElementById('tbRate').textContent    = '$'+(Number(d.customer_per_min||0)).toFixed(4);
+    const tcEl = document.getElementById('tbTopupCount');
+    if (tcEl) tcEl.textContent = (d.topup_count||0);
 
     // ── Low-balance warning banner ──
     const pill = document.getElementById('tenantBalancePill');
