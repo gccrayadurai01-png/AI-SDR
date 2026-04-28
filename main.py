@@ -618,40 +618,18 @@ def _is_booking_confirmed(text: str) -> bool:
 
 
 async def _silence_watchdog(cc_id: str):
-    """Mid-call silence monitor + AI resurrection.
-
-    Watches for the specific failure mode: AI Assistant went silent but the
-    call is still alive (Telnyx killed the AI session on idle / interrupt /
-    transient error, and the bot never spoke again). If no AGENT turn has
-    been observed for ~25s, we attempt exactly ONE restart of the AI
-    Assistant to wake it back up. NEVER hangs up.
-    """
+    """LOG-ONLY silence monitor. NEVER hangs up, NEVER restarts.
+    Telnyx AI Assistant handles its own lifecycle. User transcription events
+    don't always flow to our webhook (assistant processes them internally),
+    so we cannot safely count user turns to decide a hangup here.
+    Use Telnyx's built-in user_idle_timeout_secs + voicemail_detection instead."""
     try:
-        nudged_at = 0.0
         while cc_id in active_calls and active_calls[cc_id].get("state") != "ended":
-            await asyncio.sleep(10)
-            rec = active_calls.get(cc_id) or {}
-            if not rec.get("ai_assistant"):
-                continue  # Already in TTS fallback — don't touch
-            agent_turns = _ai_agent_turn_times.get(cc_id) or []
-            last_agent = agent_turns[-1] if agent_turns else _ai_assistant_first_event.get(cc_id, 0)
-            if not last_agent:
-                continue
-            idle = time.time() - last_agent
-            # Only nudge once per call, only after real silence
-            if idle > 25 and (time.time() - nudged_at) > 60 and not rec.get("_ai_nudge_done"):
-                rec["_ai_nudge_done"] = True
-                nudged_at = time.time()
-                logger.warning("MID-CALL SILENCE: %s has been quiet %.0fs — restarting AI Assistant", cc_id, idle)
-                name = rec.get("prospect_name") or "there"
-                title = rec.get("prospect_title") or ""
-                company = rec.get("company") or ""
-                try:
-                    # Schedule restart in background — reuses the same fast path
-                    from fastapi import BackgroundTasks as _BT
-                    asyncio.create_task(_start_ai_assistant_fast(cc_id, name, title, company, _BT()))
-                except Exception as e:
-                    logger.warning("Silence nudge restart failed: %s", e)
+            await asyncio.sleep(60)
+            last = _last_speech_time.get(cc_id, 0)
+            idle = (time.time() - last) if last else 0
+            if idle > 60:
+                logger.info("SILENCE MONITOR: %s idle %.0fs — logging only (NOT hanging up)", cc_id, idle)
     except asyncio.CancelledError:
         pass
     finally:
