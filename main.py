@@ -3421,27 +3421,69 @@ def _save_provider_topups(data: dict) -> None:
     PROVIDER_TOPUPS_FILE.parent.mkdir(exist_ok=True)
     PROVIDER_TOPUPS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
-def _provider_total_spent(provider: str) -> float:
+def _provider_total_topups(provider: str) -> float:
+    """Total $ ever topped-up for this provider (gross, ignores remaining credit)."""
     data = _load_provider_topups()
     rows = data.get(provider) or []
     return float(sum(float(r.get("amount", 0) or 0) for r in rows if isinstance(r, dict)))
 
-def _real_blended_cost_per_min() -> float:
-    """Blended cost-per-min based on REAL money spent on providers
-    divided by total platform call minutes. This is what customers actually
-    cost us — used to compute customer_per_min via margin."""
-    calls = _all_calls_across_tenants()
-    total_minutes = 0.0
-    for c in calls:
-        if not isinstance(c, dict): continue
+
+def _provider_remaining(provider: str) -> float:
+    """Remaining (unspent) credit currently sitting in the provider account.
+    The owner enters this from the provider dashboard so we can compute
+    ACTUAL spend = topups - remaining."""
+    data = _load_provider_topups()
+    rem = data.get("remaining") or {}
+    try:
+        return float(rem.get(provider, 0) or 0)
+    except Exception:
+        return 0.0
+
+
+def _provider_actual_spent(provider: str) -> float:
+    """Real money actually consumed at this provider:
+        actual = total_topups − remaining_credit
+    (clamped to 0 in case the user enters a remaining > topups by mistake)."""
+    spent = _provider_total_topups(provider) - _provider_remaining(provider)
+    return round(max(0.0, spent), 4)
+
+
+# Keep the old name as an alias for any internal callers (legacy):
+def _provider_total_spent(provider: str) -> float:
+    """Legacy alias — returns actual spent (topups − remaining)."""
+    return _provider_actual_spent(provider)
+
+
+def _total_call_minutes_across_tenants() -> float:
+    """Sum of duration_seconds across every call record we have, in minutes."""
+    total = 0.0
+    for c in _all_calls_across_tenants():
+        if not isinstance(c, dict):
+            continue
         secs = float(c.get("duration_seconds", 0) or 0)
-        total_minutes += secs / 60.0
+        total += secs / 60.0
+    return total
+
+
+def _real_blended_cost_per_min() -> float:
+    """
+    Blended cost-per-min based on the REAL money actually consumed at providers
+    (top-ups − remaining credit) divided by total platform call minutes.
+
+    Why subtract remaining credit:  a $100 ElevenLabs Pro top-up does not mean
+    we spent $100; if $95 of that is still sitting on the account, only $5 was
+    actually consumed by our call traffic.  Using gross top-ups overstates the
+    cost-per-min and therefore the customer rate (margin × cost).
+    """
+    total_minutes = _total_call_minutes_across_tenants()
     if total_minutes <= 0:
-        return 0.07  # fallback estimate
-    total_spend = (_provider_total_spent("telnyx")
-                  + _provider_total_spent("elevenlabs")
-                  + _provider_total_spent("claude"))
-    return round(total_spend / total_minutes, 6) if total_spend > 0 else 0.0
+        return 0.07  # fallback estimate when we have no call history yet
+    actual_spend = (_provider_actual_spent("telnyx")
+                  + _provider_actual_spent("elevenlabs")
+                  + _provider_actual_spent("claude"))
+    if actual_spend <= 0:
+        return 0.0
+    return round(actual_spend / total_minutes, 6)
 
 
 def _all_calls_across_tenants() -> list[dict]:
@@ -4532,19 +4574,78 @@ async def admin_cost_dashboard(request: Request, days: int = 30):
 
 @app.get("/api/admin/provider-topups")
 async def admin_provider_topups(request: Request):
-    """Owner: list provider top-ups (real money spent on Telnyx, ElevenLabs, Claude)."""
+    """Owner: provider top-ups + remaining credit + ACTUAL spent (gross − remaining).
+    Real blended cost = sum(actual_spent) / total_call_minutes."""
     _require_owner(request)
     data = _load_provider_topups()
+    total_minutes = round(_total_call_minutes_across_tenants(), 2)
+    topups_telnyx     = round(_provider_total_topups("telnyx"), 2)
+    topups_elevenlabs = round(_provider_total_topups("elevenlabs"), 2)
+    topups_claude     = round(_provider_total_topups("claude"), 2)
+    rem_telnyx     = round(_provider_remaining("telnyx"), 2)
+    rem_elevenlabs = round(_provider_remaining("elevenlabs"), 2)
+    rem_claude     = round(_provider_remaining("claude"), 2)
+    actual_telnyx     = round(_provider_actual_spent("telnyx"), 2)
+    actual_elevenlabs = round(_provider_actual_spent("elevenlabs"), 2)
+    actual_claude     = round(_provider_actual_spent("claude"), 2)
     return {
         "topups": data,
+        # Gross top-ups (kept for back-compat with old UI)
         "totals": {
-            "telnyx":     round(_provider_total_spent("telnyx"), 2),
-            "elevenlabs": round(_provider_total_spent("elevenlabs"), 2),
-            "claude":     round(_provider_total_spent("claude"), 2),
-            "all":        round(_provider_total_spent("telnyx")
-                                + _provider_total_spent("elevenlabs")
-                                + _provider_total_spent("claude"), 2),
+            "telnyx":     topups_telnyx,
+            "elevenlabs": topups_elevenlabs,
+            "claude":     topups_claude,
+            "all":        round(topups_telnyx + topups_elevenlabs + topups_claude, 2),
         },
+        # Owner-entered remaining credit on each provider account
+        "remaining": {
+            "telnyx":     rem_telnyx,
+            "elevenlabs": rem_elevenlabs,
+            "claude":     rem_claude,
+            "all":        round(rem_telnyx + rem_elevenlabs + rem_claude, 2),
+        },
+        # ACTUAL money consumed = top-ups − remaining (this drives blended cost)
+        "actual_spent": {
+            "telnyx":     actual_telnyx,
+            "elevenlabs": actual_elevenlabs,
+            "claude":     actual_claude,
+            "all":        round(actual_telnyx + actual_elevenlabs + actual_claude, 2),
+        },
+        "total_call_minutes":        total_minutes,
+        "real_blended_cost_per_min": round(_real_blended_cost_per_min(), 6),
+    }
+
+
+@app.post("/api/admin/provider-remaining")
+async def admin_set_provider_remaining(request: Request):
+    """Owner: set the current REMAINING credit for a provider account.
+    Body: {provider: telnyx|elevenlabs|claude, remaining: float}.
+    Used to compute actual spend = topups − remaining → real blended cost/min."""
+    _require_owner(request)
+    body = await request.json() or {}
+    provider = (body.get("provider") or "").strip().lower()
+    if provider not in ("telnyx", "elevenlabs", "claude"):
+        raise HTTPException(400, "provider must be telnyx|elevenlabs|claude")
+    try:
+        remaining = float(body.get("remaining", 0) or 0)
+    except Exception:
+        raise HTTPException(400, "remaining must be a number")
+    if remaining < 0:
+        raise HTTPException(400, "remaining cannot be negative")
+    data = _load_provider_topups()
+    rem = data.get("remaining")
+    if not isinstance(rem, dict):
+        rem = {}
+    rem[provider] = round(remaining, 2)
+    data["remaining"] = rem
+    _save_provider_topups(data)
+    _append_audit(_actor_from_session(request), "provider.remaining", provider,
+                  {"remaining": remaining})
+    return {
+        "ok": True,
+        "provider": provider,
+        "remaining": rem[provider],
+        "actual_spent": _provider_actual_spent(provider),
         "real_blended_cost_per_min": round(_real_blended_cost_per_min(), 6),
     }
 
