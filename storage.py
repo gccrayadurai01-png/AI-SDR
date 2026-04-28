@@ -39,6 +39,8 @@ DEFAULT_SCRIPT: dict[str, Any] = {
     "booking_phrase":          "Would Tuesday at 2pm or Thursday at 10am work better?",
     "voicemail_message":       "Hey {name}, this is {sdr_name} from {company}. I was reaching out because we help companies like yours tackle key challenges. I'd love to set up a quick 15-minute call to see if it makes sense for your team. Feel free to call me back or I'll try you again soon. Have a great day!",
     "knowledge_base_notes":    "",
+    "agent_role":              "discovery",
+    "sales_technique":         "sandler",
 }
 
 

@@ -149,7 +149,170 @@ _last_health_check: dict[str, Any] = {"status": "pending", "last_run": None, "re
 import telnyx
 import httpx as _httpx
 
-ASSISTANT_ID = "assistant-7b0da1f0-aaff-44c0-ae3e-a75cc89f1ddc"
+ASSISTANT_ID = "assistant-7b0da1f0-aaff-44c0-ae3e-a75cc89f1ddc"  # global fallback only
+
+
+# ── Per-tenant Telnyx AI Assistant helpers ─────────────────────────────────
+# Each tenant gets their OWN dedicated AI Assistant in Telnyx.
+# Stored as telnyx_assistant_id in tenants.json.
+# Benefits:
+#   • Zero message_history overhead per call → no latency spike
+#   • True isolation: each assistant has the tenant's script baked in
+#   • No race conditions from last-writer-wins sync
+
+def _get_tenant_assistant_id(tenant_id: str) -> str | None:
+    """Look up tenant's dedicated Telnyx AI Assistant ID."""
+    if not tenant_id:
+        return None
+    # Lazy import to avoid circular — TENANTS_FILE defined later in file
+    try:
+        tf = Path(__file__).parent / "data" / "tenants.json"
+        if tf.exists():
+            for t in json.loads(tf.read_text("utf-8")):
+                if t.get("id") == tenant_id:
+                    return t.get("telnyx_assistant_id") or None
+    except Exception:
+        pass
+    return None
+
+
+def _set_tenant_assistant_id(tenant_id: str, assistant_id: str) -> None:
+    """Persist the assistant ID into tenants.json for future calls."""
+    try:
+        tf = Path(__file__).parent / "data" / "tenants.json"
+        tenants = json.loads(tf.read_text("utf-8")) if tf.exists() else []
+        for t in tenants:
+            if t.get("id") == tenant_id:
+                t["telnyx_assistant_id"] = assistant_id
+                tf.write_text(json.dumps(tenants, indent=2, default=str), "utf-8")
+                return
+    except Exception as exc:
+        logger.warning("Could not save telnyx_assistant_id for %s: %s", tenant_id, exc)
+
+
+def _create_telnyx_assistant_sync(tenant_id: str, instructions: str) -> str:
+    """
+    Create a new Telnyx AI Assistant for a tenant (synchronous, call via run_in_executor).
+    Returns the new assistant ID.
+    """
+    api_key = config.TELNYX_API_KEY
+    if not api_key:
+        raise RuntimeError("TELNYX_API_KEY not set — cannot create assistant")
+    body: dict = {
+        "name": f"SDR Agent — {tenant_id}",
+        "instructions": instructions,
+        "model": "anthropic/claude-haiku-4-5",
+        "transcription": {"model": "distil-whisper/distil-large-v2"},
+        "llm_temperature": 0.7,
+        "telephony_settings": {
+            "user_idle_timeout_secs": 90,
+            "max_duration_secs": 1800,
+        },
+        "interruption_settings": {
+            "enable": True,
+            "start_speaking_plan": {"wait_seconds": 0.5},
+        },
+        "recording_settings": {
+            "channels": "dual",
+            "format": "mp3",
+            "play_beep": False,
+        },
+    }
+    voice_id   = config.ELEVENLABS_VOICE_ID
+    api_key_ref = config.ELEVENLABS_API_KEY_REF
+    if voice_id and api_key_ref:
+        body["voice_settings"] = {
+            "type": "elevenlabs",
+            "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
+            "api_key_ref": api_key_ref,
+            "voice_speed": 0.88,        # slightly relaxed pacing — sounds less rushed
+            "stability": 0.38,          # lower = more pitch variation = natural intonation
+            "similarity_boost": 0.80,   # high fidelity to the chosen voice
+            "style": 0.45,              # expressiveness / intonation (questions rise, etc.)
+            "use_speaker_boost": True,
+        }
+    import httpx as _hx
+    r = _hx.post(
+        "https://api.telnyx.com/v2/ai/assistants",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=body,
+        timeout=20.0,
+    )
+    if r.status_code >= 300:
+        raise RuntimeError(f"Telnyx create assistant {r.status_code}: {r.text[:300]}")
+    assistant_id: str = r.json()["data"]["id"]
+    _set_tenant_assistant_id(tenant_id, assistant_id)
+    logger.info("Created Telnyx AI Assistant %s for tenant %s", assistant_id, tenant_id)
+    return assistant_id
+
+
+async def _ensure_tenant_assistant(tenant_id: str) -> str:
+    """
+    Return this tenant's Telnyx AI Assistant ID, creating one on first use.
+    Async-safe: creation runs in a thread pool to avoid blocking the event loop.
+    """
+    aid = _get_tenant_assistant_id(tenant_id)
+    if aid:
+        return aid
+    # First call ever for this tenant — create their dedicated assistant.
+    # get_system_prompt() reads from the tenant's script via ContextVar (already set).
+    instructions = get_system_prompt()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, _create_telnyx_assistant_sync, tenant_id, instructions
+    )
+
+
+def _patch_assistant_instructions_sync(assistant_id: str, instructions: str) -> None:
+    """PATCH an existing assistant's instructions (sync, call via run_in_executor)."""
+    api_key = config.TELNYX_API_KEY
+    if not api_key or not assistant_id:
+        return
+    voice_id   = config.ELEVENLABS_VOICE_ID
+    api_key_ref = config.ELEVENLABS_API_KEY_REF
+    patch_body: dict = {
+        "instructions": instructions,
+        "model": "anthropic/claude-haiku-4-5",
+        "transcription": {"model": "distil-whisper/distil-large-v2"},
+        "llm_temperature": 0.7,
+        "telephony_settings": {
+            "user_idle_timeout_secs": 90,
+            "max_duration_secs": 1800,
+        },
+        "interruption_settings": {
+            "enable": True,
+            "start_speaking_plan": {"wait_seconds": 0.5},
+        },
+        "recording_settings": {
+            "channels": "dual",
+            "format": "mp3",
+            "play_beep": False,
+        },
+    }
+    if voice_id and api_key_ref:
+        patch_body["voice_settings"] = {
+            "type": "elevenlabs",
+            "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
+            "api_key_ref": api_key_ref,
+            "voice_speed": 0.88,
+            "stability": 0.38,
+            "similarity_boost": 0.80,
+            "style": 0.45,
+            "use_speaker_boost": True,
+        }
+    import httpx as _hx
+    r = _hx.patch(
+        f"https://api.telnyx.com/v2/ai/assistants/{assistant_id}",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=patch_body,
+        timeout=15.0,
+    )
+    if r.status_code < 300:
+        logger.info("Synced assistant %s (%s chars)", assistant_id, len(instructions))
+    else:
+        logger.warning("Assistant PATCH %s: %s %s", assistant_id, r.status_code, r.text[:200])
+# ── end per-tenant assistant helpers ───────────────────────────────────────
+
 
 _tx: telnyx.Telnyx | None = None
 _tx_sig: tuple[str, str, str, str] | None = None
@@ -197,13 +360,132 @@ def _rebuild_hot_cache():
         vkw["voice_settings"] = {
             "type": "elevenlabs",
             "api_key_ref": ref,
-            "voice_speed": 0.9,
+            "voice_speed": 0.88,
+            "stability": 0.38,
+            "similarity_boost": 0.80,
+            "style": 0.45,
+            "use_speaker_boost": True,
         }
     else:
         vkw["voice"] = config.TELNYX_SPEAK_VOICE or "AWS.Polly.Matthew-Neural"
     _cached_voice_kwargs = vkw
     logger.info("Hot cache rebuilt: script=%d keys, knowledge=%d msgs, voice=%s",
                 len(_cached_script), len(_cached_knowledge_history), vkw.get("voice", "?")[:40])
+
+
+AGENT_ROLES = {
+    "discovery": {
+        "name": "Discovery Call",
+        "description": "Uncover pain, qualify fit, earn the next step",
+        "prompt": """ROLE — DISCOVERY CALL:
+Your ONLY job this call is to understand their world. Do NOT pitch features.
+1. OPEN: After greeting response, ask ONE open question about their current situation.
+2. LISTEN: Reflect back what they say. "So you're saying X — tell me more."
+3. PAIN: Dig into problems. "What does that cost you?" "How often does that happen?"
+4. QUALIFY: Gently check fit. "Who else is involved in decisions like this?"
+5. BRIDGE: If pain is real — "We've helped companies with exactly that. Worth a 15-min look?"
+6. CLOSE: Offer two specific time slots. Confirm, thank, goodbye.
+DO NOT pitch the product until you've heard a real pain point from them.""",
+        "objective": "Understand their current situation and identify pain points worth solving",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?",
+    },
+    "book_demo": {
+        "name": "Book a Demo",
+        "description": "Get them excited to see the product live",
+        "prompt": """ROLE — BOOK A DEMO:
+Your ONLY goal is to get a demo booked. One clear ask, one clear next step.
+1. HOOK: After greeting, lead with a benefit statement — what the demo will show them.
+2. TEASE: Give ONE compelling thing they'll see. "We'll show you how to cut X in half."
+3. QUALIFY: Quick check — "Are you the right person to see this with?"
+4. ASK: Be direct. "I'd love to show you — do you have 30 minutes this week or next?"
+5. HANDLE: Any objection → return to the one benefit. "I get it — but what if I showed you just this one thing?"
+6. CONFIRM: Lock in the time. "Great — I'll send a calendar invite to {email}."
+NEVER spend more than 3 turns before making the demo ask. Keep it tight.""",
+        "objective": "Book a 30-minute product demonstration",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. We have a quick demo that's been getting a lot of attention — got 2 minutes?",
+    },
+    "followup": {
+        "name": "Follow-Up Call",
+        "description": "Re-engage after prior contact, move to next step",
+        "prompt": """ROLE — FOLLOW-UP CALL:
+You have had prior contact with this prospect. Reference it immediately.
+1. REFERENCE: "I'm following up from [email/call/event] — did you get a chance to look at what I sent?"
+2. REQUALIFY: Check if anything changed. "Still the right time to explore this?"
+3. OBJECTION: Address whatever stopped them last time. Be specific.
+4. VALUE: One new piece of value since last touch. "Since we last spoke, we launched X."
+5. ASK: Clear next step. "Based on our last chat, the demo makes sense. This week work?"
+6. CLOSE: Confirm time, send invite.
+Be warmer and more familiar than a cold call. They know who you are.""",
+        "objective": "Re-engage and advance to the next step in the sales process",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company} — I'm following up from my note last week. Got a sec?",
+    },
+    "warm_outreach": {
+        "name": "Warm Outreach",
+        "description": "Engage leads who showed prior interest (content, webinar, etc.)",
+        "prompt": """ROLE — WARM OUTREACH:
+This prospect showed interest — treat it as a warm, not cold, conversation.
+1. ACKNOWLEDGE: "I saw you downloaded our guide on X / attended our webinar on Y — how did it land?"
+2. EXPLORE: Build on their interest. "What made that topic relevant for you right now?"
+3. CONNECT: Link their interest to a specific pain. "A lot of people who downloaded that are dealing with..."
+4. VALIDATE: "Is that something you're working through?" Let them confirm.
+5. ADVANCE: "We have a short demo that goes deeper on exactly that — worth 20 minutes?"
+6. CLOSE: Confirm time.
+Lead with curiosity. They raised their hand — just find out why.""",
+        "objective": "Convert a marketing-qualified lead into a booked meeting",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company} — I noticed you recently engaged with some of our content. Did I catch you at a quick moment?",
+    },
+    "reengagement": {
+        "name": "Re-Engagement",
+        "description": "Reconnect with dormant or previously interested prospects",
+        "prompt": """ROLE — RE-ENGAGEMENT:
+This prospect went cold. Your job is to find out why and re-open the conversation.
+1. ACKNOWLEDGE TIME: "It's been a while — I wanted to check back in. Still relevant?"
+2. NO PRESSURE: "I'm not here to push — just want to see if the timing is better now."
+3. CHECK CHANGE: "Has anything shifted on your end since we last spoke?"
+4. RE-QUALIFY: "Is this still on your radar, or has it moved off the list?"
+5. NEW HOOK: If they're open — offer one new thing. "We've added X since we last talked."
+6. MICRO-ASK: Don't go straight to demo. "Would a quick 10-minute catch-up make sense?"
+Use a low-pressure, curious tone. No desperation. Make it easy to say no — but easy to say yes.""",
+        "objective": "Re-open a conversation with a dormant prospect and find a reason to re-engage",
+        "opening_template": "Hi {name}, it's {sdr_name} from {company} — it's been a little while. Did I catch you at an okay time for literally 2 minutes?",
+    },
+    "executive": {
+        "name": "Executive Outreach",
+        "description": "C-suite / VP level — strategic, business-impact conversation",
+        "prompt": """ROLE — EXECUTIVE OUTREACH:
+You are speaking with a senior executive. Respect their time. Lead with business impact.
+1. BE BRIEF: You have 30 seconds to earn more time. Lead with a business outcome, not a product.
+2. BUSINESS FIRST: "Companies like yours are seeing X% improvement in Y — is that on your radar?"
+3. STRATEGIC: Talk about revenue, cost, risk, or competitive position. NEVER features.
+4. PEER LEVEL: Match their energy. Be confident, not deferential.
+5. DELEGATE CHECK: "Are you the right person to explore this, or should I connect with someone on your team?"
+6. ASK FOR 15: "Would 15 minutes to explore the business case make sense?"
+NEVER pitch product features to an executive. Speak only to outcomes and business impact.""",
+        "objective": "Open a strategic conversation and secure a 15-minute executive briefing",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. I'll be quick — we're helping companies like yours with {pain_area}. Does that land on your radar at all?",
+    },
+    "qualification": {
+        "name": "Qualification",
+        "description": "Structured BANT qualification — score the lead",
+        "prompt": """ROLE — QUALIFICATION CALL:
+Your job is to qualify this lead against BANT criteria. Be efficient and direct.
+1. NEED: "What's prompting you to look at this now?" — Is there a real problem?
+2. AUTHORITY: "Are you the decision-maker, or is someone else involved?"
+3. BUDGET: "Do you have a budget allocated for something like this?" (gentle, not blunt)
+4. TIMELINE: "When would you realistically want to have something in place?"
+5. SCORE: If 3 of 4 are green → advance to demo. "Based on what you've shared, it makes sense to show you the product."
+6. DQ GRACEFULLY: If not qualified — "We might not be the right fit right now. Can I check back in Q[X]?"
+Take structured notes in your head. Move efficiently through all four criteria.""",
+        "objective": "Qualify the prospect against BANT criteria and determine next best action",
+        "opening_template": "Hi {name}, this is {sdr_name} from {company}. I wanted to ask you a couple of quick questions to see if it makes sense to go further — got 5 minutes?",
+    },
+}
+
+
+def _get_role_prompt(role: str) -> str:
+    """Return the agent role prompt block for the given role key."""
+    r = AGENT_ROLES.get(role)
+    return r["prompt"] if r else ""
 
 
 SALES_TECHNIQUES = {
@@ -308,6 +590,9 @@ def get_system_prompt() -> str:
     technique = s.get("sales_technique", "sandler")
     technique_block = _get_technique_prompt(technique)
 
+    agent_role = s.get("agent_role", "discovery")
+    role_block = _get_role_prompt(agent_role)
+
     # Build structured sections
     sections = []
     sections.append(f"You={sdr}, SDR at {co}. LIVE cold call. You are a real human, never say you're AI.")
@@ -365,6 +650,9 @@ def get_system_prompt() -> str:
     if UPLOADED_DOCS_KNOWLEDGE:
         uploaded_blob = "\n\n".join(UPLOADED_DOCS_KNOWLEDGE)[:3500]
         sections.append(f"UPLOADED DOCUMENTS (cite these facts only, do not invent):\n{uploaded_blob}")
+
+    if role_block:
+        sections.append(role_block)
 
     sections.append(technique_block)
 
@@ -435,76 +723,20 @@ def get_knowledge_message_history() -> list[dict]:
 
 
 def sync_assistant_to_script():
-    """Push current script config to the Telnyx AI Assistant + tune for minimum latency."""
+    """
+    Push current script config to this TENANT's dedicated Telnyx AI Assistant.
+    If a tenant context (ContextVar) is set, syncs to the tenant's own assistant.
+    Falls back to the global ASSISTANT_ID when no tenant context (e.g. startup).
+    """
     try:
         instructions = get_system_prompt()
-        _get_tx().ai.assistants.update(
-            assistant_id=ASSISTANT_ID,
-            instructions=instructions,
-        )
-        logger.info("Synced script to Telnyx AI Assistant")
+        tid = current_tenant()
+        # Resolve the correct assistant ID for the current tenant
+        target_id = (_get_tenant_assistant_id(tid) if tid else None) or ASSISTANT_ID
+        _patch_assistant_instructions_sync(target_id, instructions)
+        logger.info("sync_assistant_to_script → assistant %s (tenant=%s)", target_id, tid)
     except Exception as e:
-        logger.error(f"Failed to sync assistant: {e}")
-
-    # Tune assistant via raw HTTP PATCH (voice + transcription + model)
-    try:
-        import httpx
-        api_key = config.TELNYX_API_KEY
-        if api_key:
-            instructions = get_system_prompt()
-            patch_body: dict[str, Any] = {
-                "instructions": instructions,
-                "model": "anthropic/claude-haiku-4-5",
-                "transcription": {"model": "distil-whisper/distil-large-v2"},
-                "llm_temperature": 0.7,
-                "telephony_settings": {
-                    # 90s user-silence cap — same as original working config.
-                    "user_idle_timeout_secs": 90,
-                    "max_duration_secs": 1800,
-                },
-                "interruption_settings": {
-                    "enable": True,
-                    "start_speaking_plan": {
-                        "wait_seconds": 0.5,
-                    },
-                },
-                # ── Recording: dual-channel MP3, no beep — persisted to disk
-                # via call.recording.saved webhook so playback never expires. ──
-                "recording_settings": {
-                    "channels": "dual",
-                    "format": "mp3",
-                    "play_beep": False,
-                },
-            }
-            voice_id = config.ELEVENLABS_VOICE_ID
-            api_key_ref = config.ELEVENLABS_API_KEY_REF
-            if voice_id and api_key_ref:
-                # CRITICAL: `type: elevenlabs` must be present — without it Telnyx
-                # stores the settings but does NOT route audio through ElevenLabs.
-                # eleven_multilingual_v2 = richer, more natural voice (not turbo).
-                # Stable profile: stability 0.55, similarity 0.75, style 0.0.
-                patch_body["voice_settings"] = {
-                    "type": "elevenlabs",
-                    "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
-                    "api_key_ref": api_key_ref,
-                    "voice_speed": 0.9,
-                    "stability": 0.55,
-                    "similarity_boost": 0.75,
-                    "style": 0.0,
-                    "use_speaker_boost": True,
-                }
-            r = httpx.patch(
-                f"https://api.telnyx.com/v2/ai/assistants/{ASSISTANT_ID}",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json=patch_body,
-                timeout=15.0,
-            )
-            if r.status_code < 300:
-                logger.info("Assistant synced: claude-haiku-4-5, distil-whisper, ElevenLabs")
-            else:
-                logger.warning("Assistant PATCH %s: %s", r.status_code, r.text[:300])
-    except Exception as e:
-        logger.warning("Assistant PATCH failed (non-fatal): %s", e)
+        logger.warning("sync_assistant_to_script failed (non-fatal): %s", e)
 
 
 async def _precache_filler_audio():
@@ -1352,6 +1584,11 @@ async def list_sales_techniques():
     """List all available sales techniques."""
     return [{"id": k, "name": v["name"], "description": v["description"]} for k, v in SALES_TECHNIQUES.items()]
 
+@app.get("/api/agent-roles")
+async def list_agent_roles():
+    """List all available agent roles."""
+    return [{"id": k, "name": v["name"], "description": v["description"]} for k, v in AGENT_ROLES.items()]
+
 @app.get("/api/agents")
 async def list_agents():
     agents = _load_agents()
@@ -1386,6 +1623,7 @@ async def create_agent(request: Request):
         "end_goal": body.get("end_goal", ""),
         "knowledge_base_notes": body.get("knowledge_base_notes", ""),
         "sales_technique": body.get("sales_technique", "sandler"),
+        "agent_role": body.get("agent_role", "discovery"),
     }
     agents.append(agent)
     _save_agents(agents)
@@ -1441,6 +1679,7 @@ async def activate_agent(agent_id: str):
         "end_goal": agent.get("end_goal", ""),
         "knowledge_base_notes": agent.get("knowledge_base_notes", ""),
         "sales_technique": agent.get("sales_technique", "sandler"),
+        "agent_role": agent.get("agent_role", "discovery"),
     }
     save_script(script_data)
     _rebuild_hot_cache()
@@ -2781,6 +3020,26 @@ async def admin_create_tenant(request: Request):
         }
         _save_users(users)
         rec["seeded_user"] = admin_user
+
+    # ── Provision a dedicated Telnyx AI Assistant for this tenant in the background.
+    #    Uses the global default script as a starting point; the tenant can
+    #    customise their script from the UI which will sync to their own assistant. ──
+    async def _provision_assistant_for_new_tenant(tenant_id: str) -> None:
+        try:
+            tok = set_tenant(tenant_id)
+            try:
+                instructions = get_system_prompt()
+            finally:
+                reset_tenant(tok)
+            loop = asyncio.get_event_loop()
+            aid = await loop.run_in_executor(
+                None, _create_telnyx_assistant_sync, tenant_id, instructions
+            )
+            logger.info("Provisioned Telnyx assistant %s for new tenant %s", aid, tenant_id)
+        except Exception as exc:
+            logger.warning("Auto-provision assistant failed for %s (non-fatal): %s", tenant_id, exc)
+
+    asyncio.create_task(_provision_assistant_for_new_tenant(tid))
     return rec
 
 
@@ -6075,6 +6334,54 @@ async def admin_voice_provider(request: Request):
         }
 
 
+@app.post("/api/admin/provision-tenant-assistants")
+async def admin_provision_tenant_assistants(request: Request):
+    """
+    Owner: create OR re-sync a dedicated Telnyx AI Assistant for every tenant.
+    Pass {"force_resync": true} to push latest voice settings to assistants that
+    already exist (use this after changing voice quality settings).
+    Safe to call multiple times.
+    """
+    _require_owner(request)
+    try:
+        body = await request.json() if (await request.body()) else {}
+    except Exception:
+        body = {}
+    force_resync = bool((body or {}).get("force_resync", False))
+
+    tenants = _load_tenants()
+    results = []
+    for t in tenants:
+        tid = t.get("id")
+        if not tid:
+            continue
+        existing = t.get("telnyx_assistant_id")
+        if existing and not force_resync:
+            results.append({"tenant_id": tid, "status": "already_provisioned", "assistant_id": existing})
+            continue
+        try:
+            tok = set_tenant(tid)
+            try:
+                instructions = get_system_prompt()
+            finally:
+                reset_tenant(tok)
+            loop = asyncio.get_event_loop()
+            if existing and force_resync:
+                # Re-PATCH existing assistant with new voice settings + latest instructions
+                await loop.run_in_executor(
+                    None, _patch_assistant_instructions_sync, existing, instructions
+                )
+                results.append({"tenant_id": tid, "status": "resynced", "assistant_id": existing})
+            else:
+                aid = await loop.run_in_executor(
+                    None, _create_telnyx_assistant_sync, tid, instructions
+                )
+                results.append({"tenant_id": tid, "status": "created", "assistant_id": aid})
+        except Exception as exc:
+            results.append({"tenant_id": tid, "status": "failed", "error": str(exc)})
+    return {"total": len(results), "results": results}
+
+
 @app.get("/api/admin/tts-provider")
 async def admin_tts_provider(request: Request):
     """Owner: status of TTS providers (ElevenLabs / Telnyx native / AWS Polly).
@@ -6300,26 +6607,38 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
     """Start AI Assistant off the main webhook thread — zero blocking on call.answered."""
     loop = asyncio.get_event_loop()
 
-    # ── Build greeting from CACHED script (no disk read) ──
-    s = _cached_script or load_script()
+    # ── Load THIS tenant's script (ContextVar inherited from create_task) ──
+    s = load_script()
     sdr = s.get("sdr_name", "Alex")
     co = s.get("company_name", "Your Company")
     greeting = f"Hey {name}, this is {sdr} from {co} -- did I catch you at a bad time?"
 
-    # ── Build message_history: ONLY per-prospect briefing (not knowledge) ──
-    # Product knowledge is already in the assistant's synced `instructions` —
-    # duplicating it here bloats the API payload and LLM context, adding
-    # seconds to warmup latency. Send only prospect-specific research.
+    # ── Resolve the tenant's dedicated Telnyx AI Assistant.
+    #    Each tenant has their OWN assistant with their script/persona baked in.
+    #    No message_history injection needed → zero extra latency.
+    #    _ensure_tenant_assistant() creates the assistant on first use and
+    #    persists the ID so subsequent calls are instant lookups. ──
+    tid = current_tenant()
+    if tid:
+        try:
+            assistant_id = await _ensure_tenant_assistant(tid)
+        except Exception as _e:
+            logger.warning("Could not get/create tenant assistant (%s) — using global fallback: %s", tid, _e)
+            assistant_id = ASSISTANT_ID
+    else:
+        assistant_id = ASSISTANT_ID
+
+    # ── Per-prospect briefing only (tiny payload, no script overhead) ──
     msg_history: list[dict] = []
     research = get_cached_research(name, company)
     if research:
-        msg_history.append({"role": "user", "content": f"[BRIEFING]\n{research[:500]}"})
+        msg_history.append({"role": "user", "content": f"[PROSPECT BRIEFING]\n{research[:400]}"})
         msg_history.append({"role": "assistant", "content": "Got it."})
 
-    # ── Build AI Assistant kwargs — let assistant use its own voice config ──
+    # ── Build AI Assistant kwargs ──
     ai_kwargs: dict[str, Any] = {
         "call_control_id": cc_id,
-        "assistant": {"id": ASSISTANT_ID},
+        "assistant": {"id": assistant_id},      # tenant-specific assistant (correct voice + script)
         "greeting": greeting,
         "transcription": {"model": "distil-whisper/distil-large-v2"},
         "interruption_settings": {"enable": True},
@@ -6367,6 +6686,7 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             raw[:1200],
         )
         return JSONResponse(content={"status": "ignored", "reason": "invalid_json"}, status_code=200)
+    _wh_tenant_tok = None   # must be declared before try so finally can always reset it
     try:
         event = parse_webhook_event(body)
         raw_type = (body.get("data") or {}).get("event_type") or event.get("event_type") or "unknown"
@@ -6375,6 +6695,23 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
         cc_id = extract_call_control_id_from_body(body) or (event.get("call_control_id") or "").strip() or None
 
         logger.info(f"WEBHOOK: {etype} | {cc_id}")
+
+        # ── Inject tenant context so all storage calls go to the correct
+        #    tenant's data/tenants/{id}/calls.json instead of the global
+        #    data/calls.json.  Telnyx webhooks carry no Bearer token so the
+        #    TenantScopingMiddleware never sets the ContextVar; we do it here
+        #    by looking up the tenant from the in-memory active_calls record
+        #    (stamped when place_outbound_call created the record).
+        if cc_id:
+            _wh_rec = active_calls.get(cc_id) or {}
+            _wh_tid = _wh_rec.get("tenant_id") or ""
+            if not _wh_tid:
+                # active_calls may have been cleared (e.g. late webhooks); fall
+                # back to the persisted row which also carries tenant_id.
+                _persisted = get_call_by_control_id(cc_id) or {}
+                _wh_tid = _persisted.get("tenant_id") or ""
+            if _wh_tid:
+                _wh_tenant_tok = set_tenant(_wh_tid)
 
         pl = (body.get("data") or {}).get("payload") or {}
 
@@ -6816,6 +7153,11 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return JSONResponse(content={"status": "error", "detail": str(e)}, status_code=500)
+    finally:
+        # Always restore the ContextVar — even if an exception was raised — so
+        # subsequent requests on the same event-loop thread aren't polluted.
+        if _wh_tenant_tok is not None:
+            reset_tenant(_wh_tenant_tok)
 
 
 # ════════════════════════════════════════════════════════════

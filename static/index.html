@@ -1410,6 +1410,27 @@ tbody tr.clickable { cursor: pointer; }
           </div>
         </div>
 
+        <!-- Agent Role Selector -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Agent Role</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            <select id="script-agent-role" onchange="onRoleChange()" style="flex:1;max-width:340px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:14px;">
+              <option value="discovery">Discovery Call — Uncover pain, qualify fit</option>
+              <option value="book_demo">Book a Demo — Get them excited to see the product</option>
+              <option value="followup">Follow-Up — Re-engage after prior contact</option>
+              <option value="warm_outreach">Warm Outreach — Engage leads who showed interest</option>
+              <option value="reengagement">Re-Engagement — Reconnect with dormant prospects</option>
+              <option value="executive">Executive Outreach — C-suite, business-impact focus</option>
+              <option value="qualification">Qualification — BANT scoring, structured qualify</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="applyRoleDefaults()"><i data-lucide="wand-2"></i> Apply Role Defaults</button>
+          </div>
+          <div id="rolePreviewCard" style="background:var(--bg-secondary,#f8f9fa);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.6;display:none;">
+            <div style="font-weight:700;color:var(--primary);margin-bottom:6px;" id="rolePreviewTitle"></div>
+            <div id="rolePreviewBody" style="color:var(--text-muted);"></div>
+          </div>
+        </div>
+
         <!-- Sales Technique Selector -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Sales Technique</div>
@@ -4457,6 +4478,12 @@ async function loadAgentsPage() {
     document.getElementById('script-call_flow').value = script.call_flow || '';
     document.getElementById('script-end_goal').value = script.end_goal || '';
     document.getElementById('script-knowledge_base_notes').value = script.knowledge_base_notes || '';
+    // Load saved agent role
+    const roleSelect = document.getElementById('script-agent-role');
+    if (roleSelect) {
+      roleSelect.value = script.agent_role || 'discovery';
+      onRoleChange();
+    }
     // Load saved technique
     const techSelect = document.getElementById('script-technique');
     if (script.sales_technique && techSelect) {
@@ -4514,6 +4541,7 @@ async function buildFromWebsite() {
 
 async function saveAgentScript() {
   const technique = document.getElementById('script-technique').value;
+  const agentRole = document.getElementById('script-agent-role').value;
   const script = {
     sdr_name: document.getElementById('script-sdr_name').value,
     company_name: document.getElementById('script-company').value,
@@ -4533,13 +4561,15 @@ async function saveAgentScript() {
     end_goal: document.getElementById('script-end_goal').value,
     knowledge_base_notes: document.getElementById('script-knowledge_base_notes').value,
     sales_technique: technique,
+    agent_role: agentRole,
   };
   // Save to script.json (activates it)
   const d = await api('POST', '/api/script', script);
   if (d._error) return toast('Save failed: ' + d.detail, 'error');
   // Update existing agent or create first one — only ONE agent at a time
+  const roleLabel = (ROLE_INFO[agentRole] || {}).title || agentRole;
   const agentData = Object.assign({}, script, {
-    name: (script.company_name || 'Agent') + ' - ' + (technique.charAt(0).toUpperCase() + technique.slice(1)),
+    name: (script.company_name || 'Agent') + ' — ' + roleLabel,
     website: document.getElementById('website-url') ? document.getElementById('website-url').value : '',
   });
   const agentsRes = await api('GET', '/api/agents');
@@ -4552,6 +4582,82 @@ async function saveAgentScript() {
   }
   toast('Agent saved & activated!', 'success');
   updateScriptPreview();
+}
+
+const ROLE_INFO = {
+  discovery: {
+    title: 'DISCOVERY CALL',
+    body: '<strong>Goal:</strong> Understand their world — uncover pain, qualify fit<br/><strong>1. Open</strong> — ONE open question about their current situation<br/><strong>2. Listen &amp; reflect</strong> — "So you\'re saying X — tell me more"<br/><strong>3. Pain</strong> — "What does that cost you? How often?"<br/><strong>4. Qualify</strong> — "Who else is involved in decisions like this?"<br/><strong>5. Bridge</strong> — Only pitch after hearing real pain<br/><strong>6. Book</strong> — Two time slots, confirm, goodbye',
+    objective: 'Understand their current situation and identify pain points worth solving',
+    opening: 'Hi {name}, this is {sdr_name} from {company} — did I catch you at a bad time?',
+    questions: 'Walk me through how you handle this today.\nWhat\'s the biggest challenge you\'re facing with that?\nHow often does that come up?\nWhat does it cost you when it happens?',
+  },
+  book_demo: {
+    title: 'BOOK A DEMO',
+    body: '<strong>Goal:</strong> Get them excited to see the product live<br/><strong>1. Hook</strong> — Lead with ONE compelling benefit they\'ll see<br/><strong>2. Tease</strong> — "We\'ll show you how to cut X in half"<br/><strong>3. Qualify</strong> — "Are you the right person to see this?"<br/><strong>4. Ask directly</strong> — "30 minutes this week or next?"<br/><strong>5. Handle objections</strong> — Always return to the core benefit<br/><strong>6. Confirm</strong> — Lock in time and send invite',
+    objective: 'Book a 30-minute product demonstration',
+    opening: 'Hi {name}, this is {sdr_name} from {company}. We have a quick demo that\'s been getting a lot of attention — got 2 minutes?',
+    questions: 'Are you the right person to evaluate something like this?\nWhat would make a demo worth your time?\nWhen do you have 30 minutes this week or next?',
+  },
+  followup: {
+    title: 'FOLLOW-UP CALL',
+    body: '<strong>Goal:</strong> Re-engage after prior contact and advance to next step<br/><strong>1. Reference</strong> — "Following up from my note — did you get a chance to look?"<br/><strong>2. Requalify</strong> — "Still the right time to explore this?"<br/><strong>3. Address blocker</strong> — What stopped them last time?<br/><strong>4. New value</strong> — One new thing since last touch<br/><strong>5. Ask</strong> — "The demo makes sense based on our last chat. This week?"<br/><strong>6. Confirm</strong> — Time, send invite',
+    objective: 'Re-engage and advance to the next step in the sales process',
+    opening: 'Hi {name}, it\'s {sdr_name} from {company} — I\'m following up from my note last week. Got a sec?',
+    questions: 'Did you get a chance to look at what I sent over?\nWhat\'s changed on your end since we last spoke?\nWhat would need to be true for this to make sense right now?',
+  },
+  warm_outreach: {
+    title: 'WARM OUTREACH',
+    body: '<strong>Goal:</strong> Convert a marketing-qualified lead into a booked meeting<br/><strong>1. Acknowledge interest</strong> — "I saw you downloaded our guide on X"<br/><strong>2. Explore why</strong> — "What made that topic relevant for you?"<br/><strong>3. Connect to pain</strong> — Link their interest to a specific problem<br/><strong>4. Validate</strong> — "Is that something you\'re working through?"<br/><strong>5. Advance</strong> — "We have a demo that goes deeper on exactly that"<br/><strong>6. Book</strong> — 20 minutes',
+    objective: 'Convert a marketing-qualified lead into a booked meeting',
+    opening: 'Hi {name}, this is {sdr_name} from {company} — I noticed you recently engaged with some of our content. Did I catch you at a quick moment?',
+    questions: 'How did that content land for you?\nWhat made that topic relevant right now?\nIs that a challenge you\'re actively trying to solve?',
+  },
+  reengagement: {
+    title: 'RE-ENGAGEMENT',
+    body: '<strong>Goal:</strong> Re-open a conversation with a dormant prospect<br/><strong>1. Acknowledge time</strong> — "It\'s been a while — still relevant?"<br/><strong>2. No pressure</strong> — "I\'m not here to push — just checking timing"<br/><strong>3. Check change</strong> — "Has anything shifted on your end?"<br/><strong>4. Requalify</strong> — "Still on your radar, or has it moved off?"<br/><strong>5. New hook</strong> — ONE new thing since last contact<br/><strong>6. Micro-ask</strong> — "10-minute catch-up?" (not full demo)',
+    objective: 'Re-open a conversation with a dormant prospect and find a reason to re-engage',
+    opening: 'Hi {name}, it\'s {sdr_name} from {company} — it\'s been a little while. Did I catch you at an okay time for literally 2 minutes?',
+    questions: 'Has anything changed on your end since we last spoke?\nIs this still something on your radar?\nWhat would need to change for this to be a priority?',
+  },
+  executive: {
+    title: 'EXECUTIVE OUTREACH',
+    body: '<strong>Goal:</strong> Open a strategic conversation with a C-suite / VP executive<br/><strong>1. Be brief</strong> — 30 seconds to earn more time<br/><strong>2. Business outcome first</strong> — Revenue, cost, risk, competitive position ONLY<br/><strong>3. Never features</strong> — They don\'t care about product specs<br/><strong>4. Peer-level tone</strong> — Confident, not deferential<br/><strong>5. Delegate check</strong> — "Right person, or someone on your team?"<br/><strong>6. Ask for 15</strong> — Executive briefing, not a demo',
+    objective: 'Open a strategic conversation and secure a 15-minute executive briefing',
+    opening: 'Hi {name}, this is {sdr_name} from {company}. I\'ll be quick — we\'re helping companies with a specific challenge right now. Does 15 minutes make sense?',
+    questions: 'Is [business outcome] on your radar this quarter?\nWho on your team owns this?\nWhat\'s the cost if this doesn\'t get solved this year?',
+  },
+  qualification: {
+    title: 'QUALIFICATION CALL',
+    body: '<strong>Goal:</strong> Score the lead against BANT criteria<br/><strong>N — Need</strong> — "What\'s prompting you to look at this now?"<br/><strong>A — Authority</strong> — "Are you the decision-maker, or is someone else involved?"<br/><strong>B — Budget</strong> — "Is there budget allocated for something like this?"<br/><strong>T — Timeline</strong> — "When would you realistically want this in place?"<br/><strong>3 of 4 green</strong> → advance to demo<br/><strong>Not qualified</strong> → graceful disqualification',
+    objective: 'Qualify the prospect against BANT criteria and determine next best action',
+    opening: 'Hi {name}, this is {sdr_name} from {company}. I wanted to ask a couple of quick questions to see if it makes sense to go further — got 5 minutes?',
+    questions: 'What\'s prompting you to look at this now?\nAre you the decision-maker for something like this, or is someone else involved?\nDo you have budget set aside for this area?\nWhen would you realistically want to have something in place?',
+  },
+};
+
+function onRoleChange() {
+  const r = document.getElementById('script-agent-role').value;
+  const info = ROLE_INFO[r];
+  const card = document.getElementById('rolePreviewCard');
+  if (!info || !card) return;
+  card.style.display = 'block';
+  document.getElementById('rolePreviewTitle').textContent = info.title;
+  document.getElementById('rolePreviewBody').innerHTML = info.body;
+}
+
+function applyRoleDefaults() {
+  const r = document.getElementById('script-agent-role').value;
+  const info = ROLE_INFO[r];
+  if (!info) return;
+  const objEl = document.getElementById('script-objective');
+  const openEl = document.getElementById('script-opening_line');
+  const qEl = document.getElementById('script-discovery_questions');
+  if (objEl && info.objective) objEl.value = info.objective;
+  if (openEl && info.opening) openEl.value = info.opening;
+  if (qEl && info.questions) qEl.value = info.questions;
+  updateScriptPreview();
+  toast('Applied ' + info.title + ' defaults — review and customize!', 'success');
 }
 
 const TECHNIQUE_INFO = {
@@ -4644,8 +4750,13 @@ async function suggestWithAI() {
 
 function updateScriptPreview() {
   const v = function(id) { return (document.getElementById('script-' + id) || {}).value || ''; };
+  const roleEl = document.getElementById('script-agent-role');
+  const roleKey = roleEl ? roleEl.value : 'discovery';
+  const roleInfo = ROLE_INFO[roleKey] || {};
+  const roleName = roleInfo.title || roleKey;
   document.getElementById('scriptPreview').innerHTML =
     '<strong>Agent:</strong> ' + escHtml(v('sdr_name') || '[SDR Name]') + ' from <strong>' + escHtml(v('company') || '[Company]') + '</strong>\n' +
+    '<strong>Role:</strong> ' + escHtml(roleName) + '\n' +
     '<strong>Goal:</strong> ' + escHtml(v('objective') || '[Objective]') + '\n' +
     '<strong>Target:</strong> ' + escHtml(v('target_persona') || '[Persona]') + '\n\n' +
     '<strong>Value Proposition:</strong>\n' + escHtml(v('value_prop') || '[Value Prop]') + '\n\n' +
