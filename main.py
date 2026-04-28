@@ -6016,6 +6016,7 @@ async def place_outbound_call(req: CallRequest) -> dict:
         "started_at":      datetime.utcnow().isoformat(),
         "recording_url":   None,
         "provider":        provider,
+        "tenant_id":       current_tenant() or "",   # ← stamp tenant on every call
     }
     active_calls[result["call_control_id"]] = rec
     save_call(rec)
@@ -7532,20 +7533,45 @@ async def clear_knowledge():
 #  ACTIVE CALLS CRUD
 # ════════════════════════════════════════════════════════════
 @app.get("/calls")
-async def list_calls():
-    return JSONResponse(content={"total": len(active_calls), "calls": active_calls})
+async def list_calls(request: Request):
+    """Return active calls scoped to the current tenant only."""
+    tid = current_tenant() or ""
+    sess = _session_from_request(request)
+    is_owner = sess and sess.get("role") == "owner" and not sess.get("impersonating")
+    if is_owner:
+        # Owner sees all calls (useful for oversight)
+        filtered = dict(active_calls)
+    else:
+        # Tenant users see ONLY their own calls
+        filtered = {cc: rec for cc, rec in active_calls.items()
+                    if (rec.get("tenant_id") or "") == tid}
+    return JSONResponse(content={"total": len(filtered), "calls": filtered})
 
 
 @app.get("/calls/{call_control_id}")
-async def get_call(call_control_id: str):
+async def get_call(call_control_id: str, request: Request):
     call = active_calls.get(call_control_id) or get_call_by_control_id(call_control_id)
     if not call:
         raise HTTPException(status_code=404, detail="Call not found")
+    # Tenant isolation: non-owner can only fetch their own calls
+    tid = current_tenant() or ""
+    sess = _session_from_request(request)
+    is_owner = sess and sess.get("role") == "owner" and not sess.get("impersonating")
+    if not is_owner and (call.get("tenant_id") or "") != tid:
+        raise HTTPException(status_code=403, detail="Not your call")
     return JSONResponse(content=call)
 
 
 @app.delete("/calls/{call_control_id}")
-async def end_call(call_control_id: str):
+async def end_call(call_control_id: str, request: Request):
+    # Tenant isolation: only allow hanging up your own calls
+    call = active_calls.get(call_control_id) or get_call_by_control_id(call_control_id)
+    if call:
+        tid = current_tenant() or ""
+        sess = _session_from_request(request)
+        is_owner = sess and sess.get("role") == "owner" and not sess.get("impersonating")
+        if not is_owner and (call.get("tenant_id") or "") != tid:
+            raise HTTPException(status_code=403, detail="Not your call — cannot hang up")
     await hangup_call(call_control_id)
     return JSONResponse(content={"status": "hung up", "call_control_id": call_control_id})
 
