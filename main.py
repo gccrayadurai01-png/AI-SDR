@@ -455,13 +455,12 @@ def sync_assistant_to_script():
             patch_body: dict[str, Any] = {
                 "instructions": instructions,
                 "model": "anthropic/claude-haiku-4-5",
-                "llm_api_key_ref": "anthropic_key",
                 "transcription": {"model": "distil-whisper/distil-large-v2"},
                 "llm_temperature": 0.7,
                 "telephony_settings": {
-                    # 120s (2 min) silence cap — hang up if prospect goes silent.
-                    "user_idle_timeout_secs": 120,
-                    "max_duration_secs": 900,
+                    # 90s user-silence cap — same as original working config.
+                    "user_idle_timeout_secs": 90,
+                    "max_duration_secs": 1800,
                 },
                 "interruption_settings": {
                     "enable": True,
@@ -469,25 +468,26 @@ def sync_assistant_to_script():
                         "wait_seconds": 0.5,
                     },
                 },
+                # ── Recording: dual-channel MP3, no beep — persisted to disk
+                # via call.recording.saved webhook so playback never expires. ──
+                "recording_settings": {
+                    "channels": "dual",
+                    "format": "mp3",
+                    "play_beep": False,
+                },
             }
             voice_id = config.ELEVENLABS_VOICE_ID
             api_key_ref = config.ELEVENLABS_API_KEY_REF
             if voice_id and api_key_ref:
-                # CRITICAL: `type: elevenlabs` must be present at the top of
-                # voice_settings — without it Telnyx stores the settings but
-                # does NOT route audio through ElevenLabs, so calls go silent
-                # even though `start_ai_assistant` returns 200. This was the
-                # direct cause of the "no voice on the call" incident.
+                # CRITICAL: `type: elevenlabs` must be present — without it Telnyx
+                # stores the settings but does NOT route audio through ElevenLabs.
+                # eleven_multilingual_v2 = richer, more natural voice (not turbo).
+                # Stable profile: stability 0.55, similarity 0.75, style 0.0.
                 patch_body["voice_settings"] = {
                     "type": "elevenlabs",
-                    "voice": f"ElevenLabs.eleven_turbo_v2_5.{voice_id}",
+                    "voice": f"ElevenLabs.eleven_multilingual_v2.{voice_id}",
                     "api_key_ref": api_key_ref,
                     "voice_speed": 0.9,
-                    # ── Stable voice profile — reduces artifacts/choppiness ──
-                    # similarity_boost too high (>0.8) + style > 0 + no stability
-                    # floor produces vocal drift / fabling / choppy artifacts over
-                    # generations longer than ~1 min. ElevenLabs-recommended stable
-                    # values: stability 0.5+, similarity 0.75, style 0.0.
                     "stability": 0.55,
                     "similarity_boost": 0.75,
                     "style": 0.0,
