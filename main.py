@@ -738,6 +738,7 @@ async def on_startup():
     if "ngrok" in config.APP_BASE_URL and os.environ.get("RAILWAY_ENVIRONMENT"):
         logger.error("!!! CRITICAL: APP_BASE_URL points to ngrok but running on Railway — webhooks will FAIL !!!")
         logger.error("!!! Set APP_BASE_URL in Railway env vars or enable RAILWAY_PUBLIC_DOMAIN !!!")
+    _load_sessions()   # Restore logins from disk — survives redeploys
     _get_tx()  # Pre-init Telnyx client — no cold start on first call
     _rebuild_hot_cache()
     try:
@@ -2570,8 +2571,32 @@ except Exception:
     logger.exception("Multi-tenant bootstrap failed (non-fatal)")
 
 
-# ── Sessions (in-memory; reset on redeploy is fine for Phase 1) ──
+# ── Sessions (persisted to disk so logins survive redeploys) ──
+_SESSIONS_FILE = Path(__file__).parent / "data" / "sessions.json"
 _SESSIONS: dict[str, dict] = {}
+
+
+def _load_sessions() -> None:
+    """Load sessions from disk on startup."""
+    global _SESSIONS
+    try:
+        if _SESSIONS_FILE.exists():
+            raw = json.loads(_SESSIONS_FILE.read_text("utf-8"))
+            if isinstance(raw, dict):
+                _SESSIONS = raw
+                logger.info("Loaded %d sessions from disk", len(_SESSIONS))
+    except Exception:
+        logger.warning("Could not load sessions from disk — starting fresh")
+        _SESSIONS = {}
+
+
+def _save_sessions() -> None:
+    """Persist sessions to disk."""
+    try:
+        _SESSIONS_FILE.parent.mkdir(exist_ok=True)
+        _SESSIONS_FILE.write_text(json.dumps(_SESSIONS), "utf-8")
+    except Exception as e:
+        logger.warning("Could not save sessions: %s", e)
 
 
 # ── Tenant-scoping middleware (pure ASGI) ──
@@ -2621,6 +2646,7 @@ def _make_session(user: dict) -> str:
         "role":      user.get("role", "tenant_user"),
         "ts":        datetime.utcnow().isoformat(),
     }
+    _save_sessions()
     return token
 
 
@@ -2685,6 +2711,7 @@ async def logout(request: Request):
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         _SESSIONS.pop(auth[7:].strip(), None)
+        _save_sessions()
     return {"ok": True}
 
 
