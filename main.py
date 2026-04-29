@@ -67,7 +67,7 @@ from telnyx_handler import (
     estimate_tts_playback_seconds,
 )
 import contacts_store
-from tenant_ctx import tenant_data_path, tenant_dir, set_tenant, reset_tenant, current_tenant
+from tenant_ctx import tenant_data_path, tenant_dir, set_tenant, reset_tenant, current_tenant, TENANTS_DIR
 from storage import (
     load_calls,
     save_call,
@@ -726,15 +726,26 @@ def sync_assistant_to_script():
     """
     Push current script config to this TENANT's dedicated Telnyx AI Assistant.
     If a tenant context (ContextVar) is set, syncs to the tenant's own assistant.
-    Falls back to the global ASSISTANT_ID when no tenant context (e.g. startup).
+    If the tenant has no assistant yet, one is CREATED (no fallback to global).
+    Falls back to the global ASSISTANT_ID ONLY when no tenant context (e.g. startup).
     """
     try:
         instructions = get_system_prompt()
         tid = current_tenant()
-        # Resolve the correct assistant ID for the current tenant
-        target_id = (_get_tenant_assistant_id(tid) if tid else None) or ASSISTANT_ID
-        _patch_assistant_instructions_sync(target_id, instructions)
-        logger.info("sync_assistant_to_script → assistant %s (tenant=%s)", target_id, tid)
+        if tid:
+            # Tenant-scoped: sync (or create) their OWN assistant — NEVER touch global
+            target_id = _get_tenant_assistant_id(tid)
+            if target_id:
+                _patch_assistant_instructions_sync(target_id, instructions)
+                logger.info("sync_assistant_to_script → PATCHED tenant %s assistant %s", tid, target_id)
+            else:
+                # First time: create a dedicated assistant for this tenant
+                new_id = _create_telnyx_assistant_sync(tid, instructions)
+                logger.info("sync_assistant_to_script → CREATED tenant %s assistant %s", tid, new_id)
+        else:
+            # No tenant context (startup / owner) — sync the global fallback only
+            _patch_assistant_instructions_sync(ASSISTANT_ID, instructions)
+            logger.info("sync_assistant_to_script → global fallback %s", ASSISTANT_ID)
     except Exception as e:
         logger.warning("sync_assistant_to_script failed (non-fatal): %s", e)
 
@@ -961,6 +972,48 @@ async def _check_assistant_health():
         logger.warning("Health check error (non-fatal): %s", e)
 
 
+async def _auto_provision_all_tenant_assistants():
+    """
+    On startup, loop through ALL tenants and ensure each one has a dedicated
+    Telnyx AI Assistant provisioned + synced with their OWN script.
+    This is the critical fix for cross-tenant script bleed.
+    """
+    try:
+        tenants = _load_tenants()
+    except Exception:
+        tenants = []
+    if not tenants:
+        logger.info("STARTUP PROVISION: No tenants found — skipping auto-provision")
+        return
+    loop = asyncio.get_event_loop()
+    for t in tenants:
+        tid = t.get("id")
+        if not tid:
+            continue
+        try:
+            # Set tenant context so load_script() reads THIS tenant's script
+            tok = set_tenant(tid)
+            try:
+                instructions = get_system_prompt()
+            finally:
+                reset_tenant(tok)
+            existing = t.get("telnyx_assistant_id") or _get_tenant_assistant_id(tid)
+            if existing:
+                # Re-sync existing assistant with latest script + voice
+                await loop.run_in_executor(
+                    None, _patch_assistant_instructions_sync, existing, instructions
+                )
+                logger.info("STARTUP PROVISION: Synced tenant %s → assistant %s", tid, existing)
+            else:
+                # Create new dedicated assistant for this tenant
+                new_id = await loop.run_in_executor(
+                    None, _create_telnyx_assistant_sync, tid, instructions
+                )
+                logger.info("STARTUP PROVISION: Created tenant %s → assistant %s", tid, new_id)
+        except Exception as exc:
+            logger.warning("STARTUP PROVISION: Failed for tenant %s: %s", tid, exc)
+
+
 @app.on_event("startup")
 async def on_startup():
     """Sync AI Assistant + pre-cache filler audio + hot caches on every server start."""
@@ -973,10 +1026,14 @@ async def on_startup():
     _load_sessions()   # Restore logins from disk — survives redeploys
     _get_tx()  # Pre-init Telnyx client — no cold start on first call
     _rebuild_hot_cache()
+    # Sync global fallback assistant (used only when tenant context is missing)
     try:
         sync_assistant_to_script()
     except Exception as e:
-        logger.warning("Startup assistant sync failed (non-fatal): %s", e)
+        logger.warning("Startup global assistant sync failed (non-fatal): %s", e)
+    # AUTO-PROVISION: Ensure EVERY tenant has their OWN dedicated assistant
+    # This is the critical step that prevents cross-tenant script bleed.
+    await _auto_provision_all_tenant_assistants()
     await _check_assistant_health()
     await _precache_filler_audio()
     _health_check_task = asyncio.create_task(_health_check_loop())
@@ -6723,10 +6780,13 @@ async def _start_ai_assistant_fast(cc_id: str, name: str, title: str, company: s
     if tid:
         try:
             assistant_id = await _ensure_tenant_assistant(tid)
+            logger.info("TENANT CALL: tenant=%s → assistant=%s (sdr=%s, company=%s)",
+                        tid, assistant_id, sdr, co)
         except Exception as _e:
             logger.warning("Could not get/create tenant assistant (%s) — using global fallback: %s", tid, _e)
             assistant_id = ASSISTANT_ID
     else:
+        logger.info("NO TENANT CONTEXT for call %s — using global assistant %s", cc_id, ASSISTANT_ID)
         assistant_id = ASSISTANT_ID
 
     # ── Per-prospect briefing only (tiny payload, no script overhead) ──
@@ -6807,10 +6867,27 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
             _wh_rec = active_calls.get(cc_id) or {}
             _wh_tid = _wh_rec.get("tenant_id") or ""
             if not _wh_tid:
-                # active_calls may have been cleared (e.g. late webhooks); fall
+                # active_calls may have been cleared (e.g. server restart); fall
                 # back to the persisted row which also carries tenant_id.
+                # First check global calls.json, then scan each tenant's calls.json
                 _persisted = get_call_by_control_id(cc_id) or {}
                 _wh_tid = _persisted.get("tenant_id") or ""
+                if not _wh_tid:
+                    # Search across all tenant data dirs for this call
+                    try:
+                        for _td in (TENANTS_DIR).iterdir():
+                            if not _td.is_dir():
+                                continue
+                            _tcf = _td / "calls.json"
+                            if _tcf.exists():
+                                for _tc in json.loads(_tcf.read_text("utf-8")):
+                                    if isinstance(_tc, dict) and _tc.get("call_control_id") == cc_id:
+                                        _wh_tid = _tc.get("tenant_id") or _td.name
+                                        break
+                            if _wh_tid:
+                                break
+                    except Exception:
+                        pass
             if _wh_tid:
                 _wh_tenant_tok = set_tenant(_wh_tid)
 
