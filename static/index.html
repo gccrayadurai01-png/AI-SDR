@@ -2054,12 +2054,28 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
+// Server saves timestamps as datetime.utcnow().isoformat() — no "Z" suffix.
+// Browsers parse those as LOCAL time which causes negative durations when
+// browser TZ ≠ UTC (IST is +5:30, so a server UTC stamp is read as 5h30m
+// in the future → negative diff).  Coerce to UTC by appending "Z" if no
+// explicit timezone is present.
+function _parseServerDate(s) {
+  if (!s) return null;
+  if (s instanceof Date) return s;
+  let str = String(s);
+  // Already has timezone (Z, +HH:MM, -HH:MM after the time portion)
+  const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(str);
+  if (!hasTz) str = str + 'Z';
+  const dt = new Date(str);
+  return isNaN(dt) ? null : dt;
+}
+
 function formatTime(d) {
-  if (!d) return '';
-  const dt = d instanceof Date ? d : new Date(d);
-  if (isNaN(dt)) return '';
+  const dt = _parseServerDate(d);
+  if (!dt) return '';
   const now = new Date();
   const diff = Math.floor((now - dt) / 1000);
+  if (diff < 0) return 'just now';   // clock skew safety net
   if (diff < 60) return diff + 's ago';
   if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
   if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
@@ -2067,24 +2083,30 @@ function formatTime(d) {
 }
 
 function formatDate(d) {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (isNaN(dt)) return d;
+  const dt = _parseServerDate(d);
+  if (!dt) return d || '-';
   return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatSeconds(s) {
   if (!s && s !== 0) return '-';
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
+  const v = Math.max(0, Math.floor(s));   // never render negative
+  const m = Math.floor(v / 60);
+  const sec = v % 60;
   return m + ':' + String(sec).padStart(2, '0');
 }
 
-function formatDuration(startTime) {
-  if (!startTime) return '0:00';
-  const start = new Date(startTime);
-  if (isNaN(start)) return '0:00';
-  const diff = Math.floor((Date.now() - start.getTime()) / 1000);
+function formatDuration(startTime, endedAt, durationSeconds) {
+  // For ended calls prefer the persisted duration_seconds; if that's missing
+  // but we have ended_at, use (ended_at - started_at).  Only fall back to a
+  // live (now - started_at) timer for in-progress calls.
+  if (typeof durationSeconds === 'number' && durationSeconds > 0) {
+    return formatSeconds(durationSeconds);
+  }
+  const start = _parseServerDate(startTime);
+  if (!start) return '0:00';
+  const end = _parseServerDate(endedAt) || new Date();
+  const diff = Math.floor((end.getTime() - start.getTime()) / 1000);
   return formatSeconds(diff);
 }
 
@@ -4954,7 +4976,7 @@ async function refreshActiveCalls() {
     return '<tr style="cursor:pointer;' + (isSelected ? 'background:var(--primary-light);' : '') + '" onclick="selectLiveCall(\'' + ccid + '\')">' +
       '<td><div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="background:' + avatarColor(c.prospect_name) + ';">' + getInitials(c.prospect_name) + '</div><div><div style="font-weight:600;">' + escHtml(c.prospect_name || 'Unknown') + '</div><div style="font-size:11px;color:var(--text-muted);">' + escHtml(c.company || c.to || '') + '</div></div></div></td>' +
       '<td><span class="badge ' + badgeCls + '">' + label + '</span></td>' +
-      '<td><span class="call-card-timer" data-call-id="' + ccid + '" data-start="' + (c.started_at || '') + '" style="font-weight:600;font-variant-numeric:tabular-nums;">' + formatDuration(c.started_at) + '</span></td>' +
+      '<td><span class="call-card-timer" data-call-id="' + ccid + '" data-start="' + (c.started_at || '') + '" data-ended="' + (c.ended_at || '') + '" data-duration="' + (c.duration_seconds || 0) + '" data-state="' + status + '" style="font-weight:600;font-variant-numeric:tabular-nums;">' + formatDuration(c.started_at, c.ended_at, c.duration_seconds) + '</span></td>' +
       '<td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();hangupCall(\'' + ccid + '\')" title="Hang up"><i data-lucide="phone-off" style="width:14px;height:14px;"></i></button></td></tr>';
   }).join('');
 
@@ -6233,11 +6255,15 @@ setInterval(function() {
 // Campaign bar every 5s
 setInterval(updateCampaignBar, 5000);
 
-// Update call timers every 1s
+// Update call timers every 1s — but freeze on ended calls (use persisted duration)
 setInterval(function() {
   document.querySelectorAll('.call-card-timer[data-start]').forEach(function(el) {
+    const state = (el.getAttribute('data-state') || '').toLowerCase();
+    if (state === 'ended') return;   // do NOT keep ticking on ended calls
     const start = el.getAttribute('data-start');
-    if (start) el.textContent = formatDuration(start);
+    const ended = el.getAttribute('data-ended') || '';
+    const dur   = parseInt(el.getAttribute('data-duration') || '0', 10);
+    if (start) el.textContent = formatDuration(start, ended, dur);
   });
 }, 1000);
 
